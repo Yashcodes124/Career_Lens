@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Smart Service Organizer - Auth</title>
+    <style>
+      :root {
+        --primary-color: #0d6efd;
+        --secondary-color: #0dcaf0;
+        --text-color: #333;
+        --bg-color: #f0f8ff;
+      }
+
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+        font-family: Inter, sans-serif;
+      }
+
+      body {
+        background: linear-gradient(
+          135deg,
+          var(--primary-color),
+          var(--secondary-color)
+        );
+        height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+        position: relative;
+      }
+
+      .background-anim {
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        top: 0;
+        left: 0;
+        z-index: 0;
+        overflow: hidden;
+      }
+
+      .circle {
+        position: absolute;
+        border-radius: 50%;
+        opacity: 0.4;
+        animation: float 10s infinite ease-in-out;
+        background-color: rgba(255, 255, 255, 0.2);
+      }
+
+      .circle:nth-child(1) {
+        width: 120px;
+        height: 120px;
+        top: 20%;
+        left: 10%;
+      }
+      .circle:nth-child(2) {
+        width: 80px;
+        height: 80px;
+        top: 60%;
+        left: 30%;
+      }
+      .circle:nth-child(3) {
+        width: 100px;
+        height: 100px;
+        top: 40%;
+        left: 70%;
+      }
+
+      @keyframes float {
+        0%,
+        100% {
+          transform: translateY(0px);
+        }
+        50% {
+          transform: translateY(-20px);
+        }
+      }
+
+      .container {
+        position: relative;
+        z-index: 1;
+        background-color: #fff;
+        padding: 2.5rem 2rem;
+        border-radius: 10px;
+        width: 400px;
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.5);
+        transition: all 0.5s ease-in-out;
+      }
+
+      h2 {
+        color: var(--primary-color);
+        margin-bottom: 20px;
+        text-align: center;
+      }
+
+      input[type="text"],
+      input[type="email"],
+      input[type="password"],
+      select {
+        width: 100%;
+        padding: 10px;
+        margin-bottom: 15px;
+        border: 1px solid #ccc;
+        border-radius: 8px;
+        font-size: 1.1rem;
+        outline: none;
+      }
+
+      input:hover,
+      select:hover {
+        border-color: var(--primary-color);
+      }
+      button {
+        width: 80%;
+        display: block;
+        margin: 0 auto;
+        background-color: var(--primary-color);
+        color: white;
+        border: none;
+        padding: 10px;
+        border-radius: 8px;
+        font-weight: bold;
+        cursor: pointer;
+        transition: background-color 0.3s ease;
+      }
+
+      button:hover {
+        background-color: #084298;
+      }
+
+      .Role label {
+        margin-bottom: 10px;
+        display: block;
+        color: var(--text-color);
+      }
+      select {
+        margin-bottom: 25px;
+      }
+      .switch {
+        text-align: center;
+        margin: 20px 0;
+        color: var(--text-color);
+      }
+
+      .switch a {
+        color: var(--secondary-color);
+        text-decoration: none;
+        font-weight: bold;
+        cursor: pointer;
+      }
+
+      .hidden {
+        display: none;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="background-anim">
+      <div class="circle"></div>
+      <div class="circle"></div>
+      <div class="circle"></div>
+    </div>
+
+    <div class="container">
+      <form id="registerForm">
+        <h2>Register</h2>
+        <div class="Name">
+          <input type="text" placeholder="Full Name" required />
+        </div>
+        <div class="mail">
+          <input type="email" placeholder="Email" required />
+        </div>
+        <div class="Passward">
+          <input
+            type="password"
+            placeholder="Password"
+            minlength="8"
+            required
+          />
+        </div>
+        <div class="Role">
+          <label for="role">Select Role:</label>
+          <select id="role" required>
+            <option value="">-- Choose your role --</option>
+            <option value="user">User</option>
+            <option value="admin">Service Provider</option>
+          </select>
+        </div>
+        <div class="register_btn">
+          <button type="submit">Register</button>
+        </div>
+        <div class="switch">
+          Already have an account? <a onclick="toggleForms()">Login</a>
+        </div>
+      </form>
+
+      <form id="loginForm" class="hidden">
+        <h2>Login</h2>
+        <h2>Register</h2>
+        <div class="Name">
+          <input type="text" placeholder="Full Name" required />
+        </div>
+        <div class="mail">
+          <input type="email" placeholder="Email" required />
+        </div>
+        <div class="Passward">
+          <input
+            type="password"
+            placeholder="Password"
+            minlength="8"
+            required
+          />
+        </div>
+        <div class="Role">
+          <label for="role">Select Role:</label>
+          <select id="role" required>
+            <option value="">-- Choose your role --</option>
+            <option value="user">User</option>
+            <option value="admin">Service Provider</option>
+          </select>
+        </div>
+        <div class="register_btn">
+          <button type="submit">Login</button>
+        </div>
+        <div class="switch">
+          Don't have an account? <a onclick="toggleForms()">Register</a>
+        </div>
+      </form>
+    </div>
+
+    <script>
+      function toggleForms() {
+        document.getElementById("registerForm").classList.toggle("hidden");
+        document.getElementById("loginForm").classList.toggle("hidden");
+      }
+    </script>
+  </body>
+</html>

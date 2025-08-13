@@ -1,0 +1,71 @@
+:root {
+  --primary-color: #1976d2;
+  --secondary-color: #673ab7;
+  --primary-text-color: #212121;
+  --secondary-text-color: #616161;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+body {
+  background-color: #fafafa;
+  color: var(--primary-text-color);
+  font-family: "inter", sans-serif;
+}
+.nav-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: #ffffff;
+  padding: 1rem 2rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  margin-bottom: 5rem;
+}
+.logo {
+  font-size: 1.5rem;
+  font-weight: bold;
+  color: #1976d2;
+  font-family: "poppins", sans-serif;
+}
+.logo img {
+  border-radius: 9px;
+}
+
+.nav-links {
+  list-style-type: none;
+  display: flex;
+  gap: 5rem;
+  margin-right: 2rem;
+}
+
+.nav-links a,
+.upload {
+  text-decoration: none;
+  color: #212121;
+  font-weight: 550;
+}
+
+.welcome-text {
+  text-align: center;
+  color: #2d2c2c;
+  font-size: 1.5rem;
+  text-transform: capitalize;
+  margin: 2rem 0;
+}
+
+.hero{
+  padding:50px 50px;
+  height: 400px;
+  display: grid;
+  grid-template-columns:500px 400px;
+  gap: 50px;
+}
+
+.hero-part h1{
+  display: block;
+  font-size: 1.8rem;
+  margin-bottom: 50px;
+}
