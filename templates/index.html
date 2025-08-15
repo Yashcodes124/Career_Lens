@@ -1,43 +1,90 @@
-<!-- git repo link : https://github.com/Yashwanth12-A/resume_Analyser.git -->
 <!DOCTYPE html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Careerlens</title>
-    <link rel="stylesheet" href="./css/style.css" />
+    <link rel="stylesheet" href="css/style.css" />
   </head>
   <body>
     <nav class="nav-bar">
-      <div class="logo">
-        <img src="./images/hacker 2.jpg" height="40px" alt="careerlens logo" />
-        Careerlens
-      </div>
-      <ul class="nav-links">
-        <li><a href="#">Home</a></li>
+      <div class="logo-title">Careerlens</div>
+      <div class="nav-links">
+        <ul>
+        <li><a href="#">Dashboard</a></li>
         <li><a href="#">ResumeBuilder</a></li>
-        <li><a href="#">Features</a></li>
-        <li><a href="../templates/login.html">login</a></li>
+        <li><a href="#">Internships</a></li>
+        <li><a href="#">About</a></li>
       </ul>
+      </div>
+      <div class="login"><a href="../templates/login.html">Login</a>
+        <a href="#"><button>Get Started</button></a>
+      </div>
     </nav>
-
-    <div class="welcome-text">
-      <h1>Turn Your resume into Oppertunities</h1>
+     <!-- <div class="ai">
+      <button class="ai-powered">✨Ai AI-Powered careel development</button>
+     </div> -->
+    <div class="welcome-title">
+      <h1>Turn Your Resume into Opportunities</h1>
     </div>
 
-    <!-- cheering or hero section -->
+    <!-- Hero Section -->
     <section class="hero">
       <div class="hero-part">
-        <h1>Your Career <span>Starts here,</span></h1>
-        <p>
-          Build ,Polish Your Professtional Resume with Smart Tools -Designed to
-          help You Land Your Dream Job Faster
+        <h1 id="hero-title">Your Career <span>Starts Here,</span></h1>
+        <p id="hero-text">
+          Build, Polish Your Professional Resume with Smart Tools – Designed to
+          Help You Land Your Dream Job Faster
         </p>
-        <a href="#" class="btn-primary upload">Get Started</a>
+        <button class="button" id="hero-btn">Get Started</button>
       </div>
       <div class="interview-img">
-        <img src="./images/hacker 2.jpg" alt="career illustration" />
+        <div id="lottie-hero" style="width: 300px; height: 300px"></div>
       </div>
     </section>
+
+    <!-- Features Section -->
+    <section class="features">
+      <h2 data-aos="fade-up">Why Choose CareerLens?</h2>
+      <div class="feature-cards">
+        <div class="feature-card" data-aos="fade-up" data-aos-delay="100">
+          <h3>AI-Powered Analysis</h3>
+          <p>Get instant feedback on your resume using AI algorithms.</p>
+        </div>
+        <div class="feature-card" data-aos="fade-up" data-aos-delay="200">
+          <h3>Internship Matching</h3>
+          <p>Find the best internships tailored to your skills and goals.</p>
+        </div>
+        <div class="feature-card" data-aos="fade-up" data-aos-delay="300">
+          <h3>Weekly Improvement Tips</h3>
+          <p>Receive actionable advice to keep your resume top-notch.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- AOS & GSAP Init -->
+    <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
+    <script>
+      AOS.init();
+
+      // GSAP Hero Animation
+      gsap.from("#hero-title", { opacity: 0, y: -50, duration: 1 });
+      gsap.from("#hero-text", { opacity: 0, y: 30, duration: 1, delay: 0.5 });
+      gsap.from("#hero-btn", {
+        opacity: 0,
+        scale: 0.8,
+        duration: 0.8,
+        delay: 1,
+      });
+
+      // Lottie Animation
+      lottie.loadAnimation({
+        container: document.getElementById("lottie-hero"),
+        renderer: "svg",
+        loop: true,
+        autoplay: true,
+        path: "assets/lottie/career-animation.json", // Replace with your Lottie JSON path
+      });
+    </script>
   </body>
 </html>
