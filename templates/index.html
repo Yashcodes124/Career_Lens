@@ -5,86 +5,109 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Careerlens</title>
     <link rel="stylesheet" href="css/style.css" />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.0.0/css/all.min.css"
+      integrity="sha512-DxV+EoADOkOygM4IR9yXP8Sb2qwgidEmeqAEmDKIOfPRQZOWbXCzLC6vjbZyy0vPisbH2SyW27+ddLVCN+OMzQ=="
+      crossorigin="anonymous"
+      referrerpolicy="no-referrer"
+    />
   </head>
+ 
   <body>
     <nav class="nav-bar">
       <div class="logo-title">Careerlens</div>
       <div class="nav-links">
         <ul>
-        <li><a href="#">Dashboard</a></li>
-        <li><a href="#">ResumeBuilder</a></li>
-        <li><a href="#">Internships</a></li>
-        <li><a href="#">About</a></li>
-      </ul>
+          <li><a href="#">Dashboard</a></li>
+          <li><a href="#">ResumeBuilder</a></li>
+          <li><a href="#">Internships</a></li>
+          <li><a href="#">About</a></li>
+        </ul>
       </div>
-      <div class="login"><a href="../templates/login.html">Login</a>
+      <div class="login">
+        <a href="../templates/login.html">Login</a>
         <a href="#"><button>Get Started</button></a>
       </div>
     </nav>
-     <!-- <div class="ai">
-      <button class="ai-powered">✨Ai AI-Powered careel development</button>
-     </div> -->
-    <div class="welcome-title">
-      <h1>Turn Your Resume into Opportunities</h1>
-    </div>
 
     <!-- Hero Section -->
     <section class="hero">
+      <div class="ai">
+      <button class="ai-powered">✨AI-Powered Career Development</button>
+    </div>
       <div class="hero-part">
-        <h1 id="hero-title">Your Career <span>Starts Here,</span></h1>
-        <p id="hero-text">
-          Build, Polish Your Professional Resume with Smart Tools – Designed to
-          Help You Land Your Dream Job Faster
+        <h1 id="welcome-title">
+          turn your resume into your career <span>CareerLens</span>
+        </h1>
+        <p id="welcome-text">
+          unlock your career potential with our AI-powered resume builder and
+          personalized internship recommendations, and professional development
+          tools designed for modern job seekers.
         </p>
-        <button class="button" id="hero-btn">Get Started</button>
+        <div class="main-buttons">
+          <button><i class="fa-solid fa-upload"></i>Upload Resume -></button>
+          <button>
+            <i class="fa-solid fa-briefcase"></i>Browse Internships
+          </button>
+        </div>
       </div>
       <div class="interview-img">
         <div id="lottie-hero" style="width: 300px; height: 300px"></div>
       </div>
     </section>
-
-    <!-- Features Section -->
-    <section class="features">
-      <h2 data-aos="fade-up">Why Choose CareerLens?</h2>
-      <div class="feature-cards">
-        <div class="feature-card" data-aos="fade-up" data-aos-delay="100">
-          <h3>AI-Powered Analysis</h3>
-          <p>Get instant feedback on your resume using AI algorithms.</p>
-        </div>
-        <div class="feature-card" data-aos="fade-up" data-aos-delay="200">
-          <h3>Internship Matching</h3>
-          <p>Find the best internships tailored to your skills and goals.</p>
-        </div>
-        <div class="feature-card" data-aos="fade-up" data-aos-delay="300">
-          <h3>Weekly Improvement Tips</h3>
-          <p>Receive actionable advice to keep your resume top-notch.</p>
-        </div>
+    <!-- rating part -->
+    <section class="stats">
+      <div class="res-analysed">
+        <h3>50K+</h3>
+        <p>resumes analyzed</p>
+      </div>
+      <div class="intern-searched">
+        <h3>5K+</h3>
+        <p>internships searched</p>
+      </div>
+      <div class="success-rate">
+        <h3>95%</h3>
+        <p>success rate</p>
       </div>
     </section>
 
-    <!-- AOS & GSAP Init -->
-    <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
-    <script>
-      AOS.init();
+    <!-- Features Section -->
+<section class="features">
+  <h2>Why Choose CareerLens?</h2>
+  <p class="features-description">
+    Discover how CareerLens empowers your professional journey. Our platform combines AI-driven insights, personalized internship matching, and expert tips to help you stand out and succeed in today’s competitive job market.
+  </p>
+  <div class="feature-cards">
+    <div class="feature-card">
+      <i class="fa-solid fa-user-graduate"></i>
+      <h3>Expert Resume Templates</h3>
+      <p>Access professionally designed templates that highlight your strengths and achievements.</p>
+    </div>
+    <div class="feature-card">
+      <i class="fa-solid fa-comments"></i>
+      <h3>Real-Time Feedback</h3>
+      <p>Get instant suggestions and corrections as you build your resume for maximum impact.</p>
+    </div>
+    <div class="feature-card">
+      <i class="fa-solid fa-robot"></i>
+      <h3>AI-Powered Analysis</h3>
+      <p>Leverage AI to analyze your resume and highlight areas for improvement, helping you stand out to employers.</p>
+    </div>
+    <div class="feature-card">
+      <i class="fa-solid fa-briefcase"></i>
+      <h3>Internship Matching</h3>
+      <p>Find top internship opportunities tailored to your skills and career goals.</p>
+    </div>
+    <div class="feature-card">
+      <i class="fa-solid fa-shield-halved"></i>
+      <h3>Privacy & Security</h3>
+      <p>Your data is protected with industry-standard security measures, ensuring your information stays safe and confidential.</p>
+    </div>
+  </div>
+</section>
+</section>
 
-      // GSAP Hero Animation
-      gsap.from("#hero-title", { opacity: 0, y: -50, duration: 1 });
-      gsap.from("#hero-text", { opacity: 0, y: 30, duration: 1, delay: 0.5 });
-      gsap.from("#hero-btn", {
-        opacity: 0,
-        scale: 0.8,
-        duration: 0.8,
-        delay: 1,
-      });
-
-      // Lottie Animation
-      lottie.loadAnimation({
-        container: document.getElementById("lottie-hero"),
-        renderer: "svg",
-        loop: true,
-        autoplay: true,
-        path: "assets/lottie/career-animation.json", // Replace with your Lottie JSON path
-      });
-    </script>
+    
   </body>
 </html>
