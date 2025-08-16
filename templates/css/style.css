@@ -201,7 +201,7 @@ ul li a:focus {
     transform: translateY(0);
   }
 }
- .features h2 {
+.features h2 {
   font-size: 2.5rem;
   color: var(--primary-color);
   margin-bottom: 1rem;
@@ -261,7 +261,6 @@ ul li a:focus {
   background: linear-gradient(135deg, #e3f0ff 60%, #fce4ec 100%);
 }
 
-
 .feature-card i {
   font-size: 3rem;
   color: #1976d2;
@@ -288,7 +287,6 @@ ul li a:focus {
   color: #512da8;
 }
 
-
 .feature-card p {
   font-size: 1rem;
   color: #616161;
@@ -301,12 +299,11 @@ ul li a:focus {
 }
 
 /* Success Stories */
-.Success-stories{
-  padding:4rem 2rem;
+.Success-stories {
+  padding: 5rem 2rem;
   text-align: center;
   background: linear-gradient(120deg, #e3f0ff 0%, #f9f9ff 100%);
   animation: fadeInSection 1s ease;
-  margin-bottom: 2rem;
 }
 @keyframes fadeInSection {
   from {
@@ -316,18 +313,17 @@ ul li a:focus {
   to {
     opacity: 1;
     transform: translateY(0);
-  } 
-
+  }
 }
 
-.Success-stories h2{
+.Success-stories h2 {
   font-size: 2.5rem;
   color: var(--primary-color);
   font-family: "Poppins", sans-serif;
   margin-bottom: 2rem;
 }
 
-.Success-stories .success-stories-description{
+.Success-stories .success-stories-description {
   font-size: 1.2rem;
   color: var(--secondary-text-color);
   line-height: 1.6;
@@ -335,14 +331,13 @@ ul li a:focus {
   margin-bottom: 2rem;
 }
 
-.slider{
+.slider {
   display: flex;
   overflow: hidden;
   flex-direction: row;
   scroll-behavior: smooth;
   gap: 3rem;
   padding: 1rem;
-  
 }
 
 .slider .story-quote {
@@ -350,7 +345,7 @@ ul li a:focus {
   padding: 1rem;
   border-radius: 8px;
   background: linear-gradient(135deg, #e3f0ff 0%, #f9f9ff 100%);
-   animation: sliderLoop 18s linear infinite;
+  animation: sliderLoop 18s linear infinite;
 }
 .slider .story-quote:hover {
   box-shadow: 0 8px 32px rgba(103, 58, 183, 0.18);
@@ -380,11 +375,11 @@ ul li a:focus {
   }
 }
 
-.story-quote img{
+.story-quote img {
   width: 50px;
   height: 50px;
   border-radius: 50%;
-  margin-bottom: .1rem;
+  margin-bottom: 0.1rem;
 }
 
 .story-quote h4 {
@@ -396,7 +391,7 @@ ul li a:focus {
   letter-spacing: 0.5px;
   text-transform: capitalize;
 }
-.story-quote p{
+.story-quote p {
   font-size: 1rem;
   color: #616161;
   line-height: 1.5;
@@ -410,4 +405,128 @@ ul li a:focus {
   color: #9e9e9e;
   display: block;
   margin-top: 0.5rem;
+}
+/* FAQ section */
+.faq-section {
+  padding: 4rem 4rem;
+  background: linear-gradient(120deg, #e3f0ff 0%, #f9f9ff 100%);
+  animation: fadeInSection 1s ease;
+  text-align: center;
+  font-family: "Poppins", sans-serif;
+}
+.faq-section .faq-title {
+  font-size: 2.5rem;
+  color: var(--primary-color);
+  margin-bottom: 1rem;
+  font-weight: 600;
+}
+.faq-section .faq-title span {
+  color: #512da8;
+}
+.faq-section .faq-description {
+  font-size: 1rem;
+  color: var(--secondary-text-color);
+  line-height: 1.5;
+  margin-bottom: 4rem;
+}
+
+.faq-items {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  max-width: 800px;
+  margin: 0 auto;
+  margin-bottom: 2rem;
+}
+.faq-item {
+  background: linear-gradient(135deg, #ffffff 60%, #e0e7ff 100%);
+  padding: 1rem;
+  border-radius: 20px;
+  box-shadow: 0 4px 18px rgba(25, 118, 210, 0.1);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+.faq-item:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 24px rgba(25, 118, 210, 0.18);
+  background: linear-gradient(135deg, #e3f0ff 60%, #fce4ec 100%);
+}
+.faq-question {
+  display: flex;
+  justify-content: space-between;
+  cursor: pointer;
+}
+.faq-item h3 {
+  font-size: 1.5rem;
+  color: #1f1d1d;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+.faq-item h3:hover,
+.faq-item h3:focus {
+  color: #512da8;
+  transition: color 0.3s;
+}
+.faq-item .faq-answer {
+  max-height: 0;
+  padding-top: 5px;
+  overflow: hidden;
+  font-size: 1rem;
+  color: #616161;
+  line-height: 1.5;
+  text-align: left;
+  opacity: 0; /* means hidden */
+  transition: color 0.3s, max-height 0.4s ease;
+}
+.faq-item .faq-answer:hover {
+  color: #a57171;
+}
+
+.faq-item.active + .faq-answer,
+.faq-answer.open {
+  max-height: 200px; /* adjusting  size depending upon */
+  opacity: 1; /*it means visible */
+}
+
+.contact {
+  padding: 2rem;
+}
+.contact h2 {
+  font-size: 2rem;
+  color: var(--primary-color);
+  font-family: "Poppins", sans-serif;
+  margin-bottom: 1rem;
+  font-weight: 600;
+}
+.contact p {
+  font-size: 1rem;
+  color: #2d1818;
+  line-height: 1.5;
+  margin-bottom: 1rem;
+}
+.contact .contact-support {
+  background-color: hsl(272, 36%, 54%);
+  color: white;
+  padding: 0.8rem 1.5rem;
+  border: none;
+  border-radius: 10px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.3s, transform 0.2s;
+}
+.contact .contact-support:hover {
+  background-color: #673ab7;
+  transform: scale(1.05);
+}
+hr {
+  width: 70%;
+  margin: 0 auto;
+}
+.faq-item .icon {
+  font-weight: bold;
+  font-size: 20px;
+  transition: transform 0.3s ease;
+}
+.faq-item .icon:hover {
+  transform: rotate(45deg); /* turns + to x */
 }

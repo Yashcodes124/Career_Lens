@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Careerlens</title>
     <link rel="stylesheet" href="css/style.css" />
+     
     <link
       rel="stylesheet"
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.0.0/css/all.min.css"
@@ -156,8 +157,8 @@
           <span>Score: 60 ➝ 88</span>
         </div>
         <div class="story-quote">
-            <img src="./assets/images/avatar2.jpg" alt="Emily" />
-            <h4><i>Emily</i></h4>
+          <img src="./assets/images/avatar2.jpg" alt="Emily" />
+          <h4><i>Emily</i></h4>
           <p>
             "The AI resume analysis helped me identify key areas for
             improvement. I got an internship in 2 weeks!"
@@ -172,17 +173,136 @@
             to improve. Game changer!"
           </p>
           <span>Score: 65 ➝ 90</span>
-          
         </div>
         <div class="story-quote">
-            <img src="./assets/images/avatar4.jpg" alt="Ayesha" />
-            <h4><i>Ayesha</i></h4>
-            <p>
-              "With CareerLens, my resume stood out and I received multiple interview calls. Highly recommended!"
-            </p>
-            <span>Score: 70 ➝ 92</span>
-          </div>
+          <img src="./assets/images/avatar4.jpg" alt="Ayesha" />
+          <h4><i>Ayesha</i></h4>
+          <p>
+            "With CareerLens, my resume stood out and I received multiple
+            interview calls. Highly recommended!"
+          </p>
+          <span>Score: 70 ➝ 92</span>
+        </div>
       </div>
     </section>
+    <!-- FAQ Section -->
+    <section class="faq-section">
+      <h2 class="faq-title">Frequently Asked <span>Questions</span></h2>
+      <p class="faq-description">
+        Everything you need to know about CareerLens and how it works
+      </p>
+      <div class="faq-items">
+        <div class="faq-item">
+          <div class="faq-question">
+            <h3>How does the AI resume analyser Work?</h3>
+            <span class="icon">+</span>
+          </div>
+          <div class="faq-answer">
+            Our AI analyzes your resume against thousands of successful resumes
+            and job descriptions. It checks for ATS compatibility, keyword
+            optimization, formatting, and content quality to provide actionable
+            feedback for improvement.
+          </div>
+        </div>
+        <div class="faq-item">
+          <div class="faq-question">
+            <h3>Is CareerLens free to use?</h3>
+            <span class="icon">+</span>
+          </div>
+          <div class="faq-answer">
+            CareerLens offers a range of pricing plans, including a free tier
+            with basic features and premium plans for advanced tools and
+            resources. Visit our pricing page for more details.
+          </div>
+        </div>
+        <div class="faq-item">
+          <div class="faq-question">
+            <h3>How do I get started with CareerLens?</h3>
+            <span class="icon">+</span>
+          </div>
+          <div class="faq-answer">
+            Getting started is easy! Simply sign up for an account, upload your
+            resume, and let our AI analyze it. You'll receive personalized
+            feedback and recommendations to improve your resume.
+          </div>
+        </div>
+        <div class="faq-item">
+          <div class="faq-question">
+            <h3>How accurate is the internship Matching?</h3>
+            <span class="icon">+</span>
+          </div>
+          <div class="faq-answer">
+            Our AI matching algorithm has a 95% accuracy rate, analyzing your
+            skills, interests, and career goals against our database of 10,000+
+            internships. We continuously improve our matching based on
+            successful placements.
+          </div>
+        </div>
+        <div class="faq-item">
+          <div class="faq-question">
+            <h3>Can I track my application Progress?</h3>
+            <span class="icon">+</span>
+          </div>
+          <div class="faq-answer">
+            Yes! Our career dashboard provides comprehensive tracking of all
+            your applications, including status updates, interview schedules,
+            and follow-up reminders. Never miss an opportunity again.
+          </div>
+        </div>
+        <div class="faq-item">
+          <div class="faq-question">
+            <h3>What file formats do you support for resumes?</h3>
+            <span class="icon">+</span>
+          </div>
+          <div class="faq-answer">
+            We support PDF, DOC, DOCX, and TXT formats. PDF is recommended for
+            best analysis results. Our AI can extract and analyze content from
+            any of these formats effectively.
+          </div>
+        </div>
+
+        <div class="faq-item">
+          <div class="faq-question">
+            <h3>How quickly can I see results?</h3>
+            <span class="icon">+</span>
+          </div>
+          <div class="faq-answer">
+            Resume analysis is instant! Internship matches appear within seconds
+            of uploading your profile. Most students see significant improvement
+            in their application success rate within the first week.
+          </div>
+        </div>
+      </div>
+      <hr />
+      <div class="contact">
+        <h2>Still have questions?</h2>
+        <p>
+          If you have any questions or need assistance, our support team is here
+          to help you succeed. Feel free to reach out!
+        </p>
+        <button class="contact-support">Contact Support</button>
+      </div>
+    </section>
+   <script>
+    // faq toggle
+  document.querySelectorAll(".faq-question").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    btn.classList.toggle("active");
+    let content = btn.nextElementSibling;
+    let icon = btn.querySelector(".icon");
+
+    if (content.style.maxHeight) {
+      content.style.maxHeight = null;
+      content.classList.remove("open");
+      icon.textContent = "+";
+    } else {
+      content.style.maxHeight = content.scrollHeight + "px";
+      content.classList.add("open");
+      icon.textContent = "−";
+    }
+  });
+});
+
+   </script>
   </body>
 </html>
