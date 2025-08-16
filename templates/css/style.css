@@ -530,3 +530,79 @@ hr {
 .faq-item .icon:hover {
   transform: rotate(45deg); /* turns + to x */
 }
+
+/* footer section */
+footer {
+  background: linear-gradient(120deg, #e3f0ff 0%, #f9f9ff 100%);
+  padding: 2rem 4rem;
+  text-align: center;
+  font-family: "Poppins", sans-serif;
+}
+
+.footer-content {
+  height: 100%;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 1rem;
+}
+
+
+.main-container h2 {
+  font-size: 2rem;
+  color: var(--primary-color);
+  margin-bottom: 1rem;
+  text-align: left;
+}
+
+.main-container p {
+  
+  font-size: 1rem;
+  color: #616161;
+  line-height: 1.5;
+  text-align: left;
+  margin-bottom: 1.5rem;
+}
+.footer-content .contact-location {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+.footer-content .contact-location a {
+  text-decoration: none;
+  color: #222;
+  font-size: 1rem;
+  transition: color 0.3s;
+  margin-bottom: 1rem;
+}
+
+.footer-content .contact-location a:hover {
+  color: #512da8;
+}
+.footer-content .social-links {
+  display: flex;
+  gap: 1.5rem;
+  margin: 1rem 0;
+  font-size: 1.5rem;
+}
+.footer-content .social-links a i {
+  color: #512da8;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+  transition: color 0.3s;
+}
+.footer-content .social-links a:hover i {
+  background-color: #1976d2;
+  color: var(--primary-text-color);
+}
+
+.footer-content .container a {
+  display: flex;
+  flex-direction: column;
+}

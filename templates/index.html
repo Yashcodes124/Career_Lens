@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Careerlens</title>
     <link rel="stylesheet" href="css/style.css" />
-     
+
     <link
       rel="stylesheet"
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.0.0/css/all.min.css"
@@ -283,26 +283,85 @@
         <button class="contact-support">Contact Support</button>
       </div>
     </section>
-   <script>
-    // faq toggle
-  document.querySelectorAll(".faq-question").forEach((btn) => {
-  btn.addEventListener("click", () => {
-    btn.classList.toggle("active");
-    let content = btn.nextElementSibling;
-    let icon = btn.querySelector(".icon");
+    <!-- footer section -->
 
-    if (content.style.maxHeight) {
-      content.style.maxHeight = null;
-      content.classList.remove("open");
-      icon.textContent = "+";
-    } else {
-      content.style.maxHeight = content.scrollHeight + "px";
-      content.classList.add("open");
-      icon.textContent = "−";
-    }
-  });
-});
+    <footer>
+      <div class="footer-content">
+        <div class="main-container">
+          <h2>CareerLens</h2>
+          <p>
+            smart tools for smarter careers. tansform your resume with
+            ai-powered analysis and discover internship that match your skills
+            perfectly.
+          </p>
+          <div class="contact-location">
+            <a href="#location"
+              ><i class="fas fa-map-marker-alt"></i> Our Location</a
+            >
+            <a href="#phone"
+              ><i class="fas fa-phone-alt"></i> +1(555) 12-3257</a
+            >
+            <a href="#email"
+              ><i class="fas fa-envelope"></i> hello@careerlens.com</a
+            >
+          </div>
+          <div class="social-links">
+            <a href="#"><i class="fab fa-facebook-f"></i></a>
+            <a href="#"><i class="fab fa-twitter"></i></a>
+            <a href="#"><i class="fab fa-linkedin-in"></i></a>
+            <a href="#"><i class="fab fa-instagram"></i></a>
+          </div>
+        </div>
+        <div class="container">
+          <h2>Product</h2>
+          <ul>
+            <li><a href="#">Home</a></li>
+            <li><a href="#">Features</a></li>
+            <li><a href="#">Pricing</a></li>
+            <li><a href="#">Demo</a></li>
+          </ul>
+        </div>
+        <div class="container">
+          <h2>Company</h2>
+          <ul>
+            <li><a href="#">Careers</a></li>
+            <li><a href="#">Blog</a></li>
+            <li><a href="#">Press</a></li>
+            <li><a href="#">Partners</a></li>
+          </ul>
+        </div>
+        <div class="container">
+          <h2>Legal</h2>
+          <ul>
+            <li><a href="#">Privacy</a></li>
+            <li><a href="#">Terms</a></li>
+            <li><a href="#">Cookies</a></li>
+            <li><a href="#">Security</a></li>
+          </ul>
+        </div>
+        </div>
+      </div>
+    </footer>
 
-   </script>
+    <script>
+      // faq toggle
+      document.querySelectorAll(".faq-question").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          btn.classList.toggle("active");
+          let content = btn.nextElementSibling;
+          let icon = btn.querySelector(".icon");
+
+          if (content.style.maxHeight) {
+            content.style.maxHeight = null;
+            content.classList.remove("open");
+            icon.textContent = "+";
+          } else {
+            content.style.maxHeight = content.scrollHeight + "px";
+            content.classList.add("open");
+            icon.textContent = "−";
+          }
+        });
+      });
+    </script>
   </body>
 </html>
