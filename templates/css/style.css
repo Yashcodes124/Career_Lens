@@ -86,12 +86,13 @@ ul li a:focus {
   color: var(--primary-text-color);
 }
 .login a button {
-  color: whitesmoke;
+  
   padding: 0.7rem 1rem;
   border: none;
   outline: none;
   border-radius: 9px;
   background-color: #1976d2;
+  color: whitesmoke;
   font-size: 1rem;
   font-weight: 550;
 }
@@ -534,17 +535,19 @@ hr {
 /* footer section */
 footer {
   background: linear-gradient(120deg, #e3f0ff 0%, #f9f9ff 100%);
-  padding: 2rem 4rem;
+  padding: 2rem 6rem;
   text-align: center;
   font-family: "Poppins", sans-serif;
 }
 
 .footer-content {
-  height: 100%;
-  display: flex;
-  flex-direction: row;
-  align-items: center;
+  display: grid;
+  grid-template-rows: 1fr;
+  grid-template-columns: repeat(4, 1fr);
   gap: 1rem;
+  width: 100%;
+	height: 100%;
+  padding: 3rem 0;
 }
 
 
@@ -572,19 +575,23 @@ footer {
 .footer-content .contact-location a {
   text-decoration: none;
   color: #222;
-  font-size: 1rem;
-  transition: color 0.3s;
   margin-bottom: 1rem;
+   transition: color 0.3s ease, font-size 0.3s ease;
 }
 
 .footer-content .contact-location a:hover {
   color: #512da8;
+  font-size: 1.02rem;
+  
 }
 .footer-content .social-links {
   display: flex;
   gap: 1.5rem;
   margin: 1rem 0;
   font-size: 1.5rem;
+}
+.footer-content .social-links a{
+  text-decoration: none;
 }
 .footer-content .social-links a i {
   color: #512da8;
@@ -594,15 +601,145 @@ footer {
   display: flex;
   align-items: center;
   justify-content: center;
-  text-decoration: none;
-  transition: color 0.3s;
+  transition: color 0.5s ease, background-color 0.5s ease;
+
 }
 .footer-content .social-links a:hover i {
   background-color: #1976d2;
-  color: var(--primary-text-color);
+  color: #fff;
+}
+.footer-content .container h2{
+  font-size: 1.5rem;
+  color: #1f1d1d;
+  margin-bottom:1.2rem;
+   transition: color 0.3s,;
+   font-family: "Poppins", sans-serif;
+
+}
+.footer-content .container h2:hover {
+  color: #5115db;
 }
 
-.footer-content .container a {
+.footer-content .container ul {
   display: flex;
   flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+}
+
+.footer-content .container ul li  a{
+  position: relative;
+  color: #673ab7;
+  text-decoration: none;
+}
+.footer-content .container ul li a::after{
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  height: 2px;
+  width: 0;
+   background-color: currentColor;
+  transition: width 0.5s ease;
+}
+.footer-content .container ul li a:hover::after{
+  width: 100%;
+}
+
+footer .copy-right{
+  margin-top: 2rem;
+  font-size: 0.9rem;
+  color: #616161;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+footer .copy-right a{
+  padding: 1.5rem 0;
+  color: #444;
+  text-decoration: none;
+  transition: color 0.3s ease;
+}
+footer .copy-right a:hover {
+  color: #673ab7;
+}
+footer .copy-right p {
+  font-size: 1rem;
+   color: #512da8;
+  margin: 0;
+  font-family: "Inter", sans-serif;
+}
+
+footer .updates{
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 1rem;
+  padding: 2rem 0;
+  background: linear-gradient(120deg, #e3f0ff 0%, #f9f9ff 100%);
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  transition: transform 0.3s;
+}
+
+footer .updates h2 {
+  font-size: 1.7rem;
+  color: var(--primary-color);
+  transition: color 0.3s;
+  font-family: "Poppins", sans-serif;
+}
+
+footer .updates h2:hover {
+  color: #5115db;
+}
+
+footer .updates p {
+  font-size: 1rem;
+  color: #616161;
+  line-height: 1.5;
+  text-align: center;
+  margin-bottom: 1.5rem;
+}
+footer .updates form {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  align-items: center;
+}
+footer .updates form input[type="email"] {
+  flex: 1;
+  padding: .8rem;
+  background-color: rgb(247, 244, 244);
+  border: 1px solid #ccc;
+  border-radius: 10px;
+  font-size: 1rem;
+  outline: none;
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+footer .updates form input[type="email"]:focus {
+  border-color: #7c19d2;
+  box-shadow: 0 0 5px rgba(124, 25, 210, 0.5);
+}
+footer .updates form button {
+  padding: .8rem 1rem;
+  border: none;
+  outline: none;
+  border-radius: 10px;
+  background-color: #7c19d2;
+  color: whitesmoke;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+footer .updates form button:hover {
+  transform: scale(0.95);
+}
+
+footer .my-greetings {
+  text-align: center;
+  padding: 2rem 0;
+  font-size: 0.9rem;
+  color: #616161;
 }
