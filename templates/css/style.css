@@ -86,7 +86,6 @@ ul li a:focus {
   color: var(--primary-text-color);
 }
 .login a button {
-  
   padding: 0.7rem 1rem;
   border: none;
   outline: none;
@@ -203,13 +202,13 @@ ul li a:focus {
   }
 }
 .features h2 {
-  font-size: 2.5rem;
+  font-size: 3rem;
   color: var(--primary-color);
   margin-bottom: 1rem;
   font-family: "Poppins", sans-serif;
 }
 .features-description {
-  max-width: 700px;
+  max-width: 600px;
   margin: 3rem auto 5rem auto;
   font-size: 1.18rem;
   color: #222;
@@ -532,12 +531,12 @@ hr {
   transform: rotate(45deg); /* turns + to x */
 }
 /* CTA section */
-.cta-section{
-  padding: 4rem 2rem;
+.cta-section {
+  padding: 3rem 1.8rem;
   text-align: center;
   background: linear-gradient(120deg, #e3f0ff 0%, #f9f9ff 100%);
 }
-.main-Cta{
+.main-Cta {
   display: flex;
   justify-content: center;
   flex-direction: column;
@@ -546,19 +545,19 @@ hr {
 }
 
 .main-Cta .cta-title {
-  font-size:4rem;
+  font-size: 4rem;
   color: var(--primary-color);
   margin-bottom: 1rem;
   font-family: "Poppins", sans-serif;
 }
 
-.main-Cta .cta-title  span {
+.main-Cta .cta-title span {
   display: block;
   font-size: 3.5rem;
   width: 100%;
   color: #512da8;
-} 
-.main-Cta  .cta-desc{
+}
+.main-Cta .cta-desc {
   max-width: 60%;
   font-size: 1.5rem;
   color: #616161;
@@ -566,36 +565,35 @@ hr {
   margin-bottom: 1rem;
 }
 
-.main-Cta .cta-ranks{
+.main-Cta .cta-ranks {
   width: 45%;
   display: flex;
   flex-direction: row;
   justify-content: space-between;
   align-items: center;
-
 }
-.main-Cta .cta-ranks .cta-rank{
-   display: flex;
-   flex-direction: column;
-   margin-bottom: 2rem;
+.main-Cta .cta-ranks .cta-rank {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 2rem;
 }
 
-.main-Cta .cta-ranks .cta-rank h2{
-      font-size:2.5rem;
+.main-Cta .cta-ranks .cta-rank h2 {
+  font-size: 2.5rem;
   color: var(--primary-color);
 }
-.main-Cta .cta-ranks .cta-rank p{
+.main-Cta .cta-ranks .cta-rank p {
   font-size: 1rem;
   color: #616161;
 }
-.cta-buttons{
+.cta-buttons {
   display: flex;
   flex-direction: row;
   gap: 1rem;
   margin-bottom: 2rem;
 }
-.cta-buttons .cta-button button{
-  padding:1rem 3rem;
+.cta-buttons .cta-button button {
+  padding: 1rem 3rem;
   border-radius: 10px;
   outline: none;
   border: none;
@@ -604,7 +602,7 @@ hr {
   background-color: #512da8;
   font-weight: 600;
 }
-.cta-buttons .cta-button button i{
+.cta-buttons .cta-button button i {
   padding-left: 1rem;
 }
 .cta-buttons .cta-button button:hover {
@@ -612,7 +610,7 @@ hr {
   transform: scale(1.05);
 }
 
-.trusted-Universities{
+.trusted-Universities {
   padding: 2rem;
   font-size: 1rem;
   font-style: italic;
@@ -631,10 +629,9 @@ footer {
   grid-template-columns: repeat(4, 1fr);
   gap: 1rem;
   width: 100%;
-	height: 100%;
+  height: 100%;
   padding: 3rem 0;
 }
-
 
 .main-container h2 {
   font-size: 2rem;
@@ -644,7 +641,6 @@ footer {
 }
 
 .main-container p {
-  
   font-size: 1rem;
   color: #616161;
   line-height: 1.5;
@@ -661,13 +657,12 @@ footer {
   text-decoration: none;
   color: #222;
   margin-bottom: 1rem;
-   transition: color 0.3s ease, font-size 0.3s ease;
+  transition: color 0.3s ease, font-size 0.3s ease;
 }
 
 .footer-content .contact-location a:hover {
   color: #512da8;
   font-size: 1.02rem;
-  
 }
 .footer-content .social-links {
   display: flex;
@@ -675,7 +670,7 @@ footer {
   margin: 1rem 0;
   font-size: 1.5rem;
 }
-.footer-content .social-links a{
+.footer-content .social-links a {
   text-decoration: none;
 }
 .footer-content .social-links a i {
@@ -687,19 +682,17 @@ footer {
   align-items: center;
   justify-content: center;
   transition: color 0.5s ease, background-color 0.5s ease;
-
 }
 .footer-content .social-links a:hover i {
   background-color: #1976d2;
   color: #fff;
 }
-.footer-content .container h2{
+.footer-content .container h2 {
   font-size: 1.5rem;
   color: #1f1d1d;
-  margin-bottom:1.2rem;
-   transition: color 0.3s,;
-   font-family: "Poppins", sans-serif;
-
+  margin-bottom: 1.2rem;
+  transition: color 0.3s;
+  font-family: "Poppins", sans-serif;
 }
 .footer-content .container h2:hover {
   color: #5115db;
@@ -712,26 +705,26 @@ footer {
   gap: 1rem;
 }
 
-.footer-content .container ul li  a{
+.footer-content .container ul li a {
   position: relative;
   color: #673ab7;
   text-decoration: none;
 }
-.footer-content .container ul li a::after{
+.footer-content .container ul li a::after {
   content: "";
   position: absolute;
   left: 0;
   bottom: 0;
   height: 2px;
   width: 0;
-   background-color: currentColor;
+  background-color: currentColor;
   transition: width 0.5s ease;
 }
-.footer-content .container ul li a:hover::after{
+.footer-content .container ul li a:hover::after {
   width: 100%;
 }
 
-footer .copy-right{
+footer .copy-right {
   margin-top: 2rem;
   font-size: 0.9rem;
   color: #616161;
@@ -740,7 +733,7 @@ footer .copy-right{
   align-items: center;
 }
 
-footer .copy-right a{
+footer .copy-right a {
   padding: 1.5rem 0;
   color: #444;
   text-decoration: none;
@@ -751,12 +744,12 @@ footer .copy-right a:hover {
 }
 footer .copy-right p {
   font-size: 1rem;
-   color: #512da8;
+  color: #512da8;
   margin: 0;
   font-family: "Inter", sans-serif;
 }
 
-footer .updates{
+footer .updates {
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -795,7 +788,7 @@ footer .updates form {
 }
 footer .updates form input[type="email"] {
   flex: 1;
-  padding: .8rem;
+  padding: 0.8rem;
   background-color: rgb(247, 244, 244);
   border: 1px solid #ccc;
   border-radius: 10px;
@@ -808,7 +801,7 @@ footer .updates form input[type="email"]:focus {
   box-shadow: 0 0 5px rgba(124, 25, 210, 0.5);
 }
 footer .updates form button {
-  padding: .8rem 1rem;
+  padding: 0.8rem 1rem;
   border: none;
   outline: none;
   border-radius: 10px;
@@ -827,4 +820,229 @@ footer .my-greetings {
   padding: 2rem 0;
   font-size: 0.9rem;
   color: #616161;
+}
+
+/* RESPONSIVENESS media  - queries */
+
+/* MOBILE */
+@media (max-width: 768px) {
+  /* make a menu too the over all navbar */
+  .nav-bar {
+    overflow: hidden;
+  }
+  .logo-title {
+    font-size: 1.5rem;
+  }
+  ul {
+    flex-direction: column;
+    gap: 2rem;
+  }
+  .login {
+    margin-right: 0;
+    margin-top: 1rem;
+  }
+  .login {
+    display: flex;
+    gap: 0.5rem;
+  }
+  .login a button {
+    display: none;
+  }
+  .login a {
+    font-size: 1rem;
+  }
+  .hero-part h1 {
+    font-size: 2.5rem;
+  }
+  .hero-part p {
+    font-size: 1rem;
+  }
+
+  .stats {
+    flex-direction: column;
+    align-items: center;
+    gap: 2rem;
+  }
+  .features h2 {
+    font-size: 2.5rem;
+  }
+  .features p {
+    font-size: 1rem;
+  }
+  .feature-cards {
+    gap: 3rem;
+  }
+  .feature-card {
+    width: 70%;
+    max-height: auto;
+    padding-top: 3rem;
+    border-radius: 25px;
+    gap: 2rem;
+  }
+  .feature-card i {
+    font-size: 2.5rem;
+  }
+  .feature-card p {
+    font-size: 1.1rem;
+    margin-bottom: 2rem;
+  }
+  .Success-stories h2 {
+    font-size: 2.5rem;
+  }
+  .Success-stories p {
+    font-size: 1rem;
+  }
+  .faq-section .faq-title {
+    font-size: 3rem;
+  }
+  .faq-section .faq-description {
+    font-size: 1rem;
+  }
+  .faq-items {
+    gap: 1rem;
+  }
+  .faq-item {
+    padding: 1rem;
+  }
+  .faq-item h3 {
+    font-size: 1.2rem;
+  }
+  .faq-item .faq-answer {
+    font-size: 0.9rem;
+  }
+  .contact h2 {
+    font-size: 1.5rem;
+  }
+  .contact p {
+    font-size: 0.9rem;
+  }
+  .main-Cta .cta-title {
+    font-size: 3rem;
+  }
+  .main-Cta .cta-title span {
+    font-size: 2.8rem;
+  }
+  .main-Cta .cta-desc {
+    max-width: 80%;
+    font-size: 1.1rem;
+  }
+  .cta-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+  .main-Cta .cta-ranks {
+    width: 70%;
+  }
+  .cta-ranks .cta-rank h2 {
+    font-size: 1.4rem;
+  }
+  footer {
+    padding: 2rem;
+    font-size: 0.9rem;
+  }
+  footer .footer-content {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+  }
+}
+@media (max-width: 480px) {
+  /* Styles for phones */
+  .nav-bar {
+    flex-direction: row;
+    align-items: center;
+  }
+
+  .hero-part h1 {
+    font-size: 2.5rem;
+  }
+    .hero-part h1  span {
+      display: inline-block;
+      width: 100%;
+    font-size: 2.4rem;
+    color: #7c19d2;
+  }
+
+  .hero-part .main-buttons {
+    flex-direction: column;
+    gap: 1.5rem;
+    font-size: 2rem;
+    font-weight: 500;
+  }
+   .hero-part .main-buttons i{
+    padding-left: 1.5rem;
+   }
+
+  .features h2 {
+    font-size: 1.7rem;
+  }
+
+  .feature-cards {
+    gap: 2.2rem;
+  }
+  .feature-card {
+    width: 90%;
+    max-height: auto;
+    padding-top: 3rem;
+    border-radius: 25px;
+    gap: 2rem;
+  }
+  .feature-card i {
+    font-size: 2.5rem;
+  }
+  .feature-card p {
+    font-size: 1.1rem;
+    margin-bottom: 2rem;
+  }
+  .Success-stories h2 {
+    font-size: 2rem;
+  }
+  .Success-stories p {
+    font-size: .8rem;
+  }
+    .faq-section .faq-title {
+    font-size: 2.2rem;
+  }
+  .faq-section .faq-description {
+    font-size: .9rem;
+  }
+  .faq-items {
+    gap: .9rem;
+  }
+  .faq-item {
+    padding: .8rem;
+    font-weight: 500;
+  }
+  .faq-item h3 {
+    font-size: 1rem;
+  }
+  .faq-item .faq-answer {
+    font-size: 0.9rem;
+  }
+    .main-Cta .cta-title {
+    font-size: 2.5rem;
+  }
+     .main-Cta .cta-title span {
+        font-size: 2.8rem;
+     }
+  .main-Cta .cta-title span {
+    font-size: 2.3rem;
+  }
+  .main-Cta .cta-desc {
+    max-width: 100%;
+  }
+  .cta-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+  .main-Cta .cta-ranks {
+    width: 100%;
+  }
+  .main-Cta .cta-ranks .cta-rank .cta-rank-title {
+    font-size: 2rem;
+  }
+   .main-Cta .cta-ranks .cta-rank .cta-rank-des {
+    font-size: .8rem;
+  }
 }
