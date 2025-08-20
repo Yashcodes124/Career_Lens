@@ -53,19 +53,41 @@ ul {
   gap: 5rem;
 }
 ul li {
-  list-style-type: none;
+  list-style: none;
 }
+
 ul li a {
   text-decoration: none;
   font-size: 1.1rem;
   text-transform: capitalize;
   color: var(--secondary-color);
+  font-family: "poppins", sans-serif;
+  font-weight: 600;
   transition: color 0.3s;
 }
 
-ul li a :hover,
+ul li a:hover,
 ul li a:focus {
   color: var(--primary-text-color);
+}
+
+/*  Hamberger hidden by default  */
+.hamburger {
+  display: none;
+  flex-direction: column;
+  /* width: 30px;
+  height: 20px; */
+  cursor: pointer;
+  gap: 5px;
+}
+
+.hamburger span {
+  display: block;
+  width: 30px;
+  height: 3px;
+  background: #333;
+  border-radius: 2px;
+  transition: all 0.3s ease;
 }
 
 .login {
@@ -95,6 +117,7 @@ ul li a:focus {
   font-size: 1rem;
   font-weight: 550;
 }
+
 /* ai powered message */
 .ai {
   display: flex;
@@ -110,6 +133,7 @@ ul li a:focus {
   font-size: 1rem;
   background-color: #512da8;
 }
+
 /* WELCOME TEXT */
 
 .hero {
@@ -827,15 +851,33 @@ footer .my-greetings {
 /* MOBILE */
 @media (max-width: 768px) {
   /* make a menu too the over all navbar */
-  .nav-bar {
-    overflow: hidden;
+
+  .nav-links {
+    display: none;
+    position: absolute;
+    top: 60px;
+    right: 0;
+    flex-direction: column;
+    background: #fff;
+    width: 200px;
+    text-align: right;
+    transition: right 0.3s ease;
+    padding: 15px;
+  }
+
+  .nav-links.active {
+   display: flex;
+  }
+
+  .hamburger {
+    display: flex;  /* Show hamburger only on mobile */
   }
   .logo-title {
     font-size: 1.5rem;
   }
   ul {
     flex-direction: column;
-    gap: 2rem;
+    gap: 2.5rem;
   }
   .login {
     margin-right: 0;
@@ -843,13 +885,23 @@ footer .my-greetings {
   }
   .login {
     display: flex;
-    gap: 0.5rem;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+    padding-left: 290px;
   }
   .login a button {
     display: none;
   }
-  .login a {
+  .login .login-link {
+    padding: 0.7rem 1rem;
+    border: none;
+    outline: none;
+    border-radius: 15px;
+    background-color: #1976d2;
+    color: whitesmoke;
     font-size: 1rem;
+    font-weight: 550;
   }
   .hero-part h1 {
     font-size: 2.5rem;
@@ -956,9 +1008,9 @@ footer .my-greetings {
   .hero-part h1 {
     font-size: 2.5rem;
   }
-    .hero-part h1  span {
-      display: inline-block;
-      width: 100%;
+  .hero-part h1 span {
+    display: inline-block;
+    width: 100%;
     font-size: 2.4rem;
     color: #7c19d2;
   }
@@ -969,9 +1021,9 @@ footer .my-greetings {
     font-size: 2rem;
     font-weight: 500;
   }
-   .hero-part .main-buttons i{
+  .hero-part .main-buttons i {
     padding-left: 1.5rem;
-   }
+  }
 
   .features h2 {
     font-size: 1.7rem;
@@ -998,19 +1050,19 @@ footer .my-greetings {
     font-size: 2rem;
   }
   .Success-stories p {
-    font-size: .8rem;
+    font-size: 0.8rem;
   }
-    .faq-section .faq-title {
+  .faq-section .faq-title {
     font-size: 2.2rem;
   }
   .faq-section .faq-description {
-    font-size: .9rem;
+    font-size: 0.9rem;
   }
   .faq-items {
-    gap: .9rem;
+    gap: 0.9rem;
   }
   .faq-item {
-    padding: .8rem;
+    padding: 0.8rem;
     font-weight: 500;
   }
   .faq-item h3 {
@@ -1019,12 +1071,12 @@ footer .my-greetings {
   .faq-item .faq-answer {
     font-size: 0.9rem;
   }
-    .main-Cta .cta-title {
+  .main-Cta .cta-title {
     font-size: 2.5rem;
   }
-     .main-Cta .cta-title span {
-        font-size: 2.8rem;
-     }
+  .main-Cta .cta-title span {
+    font-size: 2.8rem;
+  }
   .main-Cta .cta-title span {
     font-size: 2.3rem;
   }
@@ -1042,7 +1094,7 @@ footer .my-greetings {
   .main-Cta .cta-ranks .cta-rank .cta-rank-title {
     font-size: 2rem;
   }
-   .main-Cta .cta-ranks .cta-rank .cta-rank-des {
-    font-size: .8rem;
+  .main-Cta .cta-ranks .cta-rank .cta-rank-des {
+    font-size: 0.8rem;
   }
 }

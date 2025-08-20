@@ -23,11 +23,11 @@
           <li><a href="#">Dashboard</a></li>
           <li><a href="#">ResumeBuilder</a></li>
           <li><a href="#">Internships</a></li>
-          <li><a href="#">About</a></li>
+          <!-- <li><a href="#">About</a></li> -->
         </ul>
       </div>
       <div class="login">
-        <a href="../templates/login.html">Login</a>
+        <a class="login-link" href="../templates/login.html">Login</a>
         <a href="#"><button>Get Started</button></a>
       </div>
       <div class="hamburger">
@@ -410,6 +410,14 @@
           }
         });
       });
+
+      // Toggle Menu
+      const hamburger = document.querySelector(".hamburger");
+      const navLinks = document.querySelector(".nav-links");
+        hamburger.addEventListener("click", () => {
+          navLinks.classList.toggle("active");
+        });
+
     </script>
   </body>
 </html>
