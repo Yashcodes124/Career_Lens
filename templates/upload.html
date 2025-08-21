@@ -145,12 +145,13 @@
         font-size: 1.5rem;
         margin-bottom: 0.5rem;
       }
-      main .redirect-buttons {
+      .redirect-buttons {
         padding: 0 2rem;
         display: flex;
         justify-content: space-between;
         gap: 2rem;
         margin-top: 50px;
+        cursor: pointer;
       }
       main .redirect-buttons a .back {
         border: 2px solid #80bfd0;
@@ -180,14 +181,14 @@
       <h2>CareerLens</h2>
       <nav>
         <a href="index.html">Home</a>
-        <a href="internships.html">Internships</a>
+        <a href="resumeBuilder.html">Internships</a>
         <a href="dashboard.html">Dashboard</a>
       </nav>
     </header>
 
     <main>
       <h3>Are you Uploading an <span>existing</span> Resume?</h3>
-      <p>Please ensure your file is in PDF, DOCX, or TXT format.</p>
+      <p>Please ensure your file is in PDF, DOC , DOCX, or TXT format.</p>
       <div class="upload-box">
         <div class="drop-area">
           <img src="./assets/images/upload.png" alt=" a sample upload image" />
@@ -199,7 +200,10 @@
           <button class="browsing">Browse</button>
         </div>
 
-        <div class="scratch-area">
+        <div
+          class="scratch-area"
+          onclick="window.location.href='./resumeBuilder.html'"
+        >
           <img src="./assets/images/scratch.png" alt="a sample scratch image" />
 
           <h4 class="scratch-area-title">
@@ -211,7 +215,7 @@
       </div>
       <div class="redirect-buttons">
         <a href="./index.html"><button class="back">Back</button></a>
-        <a href=""><button class="next">Next</button></a>
+        <a href="./resumeBuilder.html"><button class="next">Next</button></a>
       </div>
     </main>
     <footer>
