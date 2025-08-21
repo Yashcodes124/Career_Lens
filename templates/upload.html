@@ -190,13 +190,17 @@
       <h3>Are you Uploading an <span>existing</span> Resume?</h3>
       <p>Please ensure your file is in PDF, DOC , DOCX, or TXT format.</p>
       <div class="upload-box">
-        <div class="drop-area">
+        <div
+          class="drop-area"
+          onclick="document.getElementById('resumeUpload').click()"
+        >
+          <!-- drop your resume -->
           <img src="./assets/images/upload.png" alt=" a sample upload image" />
           <h3>Upload your Resume here,</h3>
           <p class="upload-instruction">
             Drag & Drop your file here or we can help you upload it
           </p>
-          <input type="file" hidden />
+          <input type="file" id="resumeUpload" hidden />
           <button class="browsing">Browse</button>
         </div>
 
@@ -204,6 +208,7 @@
           class="scratch-area"
           onclick="window.location.href='./resumeBuilder.html'"
         >
+          <!-- create new one -->
           <img src="./assets/images/scratch.png" alt="a sample scratch image" />
 
           <h4 class="scratch-area-title">
