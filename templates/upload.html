@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Upload Resume - CareerLens</title>
+
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"
+      crossorigin="anonymous"
+      referrerpolicy="no-referrer"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+
+    <style>
+      :root {
+        --primary-text-color: #333;
+        --secondary-text-color: #666;
+        --accent-color: #007bff;
+      }
+
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      body {
+        background-color: #fafafa;
+        color: var(--primary-text-color);
+        font-family: "poppins", sans-serif;
+        background: linear-gradient(
+          135deg,
+          #e0f7fa 0%,
+          #e3f0ff 50%,
+          #fce4ec 100%
+        );
+      }
+      header {
+        background-color: #007bff;
+        color: white;
+        padding: 20px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1rem;
+      }
+
+      header h2 {
+        font-size: 2rem;
+      }
+      header nav {
+        display: flex;
+        gap: 2rem;
+      }
+      header nav a {
+        color: white;
+        text-decoration: none;
+        margin: 0 15px;
+        font-weight: 500;
+      }
+      main {
+        padding: 2rem;
+      }
+
+      h3 {
+        margin-bottom: 2rem;
+        font-size: 2.5rem;
+        font-weight: 600;
+        text-align: center;
+      }
+      h3 span {
+        background: linear-gradient(90deg, #ff6f91, #6a89cc, #43e97b);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+      }
+      p {
+        font-size: 1.2rem;
+        color: var(--secondary-text-color);
+        text-align: center;
+        margin-bottom: 2rem;
+      }
+      .upload-box {
+        padding: 2rem;
+        border-radius: 8px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        justify-content: center;
+        gap: 3rem;
+      }
+
+      .upload-box .drop-area {
+        width: 500px;
+        height: 340px;
+        border: 2px dashed var(--secondary-text-color);
+        padding: 2rem;
+        border-radius: 8px;
+        text-align: center;
+        margin-top: 2rem;
+      }
+      .upload-box img {
+        width: 100px;
+        height: 100px;
+        margin-bottom: 1rem;
+      }
+      .upload-box .drop-area h3 {
+        font-size: 1.5rem;
+        margin-bottom: 0.5rem;
+      }
+
+      .upload-box .drop-area p.upload-instruction {
+        font-size: 1.2rem;
+        color: var(--secondary-text-color);
+        text-align: center;
+        margin-bottom: 0.1rem;
+      }
+
+      .upload-box .drop-area button {
+        border: none;
+        border-radius: 10px;
+        padding: 0.8rem 1rem;
+        margin: 1rem 0;
+        font-size: 1rem;
+        background-color: #80bfd0;
+      }
+      .upload-box .scratch-area {
+        width: 500px;
+        height: 340px;
+        border: 2px dashed var(--secondary-text-color);
+        padding: 2rem;
+        border-radius: 8px;
+        text-align: center;
+        margin-top: 2rem;
+      }
+      .upload-box .scratch-area img {
+        width: 100px;
+        height: 100px;
+        margin-bottom: 1rem;
+      }
+      .upload-box .scratch-area h4 {
+        font-size: 1.5rem;
+        margin-bottom: 0.5rem;
+      }
+      main .redirect-buttons {
+        padding: 0 2rem;
+        display: flex;
+        justify-content: space-between;
+        gap: 2rem;
+        margin-top: 50px;
+      }
+      main .redirect-buttons a .back {
+        border: 2px solid #80bfd0;
+        color: #80bfd0;
+        border-radius: 15px;
+        font-size: 1.2rem;
+        font-weight: 550;
+        padding: 0.8rem 2rem;
+      }
+      main .redirect-buttons a .next {
+        border: 2px solid #13cbdf;
+        border-radius: 15px;
+        color: #13cbdf;
+        font-size: 1.2rem;
+        font-weight: 550;
+        padding: 0.8rem 2rem;
+      }
+      footer {
+        text-align: center;
+        color: white;
+        margin: 2rem 0;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h2>CareerLens</h2>
+      <nav>
+        <a href="index.html">Home</a>
+        <a href="internships.html">Internships</a>
+        <a href="dashboard.html">Dashboard</a>
+      </nav>
+    </header>
+
+    <main>
+      <h3>Are you Uploading an <span>existing</span> Resume?</h3>
+      <p>Please ensure your file is in PDF, DOCX, or TXT format.</p>
+      <div class="upload-box">
+        <div class="drop-area">
+          <img src="./assets/images/upload.png" alt=" a sample upload image" />
+          <h3>Upload your Resume here,</h3>
+          <p class="upload-instruction">
+            Drag & Drop your file here or we can help you upload it
+          </p>
+          <input type="file" hidden />
+          <button class="browsing">Browse</button>
+        </div>
+
+        <div class="scratch-area">
+          <img src="./assets/images/scratch.png" alt="a sample scratch image" />
+
+          <h4 class="scratch-area-title">
+            Would you like to create a new one from scratch?
+          </h4>
+
+          <p class="scratch-area-desc">we can guide you through the process.</p>
+        </div>
+      </div>
+      <div class="redirect-buttons">
+        <a href="./index.html"><button class="back">Back</button></a>
+        <a href=""><button class="next">Next</button></a>
+      </div>
+    </main>
+    <footer>
+      <p>&copy; 2023 CareerLens. All rights reserved.</p>
+    </footer>
+  </body>
+</html>

@@ -1,11 +1,14 @@
 /* ALWAYS USE BOX SHADOW , ANIMATION IF KEY KEYFRAMES, TRANSITIONS,line-height , positions */
+@import url("https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap");
 
 :root {
   --primary-color: #1976d2;
   --secondary-color: #673ab7;
   --primary-text-color: #212121;
   --secondary-text-color: #616161;
-  background-color: linear-gradient(to right, #e0f7fa, #fce4ec);
+  --panel-bg: #eef4ff; /* themed menu bg */
+  --panel-border: #d7e2ff;
+  --light-bg: #ffffffcc; /* navbar glass bg */
 }
 * {
   margin: 0;
@@ -26,6 +29,7 @@ body {
   background-color: #fafafa;
   color: var(--primary-text-color);
   font-family: "inter", sans-serif;
+  background-color: linear-gradient(to right, #e0f7fa, #fce4ec);
 }
 .nav-bar {
   width: 100%;
@@ -74,22 +78,10 @@ ul li a:focus {
 /*  Hamberger hidden by default  */
 .hamburger {
   display: none;
-  flex-direction: column;
-  /* width: 30px;
-  height: 20px; */
   cursor: pointer;
-  gap: 5px;
+  font-size: 1.5rem;
+  color: var(--primary-color);
 }
-
-.hamburger span {
-  display: block;
-  width: 30px;
-  height: 3px;
-  background: #333;
-  border-radius: 2px;
-  transition: all 0.3s ease;
-}
-
 .login {
   display: flex;
   gap: 3rem;
@@ -850,60 +842,7 @@ footer .my-greetings {
 
 /* MOBILE */
 @media (max-width: 768px) {
-  /* make a menu too the over all navbar */
-
-  .nav-links {
-    display: none;
-    position: absolute;
-    top: 60px;
-    right: 0;
-    flex-direction: column;
-    background: #fff;
-    width: 200px;
-    text-align: right;
-    transition: right 0.3s ease;
-    padding: 15px;
-  }
-
-  .nav-links.active {
-   display: flex;
-  }
-
-  .hamburger {
-    display: flex;  /* Show hamburger only on mobile */
-  }
-  .logo-title {
-    font-size: 1.5rem;
-  }
-  ul {
-    flex-direction: column;
-    gap: 2.5rem;
-  }
-  .login {
-    margin-right: 0;
-    margin-top: 1rem;
-  }
-  .login {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 1rem;
-    padding-left: 290px;
-  }
-  .login a button {
-    display: none;
-  }
-  .login .login-link {
-    padding: 0.7rem 1rem;
-    border: none;
-    outline: none;
-    border-radius: 15px;
-    background-color: #1976d2;
-    color: whitesmoke;
-    font-size: 1rem;
-    font-weight: 550;
-  }
-  .hero-part h1 {
+  */ .hero-part h1 {
     font-size: 2.5rem;
   }
   .hero-part p {
@@ -998,6 +937,7 @@ footer .my-greetings {
     gap: 1rem;
   }
 }
+
 @media (max-width: 480px) {
   /* Styles for phones */
   .nav-bar {

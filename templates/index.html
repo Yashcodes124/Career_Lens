@@ -8,8 +8,7 @@
 
     <link
       rel="stylesheet"
-      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.0.0/css/all.min.css"
-      integrity="sha512-DxV+EoADOkOygM4IR9yXP8Sb2qwgidEmeqAEmDKIOfPRQZOWbXCzLC6vjbZyy0vPisbH2SyW27+ddLVCN+OMzQ=="
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"
       crossorigin="anonymous"
       referrerpolicy="no-referrer"
     />
@@ -30,11 +29,6 @@
         <a class="login-link" href="../templates/login.html">Login</a>
         <a href="#"><button>Get Started</button></a>
       </div>
-      <div class="hamburger">
-        <span></span>
-        <span></span>
-        <span></span>
-      </div>
     </nav>
 
     <!-- Hero Section -->
@@ -53,7 +47,8 @@
         </p>
         <div class="main-buttons">
           <button>Upload Resume<i class="fa-solid fa-upload"></i></button>
-          <button>Browse Internships<i class="fa-solid fa-briefcase"></i>
+          <button>
+            Browse Internships<i class="fa-solid fa-briefcase"></i>
           </button>
         </div>
       </div>
@@ -289,31 +284,38 @@
     </section>
     <!-- CTA section -->
     <section class="cta-section">
-        <div class="main-Cta">
-          <h2 class="cta-title">Ready to transform <span>Your career?</span></h2>
-          <p class="cta-desc">Join thousands of students who have already upgraded their careers with AI-powered tools. Start building your future today.</p>
-          <div class="cta-ranks">
-            <div class="cta-rank">
-              <h2 class="cta-rank-title">50K+</h2>
-              <p class="cta-rank-des">Students helped</p>
-            </div>
-            <div class="cta-rank">
-              <h2 class="cta-rank-title">95%</h2>
-              <p class="cta-rank-des">Success rate</p>
-            </div>
-            <div class="cta-rank">
-              <h2 class="cta-rank-title">24/7</h2>
-              <p class="cta-rank-des">AI Support</p>
-            </div>
+      <div class="main-Cta">
+        <h2 class="cta-title">Ready to transform <span>Your career?</span></h2>
+        <p class="cta-desc">
+          Join thousands of students who have already upgraded their careers
+          with AI-powered tools. Start building your future today.
+        </p>
+        <div class="cta-ranks">
+          <div class="cta-rank">
+            <h2 class="cta-rank-title">50K+</h2>
+            <p class="cta-rank-des">Students helped</p>
           </div>
-          <div class="cta-buttons">
-            <a class="cta-button" href="#"><button>Get Started <i class="fas fa-arrow-right"></i></button></a>
-            <a class="cta-button" href="#"><button>Watch Demo <i class="fas fa-play"></i></button></a>
+          <div class="cta-rank">
+            <h2 class="cta-rank-title">95%</h2>
+            <p class="cta-rank-des">Success rate</p>
           </div>
-          <div class="trusted-Universities">
-            Trusted and loved by top universities
+          <div class="cta-rank">
+            <h2 class="cta-rank-title">24/7</h2>
+            <p class="cta-rank-des">AI Support</p>
           </div>
         </div>
+        <div class="cta-buttons">
+          <a class="cta-button" href="#"
+            ><button>Get Started <i class="fas fa-arrow-right"></i></button
+          ></a>
+          <a class="cta-button" href="#"
+            ><button>Watch Demo <i class="fas fa-play"></i></button
+          ></a>
+        </div>
+        <div class="trusted-Universities">
+          Trusted and loved by top universities
+        </div>
+      </div>
     </section>
     <!-- footer section -->
 
@@ -371,14 +373,13 @@
             <li><a href="#">Security</a></li>
           </ul>
         </div>
-        </div>
-        <hr style="width: 100%; color: #eee;">
+        <hr style="width: 100%; color: #eee" />
         <div class="copy-right">
           <a href="#">© 2023 CareerLens. All rights reserved.</a>
           <p>Smart tools for smarter careers.</p>
         </div>
-       </div>
-       <div class="updates">
+      </div>
+      <div class="updates">
         <h2>Stay Updated</h2>
         <p>Get the latest tips, industry insights, and product updates</p>
         <form>
@@ -386,9 +387,7 @@
           <button type="submit">Subscribe</button>
         </form>
       </div>
-      <div class="my-greetings">
-        Made with ❤️ by Yash
-      </div>
+      <div class="my-greetings">Made with ❤️ by Yash</div>
     </footer>
 
     <script>
@@ -410,14 +409,6 @@
           }
         });
       });
-
-      // Toggle Menu
-      const hamburger = document.querySelector(".hamburger");
-      const navLinks = document.querySelector(".nav-links");
-        hamburger.addEventListener("click", () => {
-          navLinks.classList.toggle("active");
-        });
-
     </script>
   </body>
 </html>
