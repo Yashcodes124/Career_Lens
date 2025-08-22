@@ -12,6 +12,10 @@
       crossorigin="anonymous"
       referrerpolicy="no-referrer"
     />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
+    />
   </head>
 
   <body>
@@ -22,12 +26,15 @@
           <li><a href="#">Dashboard</a></li>
           <li><a href="#">ResumeBuilder</a></li>
           <li><a href="#">Internships</a></li>
-          <!-- <li><a href="#">About</a></li> -->
+          <li class="logout-link"><a href="#">Logout</a></li>
         </ul>
       </div>
       <div class="login">
         <a class="login-link" href="../templates/login.html">Login</a>
         <a href="#"><button>Get Started</button></a>
+      </div>
+      <div class="menu-toggle">
+        <i class="fa-solid fa-bars"></i>
       </div>
     </nav>
 
@@ -408,6 +415,31 @@
             icon.textContent = "−";
           }
         });
+      });
+
+      //  menu toggle
+      const menuToggle = document.querySelector(".menu-toggle");
+      const navLinks = document.querySelector(".nav-links");
+
+      // Toggle menu on click
+      menuToggle.addEventListener("click", () => {
+        navLinks.classList.toggle("active");
+      });
+
+      // Close menu when clicking outside
+      document.addEventListener("click", (event) => {
+        if (
+          !menuToggle.contains(event.target) &&
+          !navLinks.contains(event.target)
+        ) {
+          navLinks.classList.remove("active");
+        }
+      });
+      // Close menu if window is resized above 768px
+      window.addEventListener("resize", () => {
+        if (window.innerWidth > 768) {
+          navLinks.classList.remove("active");
+        }
       });
     </script>
   </body>

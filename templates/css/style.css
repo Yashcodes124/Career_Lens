@@ -39,7 +39,8 @@ body {
   align-items: center;
   padding: 0 2rem;
   margin-bottom: 20px;
-  background: var(--light-bg);
+  background-color: rgba(255, 255, 255, 0);
+
   backdrop-filter: blur(10px);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
   position: sticky;
@@ -75,12 +76,16 @@ ul li a:focus {
   color: var(--primary-text-color);
 }
 
-/*  Hamberger hidden by default  */
-.hamburger {
+.nav-bar .menu-toggle {
   display: none;
-  cursor: pointer;
-  font-size: 1.5rem;
-  color: var(--primary-color);
+}
+/* last child of ul */
+.logout-link {
+  display: none;
+}
+/* menu will be hidden */
+.nav-bar .menu-toggle {
+  display: none;
 }
 .login {
   display: flex;
@@ -842,7 +847,54 @@ footer .my-greetings {
 
 /* MOBILE */
 @media (max-width: 768px) {
-  */ .hero-part h1 {
+  /* Mobile/Tablet — hide links, show menu icon */
+  
+  .nav-links {
+    display: none;
+  }
+
+  .nav-bar .menu-toggle {
+    display: block;
+    font-size: 2rem;
+    cursor: pointer;
+  }
+  .nav-links ul {
+    width: 230px;
+    height: 280px;
+    border-radius: 15px;
+    border-top-right-radius: 0px;
+    border-bottom-right-radius: 0px;
+    display: flex;
+    position: absolute;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 1rem 1rem;
+    top: 40px;
+    right: 63px;
+    background-color: #fdecef;
+    color: #333333;
+    text-align: center;
+  }
+
+  .logout-link {
+    display: list-item;
+  }
+  .nav-links ul li {
+    border-radius: 15px;
+    padding: 0.5rem;
+  }
+  ul li:hover {
+    background-color: #a0b3c2;
+  }
+  /* it will add the menu toggle when active or clicked */
+  .nav-links.active {
+    display: block;
+  }
+  .login {
+    display: none;
+  }
+  .hero-part h1 {
     font-size: 2.5rem;
   }
   .hero-part p {
@@ -941,6 +993,7 @@ footer .my-greetings {
 @media (max-width: 480px) {
   /* Styles for phones */
   .nav-bar {
+    height: 70px;
     flex-direction: row;
     align-items: center;
   }
@@ -1036,5 +1089,12 @@ footer .my-greetings {
   }
   .main-Cta .cta-ranks .cta-rank .cta-rank-des {
     font-size: 0.8rem;
+  }
+  footer hr {
+    display: none;
+  }
+  .footer-content .copy-right {
+    flex-direction: column;
+    grid-column: 1 / span 2;
   }
 }

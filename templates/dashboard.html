@@ -1,0 +1,286 @@
+<<<<<<< HEAD
+=======
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>CareerLens — Dashboard</title>
+    <link rel="stylesheet" href="./css/dashboard.css" />
+    <!-- Icons & Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"
+      crossorigin="anonymous"
+      referrerpolicy="no-referrer"
+    />
+  </head>
+  <body>
+    <!-- Sidebar -->
+    <aside class="sidebar" id="sidebar">
+      <div class="brand">
+        <i class="fa-solid fa-briefcase"></i><span>CareerLens</span>
+      </div>
+
+      <div class="nav-group">
+        <div class="nav-title">Overview</div>
+        <ul class="nav">
+          <li>
+            <a class="active" href="dashboard.html"
+              ><i class="fa-solid fa-grid-2"></i>Dashboard</a
+            >
+          </li>
+          <li>
+            <a href="upload.html"
+              ><i class="fa-solid fa-file-arrow-up"></i>Upload Resume</a
+            >
+          </li>
+          <li>
+            <a href="analysis.html"
+              ><i class="fa-solid fa-chart-mixed"></i>Resume Score</a
+            >
+          </li>
+          <li>
+            <a href="#"><i class="fa-solid fa-file-alt"></i>Resume Insights</a>
+          </li>
+          <li>
+            <a href="internships.html"
+              ><i class="fa-solid fa-briefcase"></i>Internships</a
+            >
+          </li>
+        </ul>
+      </div>
+
+      <div class="nav-group">
+        <div class="nav-title">Manage</div>
+        <ul class="nav">
+          <li>
+            <a href="#"><i class="fa-solid fa-bookmark"></i>Saved Resumes</a>
+          </li>
+          <li>
+            <a href="#"><i class="fa-solid fa-bell"></i>Notifications</a>
+          </li>
+          <li>
+            <a href="#"><i class="fa-solid fa-gear"></i>Settings</a>
+          </li>
+          <li>
+            <a href="#"><i class="fa-solid fa-right-from-bracket"></i>Logout</a>
+          </li>
+        </ul>
+      </div>
+
+      <div class="footer">v0.1 • User Dashboard</div>
+    </aside>
+
+    <!-- Main -->
+    <main class="main">
+      <!-- Topbar -->
+      <header class="topbar">
+        <div class="message-menu">
+          <button class="burger ghost" id="burger">
+            <!-- menu icon when width is 768 and 480px -->
+            <i class="fa-solid fa-bars"></i>
+          </button>
+          <h1>Welcome back 👋</h1>
+        </div>
+        <div class="search">
+          <i class="fa-solid fa-magnifying-glass"></i>
+          <input
+            type="text"
+            placeholder="Search your resumes, internships, notes…"
+          />
+        </div>
+        <div class="actions">
+          <button class="ghost" id="themeToggle" title="Toggle theme">
+            <i class="fa-solid fa-moon"></i>
+            &nbsp;
+            <h4>Theme</h4>
+          </button>
+          &nbsp;
+          <div class="avatar">
+            <img src="https://i.pravatar.cc/100" alt="profile" /><span
+              >Profile</span
+            >
+          </div>
+        </div>
+      </header>
+
+      <!-- Content -->
+      <section class="content">
+        <!-- KPIs -->
+        <div class="card kpi">
+          <h4>Total Resumes</h4>
+          <div class="value">3</div>
+          <div class="progress"><span style="width: 60%"></span></div>
+        </div>
+        <div class="card kpi">
+          <h4>Best Score</h4>
+          <div class="value">86 / 100</div>
+          <div class="progress"><span style="width: 86%"></span></div>
+        </div>
+        <div class="card kpi">
+          <h4>Applications</h4>
+          <div class="value">12</div>
+          <div class="progress"><span style="width: 48%"></span></div>
+        </div>
+        <div class="card kpi">
+          <h4>Saved Internships</h4>
+          <div class="value">7</div>
+          <div class="progress"><span style="width: 70%"></span></div>
+        </div>
+
+        <!-- Upload CTA & Quick Links -->
+        <div class="card wide">
+          <div class="upload-cta">
+            <div class="info">
+              <h3>Boost your chances with a fresh analysis</h3>
+              <p>
+                Upload a new resume or analyze an existing one for ATS, keywords
+                and formatting.
+              </p>
+            </div>
+            <div>
+              <button class="btn" onclick="location.href='upload.html'">
+                <i class="fa-solid fa-upload"></i> &nbsp;Upload Resume
+              </button>
+              <button class="ghost" onclick="location.href='analysis.html'">
+                Open Analyzer
+              </button>
+            </div>
+          </div>
+          <div class="quick-links">
+            <a href="analysis.html"
+              ><i class="fa-solid fa-gauge-high"></i>Quick Score</a
+            >
+            <a href="internships.html"
+              ><i class="fa-solid fa-magnifying-glass"></i>Find Internships</a
+            >
+            <a href="#"><i class="fa-solid fa-bookmark"></i>Saved Resumes</a>
+            <a href="#"
+              ><i class="fa-solid fa-file-pen"></i>Build from Scratch</a
+            >
+          </div>
+        </div>
+
+        <!-- Recent Resumes Table -->
+        <div class="card tall">
+          <h3 style="margin-bottom: 10px">Recent Resumes</h3>
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Title</th>
+                <th>Updated</th>
+                <th>Score</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Data Science — ATS</td>
+                <td>2 days ago</td>
+                <td><span class="pill">86</span></td>
+                <td>
+                  <button class="ghost" onclick="location.href='analysis.html'">
+                    Analyze
+                  </button>
+                  <button class="btn" style="margin-left: 6px">Download</button>
+                </td>
+              </tr>
+              <tr>
+                <td>Frontend — Modern</td>
+                <td>5 days ago</td>
+                <td><span class="pill">79</span></td>
+                <td>
+                  <button class="ghost" onclick="location.href='analysis.html'">
+                    Analyze
+                  </button>
+                  <button class="btn" style="margin-left: 6px">Download</button>
+                </td>
+              </tr>
+              <tr>
+                <td>General — Minimal</td>
+                <td>1 week ago</td>
+                <td><span class="pill">72</span></td>
+                <td>
+                  <button class="ghost" onclick="location.href='analysis.html'">
+                    Analyze
+                  </button>
+                  <button class="btn" style="margin-left: 6px">Download</button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Activity / Tips -->
+        <div class="card tall">
+          <h3 style="margin-bottom: 10px">Tips & Activity</h3>
+          <ul
+            style="
+              list-style: none;
+              display: flex;
+              flex-direction: column;
+              gap: 10px;
+              color: var(--muted);
+            "
+          >
+            <li>
+              <i class="fa-regular fa-lightbulb"></i> Add role‑specific keywords
+              before analyzing.
+            </li>
+            <li>
+              <i class="fa-regular fa-bell"></i> 2 new internships match your
+              skills.
+            </li>
+            <li>
+              <i class="fa-regular fa-pen-to-square"></i> Try action verbs: led,
+              optimized, implemented.
+            </li>
+          </ul>
+        </div>
+      </section>
+    </main>
+
+    <script>
+      // Theme toggle
+      const toggle = document.getElementById("themeToggle");
+      const prefersDark = window.matchMedia(
+        "(prefers-color-scheme: dark)"
+      ).matches;
+      const saved = localStorage.getItem("cl-theme");
+      if (saved) {
+        document.documentElement.setAttribute("data-theme", saved);
+      } else if (prefersDark) {
+        document.documentElement.setAttribute("data-theme", "dark");
+      }
+
+      toggle.addEventListener("click", () => {
+        const cur =
+          document.documentElement.getAttribute("data-theme") === "dark"
+            ? "light"
+            : "dark";
+        document.documentElement.setAttribute("data-theme", cur);
+        localStorage.setItem("cl-theme", cur);
+        toggle.innerHTML =
+          cur === "dark"
+            ? '<i class="fa-solid fa-sun"></i>'
+            : '<i class="fa-solid fa-moon"></i>';
+      });
+
+      // Sidebar burger
+      const burger = document.getElementById("burger");
+      const sidebar = document.getElementById("sidebar");
+      burger.addEventListener("click", () => {
+        const open = sidebar.classList.toggle("open");
+        document.body.classList.toggle("menu-open", open);
+      });
+    </script>
+  </body>
+</html>
+>>>>>>> 99bbc58 (menu pending)
