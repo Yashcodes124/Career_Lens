@@ -22,6 +22,11 @@
   <body>
     <!-- Sidebar -->
     <aside class="sidebar" id="sidebar">
+      <i
+        id="closeSidebar"
+        aria-label="Close menu"
+        class="fa-solid fa-xmark X-sign"
+      ></i>
       <div class="brand">
         <i class="fa-solid fa-briefcase"></i><span>CareerLens</span>
       </div>
@@ -274,9 +279,24 @@
       // Sidebar burger
       const burger = document.getElementById("burger");
       const sidebar = document.getElementById("sidebar");
+      const closeSidebar = document.getElementById("closeSidebar");
       burger.addEventListener("click", () => {
         const open = sidebar.classList.toggle("open");
         document.body.classList.toggle("menu-open", open);
+      });
+      // by clicking outside the sidebar
+      document.addEventListener("click", (e) => {
+        if (!sidebar.contains(e.target) && e.target !== burger) {
+          sidebar.classList.remove("open");
+          document.body.classList.remove("menu-open");
+        }
+      });
+
+      // by clicking the X sign it will remove the side bar
+      closeSidebar.addEventListener("click", (e) => {
+        e.stopPropagation(); // prevents bubbling to any document click handler
+        sidebar.classList.remove("open");
+        document.body.classList.remove("menu-open");
       });
     </script>
   </body>

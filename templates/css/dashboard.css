@@ -48,6 +48,11 @@ body {
   height: 100vh;
   box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.05) inset;
 }
+
+.sidebar .X-sign{
+  cursor: pointer;
+  text-align: right;
+}
 .brand {
   display: flex;
   align-items: center;
