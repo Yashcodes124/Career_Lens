@@ -37,15 +37,18 @@ body {
 /* Layout */
 .sidebar {
   width: 270px;
+  height: 100vh;
   background: linear-gradient(180deg, #2b2d42, #1f2340);
   color: #fff;
   display: flex;
   flex-direction: column;
+  justify-content: space-between;
   gap: 14px;
   padding: 22px 16px;
-  position: sticky;
+  position: fixed;
   top: 0;
-  height: 100vh;
+  left: 0;
+  overflow-y: auto;
   box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.05) inset;
 }
 
@@ -139,9 +142,12 @@ body {
 }
 
 .sidebar .footer {
-  margin-top: auto;
+  padding: 10px;
   font-size: 0.8rem;
   color: #cbd5e1aa;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  text-align: center;
+  flex-shrink: 0; /* prevents shrinking */
 }
 
 /* Main */
@@ -150,6 +156,7 @@ body {
   display: flex;
   flex-direction: column;
   min-width: 0;
+  margin-left: 270px;
 }
 
 .topbar {
@@ -370,20 +377,20 @@ button#themeToggle {
   font-size: 1.1rem;
   font-weight: 600;
   color: #333;
-  margin-bottom: 1.5rem;
+  margin-bottom: 0.5rem;
 }
 .kpi .card-content .value {
   color: #8b5cf6;
   font-size: 2rem;
   font-weight: bold;
-  margin-top: 1.5rem;
+  margin-top: 1rem;
 }
 .kpi .contain img {
   overflow: hidden;
 }
 .kpi .card-content p {
   line-height: 1.4;
-  margin-top: 1rem;
+  margin-top: 0.5rem;
   color: #38ace6;
 }
 
@@ -403,6 +410,62 @@ button#themeToggle {
   transition: width 0.8s ease;
 }
 
+/* My activities */
+.My-activities {
+  max-width: 600px;
+  height: auto;
+  max-height: 800px;
+  padding: 1.5rem;
+  background: var(--bg);
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.My-activities h3 {
+  font-size: 1.3rem;
+  font-weight: 600;
+  color: #333;
+}
+
+.activities .activity {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 6px;
+  border-bottom: 1px solid #eee;
+}
+.activities .activity i {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 1rem;
+  border-radius: 50%;
+  color: #fff;
+}
+.activities .activity:last-child {
+  border-bottom: none;
+}
+.activity .details {
+  display: flex;
+  flex-direction: column;
+  margin-top: 14px;
+}
+.activity .details h4 {
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: #333;
+}
+.activity .details h4 span {
+  font-size: 0.7rem;
+  background-color: rgb(227, 125, 227);
+  border-radius: 15px;
+  padding: 3px 5px;
+  margin-left: 5px;
+  color: rgb(255, 255, 255);
+}
+/* Wide Card */
 .card.wide {
   padding: 2rem;
   border-radius: 12px;
@@ -524,6 +587,9 @@ button#themeToggle {
   }
 }
 @media (max-width: 880px) {
+  .main {
+    margin-left: 0;
+  }
   .sidebar {
     position: fixed;
     z-index: 40;
