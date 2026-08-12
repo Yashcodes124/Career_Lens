@@ -1,0 +1,42 @@
+openapi: 3.0.3
+info:
+  title: TrueHire API Specification
+  description: REST API specification for TrueHire AI Career and Interview Platform
+  version: 1.0.0
+paths:
+  /api/health:
+    get:
+      summary: Health check endpoint
+      description: Returns backend server health, database connectivity, and uptime telemetry.
+      responses:
+        '200':
+          description: Health telemetry object
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+                  service:
+                    type: string
+                    example: truehire-api
+                  version:
+                    type: string
+                    example: 1.0.0
+                  timestamp:
+                    type: string
+                    example: "2026-08-11T11:30:00.000Z"
+                  database:
+                    type: object
+                    properties:
+                      connected:
+                        type: boolean
+                        example: true
+                      status:
+                        type: string
+                        example: healthy
+                  uptime:
+                    type: number
+                    example: 124.5
