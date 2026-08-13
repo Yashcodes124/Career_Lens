@@ -1,0 +1,23 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15
+    container_name: career_lens_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: career_lens
+      POSTGRES_USER: career_lens_user
+      POSTGRES_PASSWORD: career_lens_pass_123
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:

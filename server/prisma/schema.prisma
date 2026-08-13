@@ -1,0 +1,124 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum ApplicationStatus {
+  SAVED
+  APPLIED
+  INTERVIEWING
+  OFFER
+  REJECTED
+}
+
+enum InterviewStatus {
+  SCHEDULED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+model User {
+  id                  String        @id @default(uuid())
+  email               String        @unique
+  passwordHash        String
+  name                String
+  role                Role          @default(USER)
+  targetRole          String?
+  preferredLocations  String[]      @default([])
+  experienceLevel     String?
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+  resumes             Resume[]
+  applications        Application[]
+  interviews          Interview[]
+
+  @@map("users")
+}
+
+model Resume {
+  id            String   @id @default(uuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title         String
+  rawText       String   @db.Text
+  parsedData    Json?
+  skills        String[] @default([])
+  experienceYrs Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@map("resumes")
+}
+
+model Job {
+  id           String        @id @default(uuid())
+  externalId   String?       @unique
+  source       String        // e.g. GREENHOUSE, LEVER, ASHBY, MANUAL
+  title        String
+  company      String
+  location     String?
+  description  String        @db.Text
+  requirements String[]      @default([])
+  salaryRange  String?
+  url          String?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  applications Application[]
+
+  @@map("jobs")
+}
+
+model Application {
+  id           String            @id @default(uuid())
+  userId       String
+  user         User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  jobId        String
+  job          Job               @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  status       ApplicationStatus @default(SAVED)
+  matchScore   Float?
+  skillGaps    String[]          @default([])
+  tailoredText String?           @db.Text
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+  interviews   Interview[]
+
+  @@map("applications")
+}
+
+model Interview {
+  id            String          @id @default(uuid())
+  userId        String
+  user          User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  applicationId String?
+  application   Application?    @relation(fields: [applicationId], references: [id], onDelete: SetNull)
+  title         String
+  status        InterviewStatus @default(SCHEDULED)
+  transcript    Json?
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  evaluation    Evaluation?
+
+  @@map("interviews")
+}
+
+model Evaluation {
+  id          String    @id @default(uuid())
+  interviewId String    @unique
+  interview   Interview @relation(fields: [interviewId], references: [id], onDelete: Cascade)
+  score       Float
+  feedback    String    @db.Text
+  breakdown   Json
+  createdAt   DateTime  @default(now())
+
+  @@map("evaluations")
+}
