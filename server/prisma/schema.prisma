@@ -50,6 +50,10 @@ model Resume {
   userId        String
   user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   title         String
+    fileName      String?
+  filePath      String?
+  mimeType      String?
+  fileSize      Int?
   rawText       String   @db.Text
   parsedData    Json?
   skills        String[] @default([])

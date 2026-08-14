@@ -3,6 +3,7 @@ import cors from "cors";
 import { env } from "./config/env.js";
 import { checkDatabaseConnection } from "./config/db.js";
 import authRoutes from "./routes/auth.js";
+import resumeRoutes from "../src/routes/resume.js";
 
 const app = express();
 
@@ -13,6 +14,7 @@ app.use(express.urlencoded({ extended: true }));
 
 // Routes
 app.use("/api/auth", authRoutes);
+app.use("/api/resumes", resumeRoutes);
 
 // Health check endpoint
 app.get("/health", async (req: Request, res: Response) => {
