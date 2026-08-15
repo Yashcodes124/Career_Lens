@@ -13,7 +13,13 @@ export const uploadResume = multer({
       "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
     ];
 
-    if (allowedTypes.includes(file.mimetype)) {
+    const isAllowedMimeType = allowedTypes.includes(file.mimetype);
+
+    const isAllowedExtension =
+      file.originalname.toLowerCase().endsWith(".pdf") ||
+      file.originalname.toLowerCase().endsWith(".docx");
+
+    if (isAllowedMimeType || isAllowedExtension) {
       cb(null, true);
     } else {
       cb(new Error("Only PDF and DOCX files are allowed"));

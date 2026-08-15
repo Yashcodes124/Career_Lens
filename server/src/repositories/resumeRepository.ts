@@ -1,7 +1,16 @@
-import prisma from "@prisma/client";
+// src/repositories/resumeRepository.ts
+import { prisma } from "../config/db";
 
-export const createResume = async (data: { userId: string; title: string }) => {
+export const createResume = async (data: {
+  userId: string;
+  title: string;
+  rawText?: string;
+}) => {
   return await prisma.resume.create({
-    data,
+    data: {
+      userId: data.userId,
+      title: data.title,
+      rawText: data.rawText || "",
+    },
   });
 };
