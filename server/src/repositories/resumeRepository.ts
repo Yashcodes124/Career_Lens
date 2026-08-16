@@ -5,12 +5,18 @@ export const createResume = async (data: {
   userId: string;
   title: string;
   rawText?: string;
+  fileName: string;
+  mimeType: string;
+  fileSize: number;
 }) => {
   return await prisma.resume.create({
     data: {
       userId: data.userId,
       title: data.title,
-      rawText: data.rawText || "",
+      rawText: "",
+      fileName: data.fileName,
+      mimeType: data.mimeType,
+      fileSize: data.fileSize,
     },
   });
 };
