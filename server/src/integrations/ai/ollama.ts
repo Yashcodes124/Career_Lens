@@ -5,7 +5,7 @@ export const analyzeResume = async (
   prompt: string,
 ): Promise<ResumeAnalysis> => {
   const response = await ollama.chat({
-    model: "qwen3:8b",
+    model: "qwen3:4b",
     messages: [
       {
         role: "user",
@@ -13,6 +13,7 @@ export const analyzeResume = async (
       },
     ],
     format: "json",
+    think: false,
   });
 
   const parsed = JSON.parse(response.message.content);

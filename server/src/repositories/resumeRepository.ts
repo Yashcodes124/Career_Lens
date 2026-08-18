@@ -8,6 +8,9 @@ export const createResume = async (data: {
   mimeType: string;
   fileSize: number;
   rawText: string;
+  parsedData?: object;
+  skills?: string[];
+  experienceYrs?: number;
 }) => {
   return await prisma.resume.create({
     data,
