@@ -25,6 +25,10 @@ import { extractTextFromDocument } from "../../utils/documentParser";
 import { buildResumeAnalysisPrompt } from "../../integrations/ai/resumePrompt";
 import { analyzeResume } from "../../integrations/ai/ollama";
 import path from "path";
+import {
+  getResumeById,
+  getResumeByUserId,
+} from "../../repositories/resumeRepository";
 
 export const createResumeService = async (
   userId: string,
@@ -63,5 +67,21 @@ export const createResumeService = async (
     skills: analysis.skills,
     experienceYrs: analysis.totalExperienceYears,
   });
+  return resume;
+};
+
+export const getUserResumeService = async (userId: string) => {
+  return await getResumeByUserId(userId);
+};
+
+export const getUserResumeByIdService = async (
+  userId: string,
+  resumeId: string,
+) => {
+  const resume = await getResumeById(resumeId, userId);
+  if (!resume) {
+    throw new Error("Resume not found");
+  }
+
   return resume;
 };

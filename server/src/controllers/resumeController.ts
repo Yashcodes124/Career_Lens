@@ -1,9 +1,11 @@
 //server/src/controllers/resumeController.ts
 
-import { Request, Response } from "express";
+import { NextFunction, Request, Response } from "express";
 import { createResumeService } from "../services/resume/resumeService";
-
-
+import {
+  getUserResumeByIdService,
+  getUserResumeService,
+} from "../services/resume/resumeService";
 export const createResume = async (req: Request, res: Response) => {
   try {
     const userId = req.user!.userId;
@@ -29,5 +31,40 @@ export const createResume = async (req: Request, res: Response) => {
       message:
         error instanceof Error ? error.message : "Failed to upload resume",
     });
+  }
+};
+
+export const getUserResumeController = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const resume = await getUserResumeService(req.user!.userId);
+    res.status(200).json({
+      success: true,
+      resume,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getUserResumeByIdController = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const resume = await getUserResumeByIdService(
+      req.user!.userId,
+      req.params.id,
+    );
+    res.status(200).json({
+      success: true,
+      resume,
+    });
+  } catch (error) {
+    next(error);
   }
 };
