@@ -3,7 +3,8 @@ import cors from "cors";
 import { env } from "./config/env.js";
 import { checkDatabaseConnection } from "./config/db.js";
 import authRoutes from "./routes/auth.js";
-import resumeRoutes from "../src/routes/resume.js";
+import resumeRoutes from "./routes/resumeRoutes.js";
+import jobRoutes from "./routes/jobRoutes.js";
 
 const app = express();
 
@@ -12,9 +13,10 @@ app.use(cors({ origin: env.CLIENT_URL, credentials: true }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Routes
+//Main Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/resumes", resumeRoutes);
+app.use("/api/jobs", jobRoutes);
 
 // Health check endpoint
 app.get("/health", async (req: Request, res: Response) => {

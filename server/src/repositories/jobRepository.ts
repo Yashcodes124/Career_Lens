@@ -20,6 +20,8 @@ export const upsertJob = async (job: CanonicalJob) => {
       requirements: job.requirements,
       salaryRange: job.salaryRange,
       url: job.url,
+      isActive: true,
+      lastSyncedAt: new Date(),
     },
     //found new , create a new job record
     create: {
@@ -32,10 +34,12 @@ export const upsertJob = async (job: CanonicalJob) => {
       requirements: job.requirements,
       salaryRange: job.salaryRange,
       url: job.url,
+      isActive: true,
+      lastSyncedAt: new Date(),
     },
   });
 };
-
+//Creating , updating and Storing the jobs
 export const upsertJobs = async (jobs: CanonicalJob[]) => {
   const results = [];
 
@@ -45,4 +49,26 @@ export const upsertJobs = async (jobs: CanonicalJob[]) => {
     results.push(result);
   }
   return results;
+};
+
+//find the jobs that are active
+export const getJobs = async () => {
+  return await prisma.job.findMany({
+    where: {
+      isActive: true,
+    },
+    orderBy: {
+      lastSyncedAt: "desc",
+    },
+  });
+};
+
+//find a active job
+export const getJobById = async (id: string) => {
+  return await prisma.job.findFirst({
+    where: {
+      id,
+      isActive: true,
+    },
+  });
 };

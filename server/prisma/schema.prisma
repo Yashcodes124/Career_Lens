@@ -75,6 +75,8 @@ model Job {
   requirements String[]      @default([])
   salaryRange  String?
   url          String?
+  isActive     Boolean       @default(true)
+  lastSyncedAt DateTime      @default(now())
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
   applications Application[]

@@ -12,8 +12,13 @@
 //       ↓
 // upsertJobs()
 //       ↓
+// isActive = true
+// lastSyncedAt = now
+//       ↓
+// Deactivate missing jobs
 // PostgreSQL
 
+import { prisma } from "../config/db";
 import { fetchGreenhouseJobs } from "../integrations/jobs/greenhouse/greenhouseClient";
 import { adaptGreenhouseJobs } from "../integrations/jobs/greenhouse/greenhouseAdapter";
 import { upsertJobs } from "../repositories/jobRepository";
@@ -31,8 +36,29 @@ export const syncGreenhouseJobs = async (
   // 3. Persist jobs using upsert
   const savedJobs = await upsertJobs(jobs);
 
+  //4.to prevent unactive jobs after some time
+  const externalIds = jobs.map((job) => job.externalId);
+
+  const staleJobs = await prisma.job.updateMany({
+    where: {
+      source: "GREENHOUSE",
+      company,
+      ...(externalIds.length > 0
+        ? {
+            externalId: {
+              notIn: externalIds,
+            },
+          }
+        : {}),
+    },
+    data: {
+      isActive: false,
+    },
+  });
+
   return {
     totalFetched: jobs.length,
     totalSaved: savedJobs.length,
+    totalDeactivated: staleJobs.count,
   };
 };
