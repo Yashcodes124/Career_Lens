@@ -23,7 +23,7 @@
 import { createResume } from "../../repositories/resumeRepository";
 import { extractTextFromDocument } from "../../utils/documentParser";
 import { buildResumeAnalysisPrompt } from "../../integrations/ai/resumePrompt";
-import { analyzeResume } from "../../integrations/ai/ollama";
+import { analyzeResume } from "../../integrations/ai/aiClient"; //replace ollma by nvidia
 import path from "path";
 import {
   getResumeById,
