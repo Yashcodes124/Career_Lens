@@ -21,6 +21,7 @@ export const analyzeResumeWithNvidia = async (prompt: string) => {
     ],
     temperature: 0,
   });
+  
 
   const content = response.choices[0]?.message?.content;
 
