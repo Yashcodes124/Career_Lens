@@ -11,6 +11,7 @@ import { LoginForm } from "./features/auth/LoginForm";
 import { RegisterForm } from "./features/auth/RegisterForm";
 import { UserProfileCard } from "./features/auth/UserProfileCard";
 import { ProfileSetupForm } from "./features/auth/ProfileSetupForm";
+import { JobsPage } from "./features/jobs/JobsPage";
 
 export const App: React.FC = () => {
   return (
@@ -35,6 +36,14 @@ export const App: React.FC = () => {
             element={
               <ProtectedRoute>
                 <ProfileSetupPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/jobs"
+            element={
+              <ProtectedRoute>
+                <JobsPage />
               </ProtectedRoute>
             }
           />
