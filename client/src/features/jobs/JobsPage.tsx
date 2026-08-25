@@ -51,7 +51,7 @@ export const JobsPage: React.FC = () => {
     });
   }, [jobs, search, locationFilter]);
 
-  // Select the job 
+  // Select the job
   const selectedJob = useMemo(
     () =>
       filteredJobs.find((job) => job.id === selectedJobId) ??
@@ -64,6 +64,17 @@ export const JobsPage: React.FC = () => {
     const textarea = document.createElement("textarea");
     textarea.innerHTML = html;
     return textarea.value;
+  };
+
+  //Helper to convert ISO date string(from Db) to human readable format for users
+  const formatLastSynced = (date?: string) => {
+    //in case date field is missing | undefinedd then
+    if (!date) return "Recently synced";
+
+    return new Intl.DateTimeFormat("en-IN", {
+      dateStyle: "medium",
+      timeStyle: "short",
+    }).format(new Date(date));
   };
 
   return (
@@ -153,9 +164,9 @@ export const JobsPage: React.FC = () => {
                   {/* Source , Role and actiness */}
                   <div className="flex items-start justify-between gap-4">
                     <div>
-                      <p className="text-xs font-semibold uppercase tracking-[0.22em] text-indigo-300">
-                        {selectedJob.source}
-                      </p>
+                      <span className="rounded-full border border-indigo-500/30 bg-indigo-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-indigo-300">
+                        Verified {selectedJob.source}
+                      </span>
                       <h2 className="mt-3 text-3xl font-bold text-white">
                         {selectedJob.title}
                       </h2>
@@ -176,21 +187,32 @@ export const JobsPage: React.FC = () => {
                       </>
                     )}
                   </div>
+                  {/* Last Verified date and time */}
+                  <div className="mt-4 flex flex-wrap gap-4 text-xs text-slate-500">
+                    <span>
+                      Last verified:{" "}
+                      {formatLastSynced(selectedJob.lastSyncedAt)}
+                    </span>
+
+                    <span>Source: {selectedJob.source}</span>
+                  </div>
+
                   {/* Salary range for job role */}
                   {selectedJob.salaryRange && (
                     <p className="mt-4 text-sm text-indigo-200">
                       {selectedJob.salaryRange}
                     </p>
                   )}
-                  {/* Job url */}
+
+                  {/* Job url or Job Posting */}
                   {selectedJob.url && (
                     <a
                       href={selectedJob.url}
                       target="_blank"
-                      rel="noreferrer"
-                      className="mt-5 inline-flex items-center rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-indigo-500"
+                      rel="noopener noreferrer"
+                      className="mt-6 inline-flex w-full items-center justify-center rounded-xl bg-indigo-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-indigo-500"
                     >
-                      View posting
+                      Apply on verified company posting
                     </a>
                   )}
                   {/* Job Description */}
@@ -199,7 +221,7 @@ export const JobsPage: React.FC = () => {
                       Job Description
                     </h3>
                     <div
-                      className="prose prose-invert mt-4 max-w-none text-sm leading-7 text-slate-300"
+                      className="prose prose-invert mt-5 max-w-none text-sm leading-7 prose-headings:text-slate-100 prose-p:text-slate-300 prose-li:text-slate-300"
                       dangerouslySetInnerHTML={{
                         __html: decodeHtml(selectedJob.description),
                       }}
