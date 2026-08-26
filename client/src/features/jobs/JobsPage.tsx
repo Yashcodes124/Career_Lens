@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { fetchJobs } from "./jobsApi";
+import { fetchJobs, fetchSavedJobs, unsaveJob, saveJob } from "./jobsApi";
 import { JobCard } from "./JobCard";
 import type { Job } from "./types";
 
@@ -10,6 +10,8 @@ export const JobsPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [locationFilter, setLocationFilter] = useState("");
+  const [savedJobIds, setSavedJobIds] = useState<Set<string>>(new Set());
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     const loadJobs = async () => {
@@ -17,11 +19,15 @@ export const JobsPage: React.FC = () => {
         setIsLoading(true);
         setError(null);
 
+        //fetcing jobs
         const results = await fetchJobs();
         setJobs(results);
         if (results.length > 0 && !selectedJobId) {
           setSelectedJobId(results[0].id);
         }
+        //saved jobs
+        const savedJobs = await fetchSavedJobs();
+        setSavedJobIds(new Set(savedJobs.map((job) => job.id)));
       } catch (err) {
         setError(err instanceof Error ? err.message : "Unable to load jobs.");
       } finally {
@@ -31,6 +37,41 @@ export const JobsPage: React.FC = () => {
 
     void loadJobs();
   }, []);
+
+  //Saved jobs toggle
+  const handleToggleSave = async () => {
+    if (!selectedJob || isSaving) {
+      return;
+    }
+
+    try {
+      setIsSaving(true);
+
+      const isSaved = savedJobIds.has(selectedJob.id);
+
+      if (isSaved) {
+        await unsaveJob(selectedJob.id);
+        //unsave the selected job
+        setSavedJobIds((current) => {
+          const next = new Set(current);
+          next.delete(selectedJob.id);
+          return next;
+        });
+      } else {
+        await saveJob(selectedJob.id);
+        //save the selected job
+        setSavedJobIds((current) => {
+          const next = new Set(current);
+          next.add(selectedJob.id);
+          return next;
+        });
+      }
+    } catch (error) {
+      console.error("Failed to update saved job:", error);
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   // match jobs by search and location filter
   const filteredJobs = useMemo(() => {
@@ -205,16 +246,31 @@ export const JobsPage: React.FC = () => {
                   )}
 
                   {/* Job url or Job Posting */}
-                  {selectedJob.url && (
-                    <a
-                      href={selectedJob.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="mt-6 inline-flex w-full items-center justify-center rounded-xl bg-indigo-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-indigo-500"
+                  <div className="mt-3 flex gap-3">
+                    {selectedJob.url && (
+                      <a
+                        href={selectedJob.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex-1 rounded-xl bg-indigo-600 px-5 py-3 text-center text-sm font-semibold text-white transition hover:bg-indigo-500"
+                      >
+                        Apply on verified company posting
+                      </a>
+                    )}
+                    {/*  save Job */}
+                    <button
+                      type="button"
+                      onClick={() => void handleToggleSave()}
+                      disabled={isSaving}
+                      className="rounded-xl border border-slate-700 px-5 py-3 text-sm font-semibold text-slate-200 transition hover:border-indigo-500 hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
                     >
-                      Apply on verified company posting
-                    </a>
-                  )}
+                      {isSaving
+                        ? "Saving..."
+                        : savedJobIds.has(selectedJob.id)
+                          ? "Saved"
+                          : "Save Job"}
+                    </button>
+                  </div>
                   {/* Job Description */}
                   <div className="mt-8 border-t border-slate-800 pt-6">
                     <h3 className="text-lg font-semibold text-white">
