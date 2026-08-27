@@ -118,6 +118,9 @@ model Application {
   updatedAt    DateTime          @updatedAt
   interviews   Interview[]
 
+  @@unique([userId, jobId])
+  @@index([userId])
+  @@index([jobId])
   @@map("applications")
 }
 
