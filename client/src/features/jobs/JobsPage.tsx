@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { fetchJobs, fetchSavedJobs, unsaveJob, saveJob } from "./jobsApi";
 import { JobCard } from "./JobCard";
 import type { Job } from "./types";
+import { createApplication } from "../tracker/trackerApi";
 
 export const JobsPage: React.FC = () => {
   const [jobs, setJobs] = useState<Job[]>([]);
@@ -12,6 +13,7 @@ export const JobsPage: React.FC = () => {
   const [locationFilter, setLocationFilter] = useState("");
   const [savedJobIds, setSavedJobIds] = useState<Set<string>>(new Set());
   const [isSaving, setIsSaving] = useState(false);
+  const [isTracking, setIsTracking] = useState(false);
 
   useEffect(() => {
     const loadJobs = async () => {
@@ -70,6 +72,24 @@ export const JobsPage: React.FC = () => {
       console.error("Failed to update saved job:", error);
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleTrackApplication = async () => {
+    //no job selected and nothing to track
+    if (!selectedJob || isTracking) {
+      return;
+    }
+    try {
+      setIsTracking(true);
+
+      await createApplication(selectedJob.id);
+
+      window.location.href = "/applications";
+    } catch (error) {
+      console.error("Failed to track application:", error);
+    } finally {
+      setIsTracking(false);
     }
   };
 
@@ -269,6 +289,13 @@ export const JobsPage: React.FC = () => {
                         : savedJobIds.has(selectedJob.id)
                           ? "Saved"
                           : "Save Job"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void handleTrackApplication()}
+                      className="rounded-xl border border-slate-700 px-5 py-3 text-sm font-semibold text-slate-200 transition hover:border-indigo-500 hover:bg-slate-800"
+                    >
+                      {isTracking ? "Tracking..." : "Track Application"}
                     </button>
                   </div>
                   {/* Job Description */}

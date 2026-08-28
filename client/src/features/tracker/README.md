@@ -1,1 +1,0 @@
-# Job application tracker feature

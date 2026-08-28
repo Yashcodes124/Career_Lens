@@ -13,6 +13,7 @@ import { UserProfileCard } from "./features/auth/UserProfileCard";
 import { ProfileSetupForm } from "./features/auth/ProfileSetupForm";
 import { JobsPage } from "./features/jobs/JobsPage";
 import { SavedJobsPage } from "./features/jobs/SavedJobsPage";
+import { TrackerPage } from "./features/tracker/TrackerPage";
 
 export const App: React.FC = () => {
   return (
@@ -45,6 +46,14 @@ export const App: React.FC = () => {
             element={
               <ProtectedRoute>
                 <JobsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/applications"
+            element={
+              <ProtectedRoute>
+                <TrackerPage />
               </ProtectedRoute>
             }
           />
