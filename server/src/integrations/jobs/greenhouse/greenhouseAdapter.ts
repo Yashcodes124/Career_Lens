@@ -3,6 +3,7 @@
 //CanonicalJob: refers to  std-template the application follows for different platforms
 
 import type { GreenhouseJob } from "./greenhouseSchema";
+import { extractJobSkills } from "../../../services/matching/jobSkillExtractor";
 
 //Standard template
 export type CanonicalJob = {
@@ -28,7 +29,7 @@ export const adaptGreenhouseJob = (
     company,
     location: job.location?.name ?? null,
     description: job.content ?? "",
-    requirements: [],
+    requirements: extractJobSkills(job.content ?? ""),
     salaryRange: null,
     url: job.absolute_url,
   };
