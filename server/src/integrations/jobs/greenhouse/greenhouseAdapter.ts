@@ -18,18 +18,30 @@ export type CanonicalJob = {
   url: string | null;
 };
 
+const cleanJobDescription = (rawContent: string): string => {
+  return rawContent
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&amp;/g, "&")
+    .replace(/&nbsp;/g, " ")
+    .replace(/<[^>]*>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+};
+
 export const adaptGreenhouseJob = (
   job: GreenhouseJob,
   company: string,
 ): CanonicalJob => {
+  const plainTextDescription = cleanJobDescription(job.content ?? "");
   return {
     externalId: String(job.id),
     source: "GREENHOUSE",
     title: job.title,
     company,
     location: job.location?.name ?? null,
-    description: job.content ?? "",
-    requirements: extractJobSkills(job.content ?? ""),
+    description: plainTextDescription,
+    requirements: extractJobSkills(plainTextDescription),
     salaryRange: null,
     url: job.absolute_url,
   };
