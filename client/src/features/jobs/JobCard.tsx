@@ -1,21 +1,25 @@
 import type { Job } from "./types";
+import { useNavigate } from "react-router-dom";
 
 interface JobCardProps {
   job: Job;
+  resumeId?: string;
   isSelected: boolean;
   onSelect: (job: Job) => void;
 }
 
 export const JobCard: React.FC<JobCardProps> = ({
   job,
+  resumeId,
   isSelected = false,
   onSelect,
 }) => {
+  const navigate = useNavigate();
+
   return (
-    <button
-      type="button"
+    <div
       onClick={() => onSelect(job)}
-      className={`w-full text-left rounded-2xl border p-5 transition-all duration-200 ${
+      className={`w-full cursor-pointer rounded-2xl border p-5 transition-all duration-200 ${
         isSelected
           ? "border-indigo-500 bg-indigo-500/10 shadow-lg shadow-indigo-500/10"
           : "border-slate-800 bg-slate-900/60 hover:border-slate-700 hover:bg-slate-900"
@@ -32,7 +36,7 @@ export const JobCard: React.FC<JobCardProps> = ({
         </div>
 
         {job.isActive !== false && (
-          <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-1 text-[10px] font-medium uppercase tracking-wide text-emerald-300">
+          <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-[10px] font-medium uppercase tracking-wide text-emerald-300">
             Active
           </span>
         )}
@@ -56,6 +60,23 @@ export const JobCard: React.FC<JobCardProps> = ({
         {job.description.replace(/<[^>]+>/g, " ").slice(0, 180)}
         {job.description.length > 180 ? "..." : ""}
       </p>
-    </button>
+
+      {/* Action Footer */}
+      <div className="mt-5 flex items-center justify-end border-t border-slate-800/80 pt-4">
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation(); // Prevents triggering onSelect when clicking the match button
+            if (resumeId) {
+              navigate(`/matches/${job.id}?resumeId=${resumeId}`);
+            }
+          }}
+          disabled={!resumeId}
+          className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          Match Resume
+        </button>
+      </div>
+    </div>
   );
 };

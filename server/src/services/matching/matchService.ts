@@ -13,8 +13,9 @@ export const matchResumeToJob = async (
       userId,
     },
   });
+
   if (!resume) {
-    throw new Error("Resume not found.");
+    throw new Error("Resume not found");
   }
 
   const job = await prisma.job.findUnique({

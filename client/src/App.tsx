@@ -14,6 +14,7 @@ import { ProfileSetupForm } from "./features/auth/ProfileSetupForm";
 import { JobsPage } from "./features/jobs/JobsPage";
 import { SavedJobsPage } from "./features/jobs/SavedJobsPage";
 import { TrackerPage } from "./features/tracker/TrackerPage";
+import MatchPage from "./features/matching/MatchPage";
 
 export const App: React.FC = () => {
   return (
@@ -62,6 +63,14 @@ export const App: React.FC = () => {
             element={
               <ProtectedRoute>
                 <SavedJobsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/matches/:jobId"
+            element={
+              <ProtectedRoute>
+                <MatchPage />
               </ProtectedRoute>
             }
           />
