@@ -28,20 +28,20 @@ enum InterviewStatus {
 }
 
 model User {
-  id                  String        @id @default(uuid())
-  email               String        @unique
-  passwordHash        String
-  name                String
-  role                Role          @default(USER)
-  targetRole          String?
-  preferredLocations  String[]      @default([])
-  experienceLevel     String?
-  createdAt           DateTime      @default(now())
-  updatedAt           DateTime      @updatedAt
-  resumes             Resume[]
-  savedJobs           SavedJob[]
-  applications        Application[]
-  interviews          Interview[]
+  id                 String        @id @default(uuid())
+  email              String        @unique
+  passwordHash       String
+  name               String
+  role               Role          @default(USER)
+  targetRole         String?
+  preferredLocations String[]      @default([])
+  experienceLevel    String?
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+  resumes            Resume[]
+  savedJobs          SavedJob[]
+  applications       Application[]
+  interviews         Interview[]
 
   @@map("users")
 }
@@ -51,7 +51,7 @@ model Resume {
   userId        String
   user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   title         String
-    fileName      String?
+  fileName      String?
   filePath      String?
   mimeType      String?
   fileSize      Int?
@@ -68,7 +68,7 @@ model Resume {
 model Job {
   id           String        @id @default(uuid())
   externalId   String?       @unique
-  source       String        // e.g. GREENHOUSE, LEVER, ASHBY, MANUAL
+  source       String // e.g. GREENHOUSE, LEVER, ASHBY, MANUAL
   title        String
   company      String
   location     String?
@@ -80,12 +80,11 @@ model Job {
   lastSyncedAt DateTime      @default(now())
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
-  savedJobs  SavedJob[]
+  savedJobs    SavedJob[]
   applications Application[]
 
   @@map("jobs")
 }
-
 
 model SavedJob {
   id        String   @id @default(uuid())
@@ -99,10 +98,8 @@ model SavedJob {
   @@unique([userId, jobId])
   @@index([userId])
   @@index([jobId])
-
   @@map("saved_jobs")
 }
-
 
 model Application {
   id           String            @id @default(uuid())
@@ -125,19 +122,49 @@ model Application {
 }
 
 model Interview {
-  id            String          @id @default(uuid())
-  userId        String
-  user          User            @relation(fields: [userId], references: [id], onDelete: Cascade)
-  applicationId String?
-  application   Application?    @relation(fields: [applicationId], references: [id], onDelete: SetNull)
-  title         String
-  status        InterviewStatus @default(SCHEDULED)
-  transcript    Json?
-  createdAt     DateTime        @default(now())
-  updatedAt     DateTime        @updatedAt
-  evaluation    Evaluation?
+  id     String @id @default(uuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  applicationId String?
+  application   Application? @relation(fields: [applicationId], references: [id], onDelete: SetNull)
+
+  title  String
+  status InterviewStatus @default(SCHEDULED)
+
+  plan       Json?
+  transcript Json?
+
+  questions  InterviewQuestion[]
+  evaluation Evaluation?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([applicationId])
   @@map("interviews")
+}
+
+model InterviewQuestion {
+  id          String    @id @default(uuid())
+  interviewId String
+  interview   Interview @relation(fields: [interviewId], references: [id], onDelete: Cascade)
+
+  round    String
+  question String @db.Text
+  order    Int
+
+  answer   String? @db.Text
+  feedback String? @db.Text
+  score    Float?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([interviewId, order])
+  @@index([interviewId])
+  @@map("interview_questions")
 }
 
 model Evaluation {
