@@ -28,7 +28,6 @@ export const generateInterviewPlan = async (
   return validatedPlan;
 };
 
-
 export const createInterviewService = async (
   userId: string,
   applicationId: string,
@@ -43,7 +42,6 @@ export const createInterviewService = async (
       job: true,
     },
   });
-
   if (!application || !application.job) {
     throw new Error("Application or Associated job not found");
   }

@@ -11,17 +11,17 @@ export const createInterviewController = async (
   next: NextFunction,
 ) => {
   try {
-    const userId = req.user!.userId;
-      const { applicationId } = req.body;
-      
+    const userId =req.user!.userId;
+    const { applicationId } = req.body;
+
     if (!userId) {
-      res.status(401).json({
+      return res.status(401).json({
         success: false,
         message: "Unauthorized",
       });
     }
     if (!applicationId) {
-      res.status(400).json({
+      return res.status(400).json({
         success: false,
         message: "application ID is required",
       });
@@ -35,20 +35,6 @@ export const createInterviewController = async (
       data: interview,
     });
   } catch (error) {
-    // if (error instanceof Error && error.message === "application is required") {
-    //   res.status(404).json({
-    //     success: false,
-    //     message: "application is required",
-    //   });
-    //   return;
-    // }
-
-    // console.error("Create Interview error:", error);
-
-    // res.status(500).json({
-    //   success: false,
-    //   message: "Failed to create Interview",
-    // });
     next(error);
   }
 };
