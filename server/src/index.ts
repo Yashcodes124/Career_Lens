@@ -7,6 +7,7 @@ import resumeRoutes from "./routes/resumeRoutes.js";
 import jobRoutes from "./routes/jobRoutes.js";
 import applicationRoutes from "./routes/applicationRoutes.js";
 import matchRoutes from "./routes/matchRoutes.js";
+import interviewRotes from "./routes/interviewRoutes.js";
 
 const app = express();
 
@@ -29,6 +30,7 @@ app.use("/api/resumes", resumeRoutes);
 app.use("/api/jobs", jobRoutes);
 app.use("/api/applications", applicationRoutes);
 app.use("/api/matches", matchRoutes);
+app.use("api/interviews", interviewRotes);
 
 // Health check endpoint
 app.get("/health", async (req: Request, res: Response) => {
