@@ -7,7 +7,18 @@ import {
   InterviewPromptInput,
 } from "../modules/interview.prompt";
 import { InterviewPlanSchema, InterviewPlan } from "../modules/interviewSchema";
-import { createInterview } from "../modules/interviewrepository";
+import {
+  createInterview,
+  createInterviewQuestions,
+} from "../modules/interviewrepository";
+import {
+  buildInterviewQuestionsPrompt,
+  InterviewQuestionPromptInput,
+} from "../modules/interview/interview.question.prompt";
+import {
+  InterviewQuestions,
+  InterviewQuestionsSchema,
+} from "../modules/interviewSchema";
 
 export const generateInterviewPlan = async (
   input: InterviewPromptInput,
@@ -90,5 +101,52 @@ export const createInterviewService = async (
     title,
     plan,
   });
-  return interview;
+
+  // 5. Generate Interview Questions using the generated plan
+  const questionPromptInput = {
+    plan,
+    job: application.job,
+    resume,
+    matchScore,
+    topSkillGaps,
+  };
+  const generatedQuestions =
+    await generateInterviewQuestions(questionPromptInput);
+
+  // 6. Save Questions to DB
+  await createInterviewQuestions(interview.id, generatedQuestions.questions);
+
+  // 7. Fetch and return full interview record with questions included
+  return await prisma.interview.findUnique({
+    where: { id: interview.id },
+    include: { questions: true },
+  });
+};
+
+export const generateInterviewQuestions = async (
+  input: InterviewQuestionPromptInput,
+): Promise<InterviewQuestions> => {
+  //build prompt
+  const prompt = buildInterviewQuestionsPrompt(input);
+
+  //call the ai client abstrcation
+  const rawResponse = await analyzeResume(prompt);
+
+  //clean and parse json response
+  let jsonContent =
+    typeof rawResponse === "string" ? JSON.parse(rawResponse) : rawResponse;
+
+  // / Handle case where response might be wrapped inside a code block string
+  if (typeof jsonContent === "string") {
+    const cleaned = jsonContent
+      .replace(/```json/g, "")
+      .replace(/```/g, "")
+      .trim();
+    jsonContent = JSON.parse(cleaned);
+  }
+
+  //validate output
+  const validatedQuestions = InterviewQuestionsSchema.parse(jsonContent);
+
+  return validatedQuestions;
 };

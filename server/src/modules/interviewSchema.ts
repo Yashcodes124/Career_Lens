@@ -1,5 +1,6 @@
 //server/src/modules/interview/interview.schema.ts
 
+import { runOnce } from "vitest";
 import { z } from "zod";
 
 export const InterviewRoundSchema = z.object({
@@ -22,3 +23,18 @@ export const InterviewPlanSchema = z.object({
 
 export type InterviewRound = z.infer<typeof InterviewRoundSchema>;
 export type InterviewPlan = z.infer<typeof InterviewPlanSchema>;
+
+export const InterviewQuestionSchema = z.object({
+  round: z.string().min(1, "Round name cannot be empty"),
+  question: z.string().min(1, "Question text cannot be empty"),
+  order: z.number().int().positive("Order must be a positive integer"),
+});
+
+export const InterviewQuestionsSchema = z.object({
+  questions: z
+    .array(InterviewQuestionSchema)
+    .min(1, "At least one question is required"),
+});
+
+export type InterviewQuestion = z.infer<typeof InterviewQuestionSchema>;
+export type InterviewQuestions = z.infer<typeof InterviewQuestionsSchema>;
