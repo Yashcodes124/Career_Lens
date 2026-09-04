@@ -38,3 +38,12 @@ export const InterviewQuestionsSchema = z.object({
 
 export type InterviewQuestion = z.infer<typeof InterviewQuestionSchema>;
 export type InterviewQuestions = z.infer<typeof InterviewQuestionsSchema>;
+
+export const QuestionEvaluationSchema = z.object({
+  score: z.number().min(0).max(100),
+  feedback: z.string().min(1),
+  strengths: z.array(z.string()),
+  improvements: z.array(z.string()),
+});
+
+export type QuestionEvaluation = z.infer<typeof QuestionEvaluationSchema>;

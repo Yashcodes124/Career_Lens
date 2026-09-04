@@ -17,11 +17,16 @@ import {
   createInterviewQuestions,
   getInterviewSessionById,
   updateInterviewStatus,
+  getQuestionById,
+  saveQuestionAnswerAndFeedback,
+  getNextUnansweredQuestion,
 } from "../modules/interviewRepository";
 import {
   buildInterviewQuestionsPrompt,
   InterviewQuestionPromptInput,
 } from "../modules/interview/interview.question.prompt";
+
+import { evaluateQuestionAnswer } from "../modules/interview/interview.ai";
 
 export const generateInterviewPlan = async (
   input: InterviewPromptInput,
@@ -202,5 +207,63 @@ export const startInterviewService = async (
   return {
     interview: updatedInterview,
     firstQuestion,
+  };
+};
+
+export const submitAnswerService = async (
+  interviewId: string,
+  questionId: string,
+  userId: string,
+  answer: string,
+) => {
+  const interview = await getInterviewSessionById(interviewId, userId);
+  if (!interview) {
+    const error = new Error("Interview session not found");
+    (error as any).statusCode = 404;
+    throw error;
+  }
+
+  if (interview.status !== "IN_PROGRESS") {
+    const error = new Error(
+      "Cannot submit answers to an interview that is not in progress",
+    );
+    (error as any).statusCode = 400;
+    throw error;
+  }
+
+  const question = await getQuestionById(questionId, interviewId);
+  if (!question) {
+    const error = new Error("Question not found for this interview");
+    (error as any).statusCode = 404;
+    throw error;
+  }
+
+  // Generate evaluation via LLM
+  const roleTitle = interview.title;
+  const evaluation = await evaluateQuestionAnswer(
+    question.question,
+    answer,
+    roleTitle,
+  );
+
+  // Save answer and structured feedback
+  const updatedQuestion = await saveQuestionAnswerAndFeedback(
+    questionId,
+    answer,
+    JSON.stringify(evaluation),
+    evaluation.score,
+  );
+
+  // Retrieve next question if available
+  const nextQuestion = await getNextUnansweredQuestion(
+    interviewId,
+    question.order,
+  );
+
+  return {
+    evaluation,
+    updatedQuestion,
+    nextQuestion: nextQuestion || null,
+    isComplete: !nextQuestion,
   };
 };

@@ -67,3 +67,44 @@ export const updateInterviewStatus = async (
     },
   });
 };
+
+export const getQuestionById = async (
+  questionId: string,
+  interviewId: string,
+) => {
+  return await prisma.interviewQuestion.findFirst({
+    where: {
+      id: questionId,
+      interviewId: interviewId,
+    },
+  });
+};
+
+export const saveQuestionAnswerAndFeedback = async (
+  questionId: string,
+  answer: string,
+  feedback: string,
+  score: number,
+) => {
+  return await prisma.interviewQuestion.update({
+    where: { id: questionId },
+    data: {
+      answer,
+      feedback,
+      score,
+    },
+  });
+};
+
+export const getNextUnansweredQuestion = async (
+  interviewId: string,
+  currentOrder: number,
+) => {
+  return await prisma.interviewQuestion.findFirst({
+    where: {
+      interviewId,
+      order: { gt: currentOrder },
+    },
+    orderBy: { order: "asc" },
+  });
+};

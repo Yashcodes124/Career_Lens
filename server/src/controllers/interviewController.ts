@@ -5,6 +5,7 @@ import {
   createInterviewService,
   generateInterviewSessionByIdService,
   startInterviewService,
+  submitAnswerService,
 } from "../services/interviewService";
 
 //POST /api/interviews
@@ -123,6 +124,43 @@ export const startInterviewController = async (
     return res.status(200).json({
       success: true,
       message: "Interview session started successfully",
+      data: result,
+    });
+  } catch (error: any) {
+    if (error.statusCode) {
+      return res.status(error.statusCode).json({
+        success: false,
+        message: error.message,
+      });
+    }
+    next(error);
+  }
+};
+
+
+export const submitAnswerController = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const userId = req.user?.userId;
+    const { interviewId, questionId } = req.params;
+    const { answer } = req.body;
+
+    if (!userId) {
+      return res.status(401).json({ success: false, message: "Unauthorized access" });
+    }
+
+    if (!answer || answer.trim() === "") {
+      return res.status(400).json({ success: false, message: "Answer string is required" });
+    }
+
+    const result = await submitAnswerService(interviewId, questionId, userId, answer);
+
+    return res.status(200).json({
+      success: true,
+      message: "Answer submitted and evaluated successfully",
       data: result,
     });
   } catch (error: any) {
