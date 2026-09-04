@@ -6,19 +6,22 @@ import {
   buildInterviewPlanPrompt,
   InterviewPromptInput,
 } from "../modules/interview.prompt";
-import { InterviewPlanSchema, InterviewPlan } from "../modules/interviewSchema";
+import {
+  InterviewPlanSchema,
+  InterviewPlan,
+  InterviewQuestions,
+  InterviewQuestionsSchema,
+} from "../modules/interviewSchema";
 import {
   createInterview,
   createInterviewQuestions,
-} from "../modules/interviewrepository";
+  getInterviewSessionById,
+  updateInterviewStatus,
+} from "../modules/interviewRepository";
 import {
   buildInterviewQuestionsPrompt,
   InterviewQuestionPromptInput,
 } from "../modules/interview/interview.question.prompt";
-import {
-  InterviewQuestions,
-  InterviewQuestionsSchema,
-} from "../modules/interviewSchema";
 
 export const generateInterviewPlan = async (
   input: InterviewPromptInput,
@@ -149,4 +152,55 @@ export const generateInterviewQuestions = async (
   const validatedQuestions = InterviewQuestionsSchema.parse(jsonContent);
 
   return validatedQuestions;
+};
+
+export const generateInterviewSessionByIdService = async (
+  interviewId: string,
+  userId: string,
+) => {
+  const interview = await getInterviewSessionById(interviewId, userId);
+  if (!interview) {
+    throw new Error("Interview session not found");
+  }
+  return interview;
+};
+
+export const startInterviewService = async (
+  interviewId: string,
+  userId: string,
+) => {
+  //fetch the inteview
+  const interview = await getInterviewSessionById(interviewId, userId);
+  if (!interview) {
+    throw new Error("Interview session not found");
+  }
+  //validate the status
+  if (interview.status === "IN_PROGRESS") {
+    const error = new Error("Interview is already in progress");
+    (error as any).statusCode = 400;
+    throw error;
+  }
+
+  if (interview.status === "COMPLETED" || interview.status === "CANCELLED") {
+    const error = new Error(
+      `Cannot start an interview that is ${interview.status.toLowerCase()}`,
+    );
+    (error as any).statusCode = 400;
+    throw error;
+  }
+
+  //update transition status to IN_PROGRESS
+  await updateInterviewStatus(interviewId, userId, "IN_PROGRESS");
+
+  //fetch the updated interview
+  const updatedInterview = await getInterviewSessionById(interviewId, userId);
+
+  //send interview and 1st question like (order 1)
+  const firstQuestion =
+    updatedInterview?.questions.find((q) => q.order == 1) || null;
+
+  return {
+    interview: updatedInterview,
+    firstQuestion,
+  };
 };
