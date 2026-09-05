@@ -2,7 +2,7 @@
 import {
   QuestionEvaluationSchema,
   QuestionEvaluation,
-} from "../interviewSchema";
+} from "./interviewSchema";
 import { analyzeResume } from "../../integrations/ai/aiClient";
 
 export const evaluateQuestionAnswer = async (

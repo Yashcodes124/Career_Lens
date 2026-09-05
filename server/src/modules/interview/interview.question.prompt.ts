@@ -1,6 +1,6 @@
 //server/src/modules/interview/interview.question.prompt.ts
 
-import { InterviewPlan } from "../interviewSchema";
+import { InterviewPlan } from "./interviewSchema";
 
 export interface InterviewQuestionPromptInput {
   plan: InterviewPlan;

@@ -5,13 +5,13 @@ import { analyzeResume } from "../integrations/ai/aiClient";
 import {
   buildInterviewPlanPrompt,
   InterviewPromptInput,
-} from "../modules/interview.prompt";
+} from "../modules/interview/interview.prompt";
 import {
   InterviewPlanSchema,
   InterviewPlan,
   InterviewQuestions,
   InterviewQuestionsSchema,
-} from "../modules/interviewSchema";
+} from "../modules/interview/interviewSchema";
 import {
   createInterview,
   createInterviewQuestions,
@@ -20,7 +20,7 @@ import {
   getQuestionById,
   saveQuestionAnswerAndFeedback,
   getNextUnansweredQuestion,
-} from "../modules/interviewRepository";
+} from "../repositories/interviewRepository";
 import {
   buildInterviewQuestionsPrompt,
   InterviewQuestionPromptInput,
@@ -260,10 +260,16 @@ export const submitAnswerService = async (
     question.order,
   );
 
+  //if no remaining questions then change Interviewstatus to COMPLETED
+  const isCompleted = !nextQuestion;
+  if (isCompleted) {
+    await updateInterviewStatus(interviewId, userId, "COMPLETED");
+  }
+
   return {
     evaluation,
     updatedQuestion,
     nextQuestion: nextQuestion || null,
-    isComplete: !nextQuestion,
+    completed: isCompleted,
   };
 };
