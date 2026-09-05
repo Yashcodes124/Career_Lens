@@ -6,6 +6,7 @@ import {
   generateInterviewSessionByIdService,
   startInterviewService,
   submitAnswerService,
+  generateFinalEvaluationService,
 } from "../services/interviewService";
 
 //POST /api/interviews
@@ -137,7 +138,6 @@ export const startInterviewController = async (
   }
 };
 
-
 export const submitAnswerController = async (
   req: Request,
   res: Response,
@@ -149,14 +149,23 @@ export const submitAnswerController = async (
     const { answer } = req.body;
 
     if (!userId) {
-      return res.status(401).json({ success: false, message: "Unauthorized access" });
+      return res
+        .status(401)
+        .json({ success: false, message: "Unauthorized access" });
     }
 
     if (!answer || answer.trim() === "") {
-      return res.status(400).json({ success: false, message: "Answer string is required" });
+      return res
+        .status(400)
+        .json({ success: false, message: "Answer string is required" });
     }
 
-    const result = await submitAnswerService(interviewId, questionId, userId, answer);
+    const result = await submitAnswerService(
+      interviewId,
+      questionId,
+      userId,
+      answer,
+    );
 
     return res.status(200).json({
       success: true,
@@ -171,5 +180,40 @@ export const submitAnswerController = async (
       });
     }
     next(error);
+  }
+};
+
+export const generateFinalEvaluationController = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const userId = req.user?.userId;
+    const { interviewId } = req.params;
+
+    if (!userId) {
+      return res
+        .status(401)
+        .json({ success: false, message: "Unauthorized access" });
+    }
+    const evaluation = await generateFinalEvaluationService(
+      interviewId,
+      userId,
+    );
+
+    return res.status(201).json({
+      success: true,
+      message: "Interview evaluation generated successfully",
+      data: {
+        evaluation,
+      },
+    });
+  } catch (error: any) {
+    // Return 400 Bad Request for status/duplicate guard errors
+    return res.status(400).json({
+      success: false,
+      message: error.message || "Failed to generate interview evaluation",
+    });
   }
 };

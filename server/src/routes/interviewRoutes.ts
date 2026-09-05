@@ -6,6 +6,7 @@ import {
   getInterviewSessionByIdController,
   startInterviewController,
   submitAnswerController,
+  generateFinalEvaluationController,
 } from "../controllers/interviewController";
 import { authMiddleware } from "../middleware/authMiddleware";
 
@@ -19,4 +20,10 @@ router.post(
   authMiddleware,
   submitAnswerController,
 );
+router.post(
+  "/:interviewId/evaluation",
+  authMiddleware,
+  generateFinalEvaluationController,
+);
+
 export default router;

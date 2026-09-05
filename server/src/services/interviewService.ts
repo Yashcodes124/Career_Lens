@@ -20,13 +20,16 @@ import {
   getQuestionById,
   saveQuestionAnswerAndFeedback,
   getNextUnansweredQuestion,
+  getEvaluationByInterviewId,
+  saveFinalEvaluation,
 } from "../repositories/interviewRepository";
 import {
   buildInterviewQuestionsPrompt,
   InterviewQuestionPromptInput,
 } from "../modules/interview/interview.question.prompt";
-
 import { evaluateQuestionAnswer } from "../modules/interview/interview.ai";
+import { buildFinalEvaluationPrompt } from "../modules/evaluation/interview.evaluation.prompt";
+import { FinalEvaluationSchema } from "../modules/evaluation/finalEvaluationSchema";
 
 export const generateInterviewPlan = async (
   input: InterviewPromptInput,
@@ -272,4 +275,93 @@ export const submitAnswerService = async (
     nextQuestion: nextQuestion || null,
     completed: isCompleted,
   };
+};
+
+export const generateFinalEvaluationService = async (
+  interviewId: string,
+  userId: string,
+) => {
+  //fetch the interview to verify ownership
+  const interview = await getInterviewSessionById(interviewId, userId);
+  if (!interview) {
+    throw new Error("Interview not found");
+  }
+  if (interview.userId !== userId) {
+    throw new Error("Unauthorized access to interview");
+  }
+
+  //make sure interview is COMPLETED
+  if (interview.status !== "COMPLETED") {
+    throw new Error("Cannot generate evaluation for an incomplete interview");
+  }
+
+  //Check: prevent duplicate evaluation genration
+  const existingEvaluation = await getEvaluationByInterviewId(interviewId);
+  //already exists
+  if (existingEvaluation) {
+    throw new Error("Interview evaluation already exists");
+  }
+
+  // 4. Extract role and application context
+  const application = interview.application;
+  const job = application?.job;
+  const jobTitle = job?.title || "Software Engineer";
+  const companyName = job?.company || "Target Company";
+  const roleDescription = job?.description || "";
+  const matchScore = application?.matchScore ?? 80;
+  const skillGaps = application?.skillGaps || [];
+
+  // 5. Build prompt
+  const prompt = buildFinalEvaluationPrompt({
+    jobTitle,
+    companyName,
+    roleDescription,
+    matchScore,
+    skillGaps,
+    questions: interview.questions.map((q) => ({
+      order: q.order,
+      round: q.round,
+      question: q.question,
+      answer: q.answer,
+      score: q.score,
+      feedback: q.feedback,
+    })),
+  });
+
+  // 6. Request evaluation from Nemotron
+  const aiResponse = await analyzeResume(prompt);
+
+  let rawEvaluation: any;
+
+  if (typeof aiResponse === "string") {
+    // If string, sanitize markdown formatting and parse
+    const cleanedResponse = aiResponse
+      .replace(/```json/g, "")
+      .replace(/```/g, "")
+      .trim();
+    rawEvaluation = JSON.parse(cleanedResponse);
+  } else {
+    // If already parsed object, use directly
+    rawEvaluation = aiResponse;
+  }
+  // Normalize key names if Nemotron misspells "confidence" as "confidance"
+  if (rawEvaluation?.breakdown) {
+    if (
+      rawEvaluation.breakdown.confidance !== undefined &&
+      rawEvaluation.breakdown.confidence === undefined
+    ) {
+      rawEvaluation.breakdown.confidence = rawEvaluation.breakdown.confidance;
+      delete rawEvaluation.breakdown.confidance;
+    }
+  }
+
+  const validatedEvaluation = FinalEvaluationSchema.parse(rawEvaluation);
+
+  // 8. Persist to PostgreSQL
+  const savedEvaluation = await saveFinalEvaluation(
+    interviewId,
+    validatedEvaluation,
+  );
+
+  return savedEvaluation;
 };

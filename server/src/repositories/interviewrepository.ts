@@ -2,6 +2,7 @@
 
 import { prisma } from "../config/db";
 import { InterviewQuestion } from "../modules/interview/interviewSchema";
+import { FinalEvaluation } from "../modules/evaluation/finalEvaluationSchema";
 
 //POST /api/interviews
 export const createInterview = async (data: {
@@ -47,6 +48,11 @@ export const getInterviewSessionById = async (
         },
       },
       evaluation: true,
+      application: {
+        include: {
+          job: true,
+        },
+      },
     },
   });
 };
@@ -110,5 +116,33 @@ export const getNextUnansweredQuestion = async (
       order: { gt: currentOrder },
     },
     orderBy: { order: "asc" },
+  });
+};
+
+export const saveFinalEvaluation = async (
+  interviewId: string,
+  evaluation: FinalEvaluation,
+) => {
+  return await prisma.evaluation.create({
+    data: {
+      interviewId,
+      score: evaluation.score,
+      feedback: evaluation.feedback,
+      breakdown: {
+        ...evaluation.breakdown,
+        strengths: evaluation.strengths,
+        improvements: evaluation.improvements,
+        recommendation: evaluation.recommendation,
+      },
+    },
+  });
+};
+
+//it will verify whether an evaluation already exists before calling Ai
+export const getEvaluationByInterviewId = async (interviewId: string) => {
+  return await prisma.evaluation.findUnique({
+    where: {
+      interviewId,
+    },
   });
 };
