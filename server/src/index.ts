@@ -16,14 +16,6 @@ app.use(cors({ origin: env.CLIENT_URL, credentials: true }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-app.use((req, _res, next) => {
-  console.log("METHOD:", req.method);
-  console.log("CONTENT-TYPE:", req.headers["content-type"]);
-  console.log("CONTENT-LENGTH:", req.headers["content-length"]);
-  console.log("BODY:", req.body);
-  next();
-});
-
 //Main Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/resumes", resumeRoutes);
