@@ -17,7 +17,7 @@ export async function createInterview(
     method: "POST",
     body: JSON.stringify({ applicationId }),
   });
-  return response.data.interview;
+  return response.data;
 }
 
 export async function fetchInterviewById(
@@ -29,7 +29,7 @@ export async function fetchInterviewById(
       method: "GET",
     },
   );
-  return response.data.interview;
+  return response.data;
 }
 
 export async function startInterview(
@@ -41,10 +41,7 @@ export async function startInterview(
       method: "POST",
     },
   );
-  return {
-    interview: response.data.interview,
-    firstQuestion: response.data.firstQuestion,
-  };
+  return response.data;
 }
 
 export async function submitInterviewAnswer(

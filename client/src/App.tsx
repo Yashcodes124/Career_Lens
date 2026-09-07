@@ -15,6 +15,9 @@ import { JobsPage } from "./features/jobs/JobsPage";
 import { SavedJobsPage } from "./features/jobs/SavedJobsPage";
 import { TrackerPage } from "./features/tracker/TrackerPage";
 import MatchPage from "./features/matching/MatchPage";
+import { InterviewPreparationPage } from "./features/interview/InterviewPreparationPage";
+import { LiveInterviewPage } from "./features/interview/LiveInterviewPage";
+import { InterviewEvaluationPage } from "./features/interview/InterviewEvaluationPage";
 
 export const App: React.FC = () => {
   return (
@@ -71,6 +74,30 @@ export const App: React.FC = () => {
             element={
               <ProtectedRoute>
                 <MatchPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/interviews/:interviewId/prep"
+            element={
+              <ProtectedRoute>
+                <InterviewPreparationPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/interviews/:interviewId/live"
+            element={
+              <ProtectedRoute>
+                <LiveInterviewPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/interviews/:interviewId/evaluation"
+            element={
+              <ProtectedRoute>
+                <InterviewEvaluationPage />
               </ProtectedRoute>
             }
           />

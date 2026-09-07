@@ -63,21 +63,18 @@ export interface Interview {
   updatedAt: string;
 }
 
-/* API Response Wrappers matching backend data shapes */
+/* API Response Wrappers exactly matching backend controller JSON outputs */
 
 export interface CreateInterviewResponse {
   success: boolean;
   message: string;
-  data: {
-    interview: Interview;
-  };
+  data: Interview; // Controller returns res.status(201).json({ success, message, data: interview })
 }
 
 export interface GetInterviewResponse {
   success: boolean;
-  data: {
-    interview: Interview;
-  };
+  message: string;
+  data: Interview; // Controller returns res.status(200).json({ success, message, data: interview })
 }
 
 export interface StartInterviewResponse {
