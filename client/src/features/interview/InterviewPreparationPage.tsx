@@ -88,7 +88,7 @@ export const InterviewPreparationPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-slate-900 py-8 px-4 text-slate-100">
       {/* Header */}
-      <div className="bg-slate-800/80 backdrop-blur border border-slate-700 p-6 rounded-2xl shadow-xl">
+      <div className="bg-slate-800/80 backdrop-blur border border-slate-700 mb-4  p-6 rounded-2xl shadow-xl">
         <div className="flex justify-between items-start">
           <div>
             <h1 className="text-2xl font-bold text-white tracking-tight">
@@ -99,14 +99,14 @@ export const InterviewPreparationPage: React.FC = () => {
             </p>
           </div>
           <span className="px-3 py-1 bg-indigo-500/20 text-indigo-300 border border-indigo-500/40 font-semibold text-xs rounded-full uppercase tracking-wider">
-            {plan.difficulty} Difficulty
+            Difficulty: {plan.difficulty}
           </span>
         </div>
         <p className="text-xs text-slate-400 mt-3">{title}</p>
       </div>
 
       {/* Grid Specs */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4 ">
         {/* Session Stats */}
         <div className="bg-slate-800/80 backdrop-blur border border-slate-700 p-6 rounded-2xl shadow-xl space-y-4">
           <h2 className="text-md font-semibold text-white border-b border-slate-700 pb-3">
@@ -173,7 +173,7 @@ export const InterviewPreparationPage: React.FC = () => {
       </div>
 
       {/* Rounds Breakdown */}
-      <div className="bg-slate-800/80 backdrop-blur border border-slate-700 p-6 rounded-2xl shadow-xl">
+      <div className="bg-slate-800/80 backdrop-blur border border-slate-700 mb-4  p-6 rounded-2xl shadow-xl">
         <h2 className="text-md font-semibold text-white mb-4 border-b border-slate-700 pb-3">
           Interview Structure
         </h2>
