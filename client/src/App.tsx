@@ -11,6 +11,7 @@ import { LoginForm } from "./features/auth/LoginForm";
 import { RegisterForm } from "./features/auth/RegisterForm";
 import { UserProfileCard } from "./features/auth/UserProfileCard";
 import { ProfileSetupForm } from "./features/auth/ProfileSetupForm";
+import { OnboardingWizard } from "./features/auth/OnboardingWizard";
 import { JobsPage } from "./features/jobs/JobsPage";
 import { SavedJobsPage } from "./features/jobs/SavedJobsPage";
 import { TrackerPage } from "./features/tracker/TrackerPage";
@@ -29,6 +30,23 @@ export const App: React.FC = () => {
           <Route path="/register" element={<RegisterPage />} />
 
           {/* Protected Routes */}
+          <Route
+            path="/onboarding"
+            element={
+              <ProtectedRoute>
+                <OnboardingWizard />
+              </ProtectedRoute>
+            }
+          />
+          {/* Dashboard / Profile Route */}
+          <Route
+            path="/dashboard"
+            element={
+              <ProtectedRoute>
+                <UserProfileCard />
+              </ProtectedRoute>
+            }
+          />
           <Route
             path="/profile"
             element={
@@ -123,7 +141,7 @@ const LoginPage: React.FC = () => (
 const RegisterPage: React.FC = () => (
   <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 flex items-center justify-center p-4">
     <RegisterForm
-      onSuccess={() => (window.location.href = "/profile-setup")}
+      onSuccess={() => (window.location.href = "/onboarding")}
       onSwitchToLogin={() => (window.location.href = "/login")}
     />
   </div>
