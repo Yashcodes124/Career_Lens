@@ -19,6 +19,7 @@ import MatchPage from "./features/matching/MatchPage";
 import { InterviewPreparationPage } from "./features/interview/InterviewPreparationPage";
 import { LiveInterviewPage } from "./features/interview/LiveInterviewPage";
 import { InterviewEvaluationPage } from "./features/interview/InterviewEvaluationPage";
+import { SkillGapPage } from "./features/matching/SkillGapPage";
 
 export const App: React.FC = () => {
   return (
@@ -28,7 +29,6 @@ export const App: React.FC = () => {
           {/* Auth Routes */}
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
-
           {/* Protected Routes */}
           <Route
             path="/onboarding"
@@ -44,6 +44,15 @@ export const App: React.FC = () => {
             element={
               <ProtectedRoute>
                 <UserProfileCard />
+              </ProtectedRoute>
+            }
+          />
+          // Inside Routes:
+          <Route
+            path="/skill-gaps"
+            element={
+              <ProtectedRoute>
+                <SkillGapPage />
               </ProtectedRoute>
             }
           />
@@ -119,7 +128,6 @@ export const App: React.FC = () => {
               </ProtectedRoute>
             }
           />
-
           {/* Default route */}
           <Route path="/" element={<Navigate to="/login" replace />} />
           <Route path="*" element={<NotFound />} />
