@@ -1,3 +1,4 @@
+//LiveInterviewPage.tsx
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
@@ -6,10 +7,25 @@ import {
   generateInterviewEvaluation,
 } from "./interviewApi";
 import { Interview, InterviewQuestion } from "./types";
+import { useLocation } from "react-router-dom";
+
+interface LocationState {
+  durationMinutes?: number;
+  difficulty?: "EASY" | "MEDIUM" | "DIFFICULT";
+  focusTopics?: string[];
+  roleTitle?: string;
+}
 
 export const LiveInterviewPage: React.FC = () => {
   const { interviewId } = useParams<{ interviewId: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  const navState = (location.state as LocationState) || {};
+  const durationMinutes = navState.durationMinutes ?? 30;
+  const difficulty = navState.difficulty ?? "MEDIUM";
+  // const focusTopics = navState.focusTopics ?? [];
+  const roleTitle = navState.roleTitle ?? "Software Engineer";
 
   const [interview, setInterview] = useState<Interview | null>(null);
   const [currentQuestion, setCurrentQuestion] =
@@ -154,9 +170,17 @@ export const LiveInterviewPage: React.FC = () => {
               <span className="font-mono text-xs uppercase tracking-wider text-emerald-400 font-medium">
                 {currentQuestion.round}
               </span>
+              {/* Display difficulty badge */}
+              <span className="text-[10px] font-mono uppercase px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-400 bober border-zinc-700/50">
+                {difficulty}
+              </span>
+              {/* Display duration */}
+              <span className="text-xs font-mono text-zinc-400">
+                . {durationMinutes}m
+              </span>
             </div>
             <h1 className="text-sm font-medium text-zinc-300 tracking-tight">
-              {interview.title}
+              {interview.title || roleTitle}
             </h1>
           </div>
 
@@ -181,7 +205,7 @@ export const LiveInterviewPage: React.FC = () => {
         {/* Question Panel */}
         <section className="bg-[#161b22] border border-zinc-800 rounded-xl p-6 shadow-2xl relative overflow-hidden">
           <div className="text-xs font-mono text-zinc-500 uppercase tracking-widest mb-3">
-            // Prompt Execution
+            Prompt Execution
           </div>
           <h2 className="text-lg md:text-xl font-medium text-zinc-100 leading-relaxed tracking-tight">
             {currentQuestion.question}

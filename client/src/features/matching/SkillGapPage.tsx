@@ -1,4 +1,7 @@
-import React, { useState } from "react";
+//SkillGapPage.tsx
+
+import React, { useEffect, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 import {
   CheckCircle2,
   XCircle,
@@ -8,67 +11,20 @@ import {
   Sparkles,
   Play,
 } from "lucide-react";
+import { createInterview } from "../interview/interviewApi";
 import {
   PreInterviewModal,
   InterviewConfig,
 } from "../interview/PreInterviewModal";
-
-interface SkillGapData {
-  roleTitle: string;
-  matchScore: number;
-  matchedSkills: string[];
-  missingSkills: {
-    skill: string;
-    priority: "HIGH" | "MEDIUM" | "LOW";
-    reason: string;
-    prepTopics: string[];
-  }[];
-}
-
-const MOCK_GAP_DATA: SkillGapData = {
-  roleTitle: "Senior Full Stack Engineer",
-  matchScore: 72,
-  matchedSkills: [
-    "React",
-    "TypeScript",
-    "Node.js",
-    "Express",
-    "REST APIs",
-    "Git",
-  ],
-  missingSkills: [
-    {
-      skill: "System Design & Scalability",
-      priority: "HIGH",
-      reason:
-        "Required for architecture round to handle high-concurrency microservices.",
-      prepTopics: [
-        "Load Balancing",
-        "Caching Strategies (Redis)",
-        "Database Sharding",
-      ],
-    },
-    {
-      skill: "GraphQL",
-      priority: "MEDIUM",
-      reason: "Listed in job description for content feed optimizations.",
-      prepTopics: [
-        "Schema Definition",
-        "Resolvers & Mutations",
-        "N+1 Problem Mitigation",
-      ],
-    },
-    {
-      skill: "Docker & Kubernetes",
-      priority: "LOW",
-      reason: "Nice to have for direct deployment pipeline management.",
-      prepTopics: ["Containerization Basics", "Pod Configuration"],
-    },
-  ],
-};
+import { calculateJobMatch } from "./matchingApi";
 
 export const SkillGapPage: React.FC = () => {
-  const [data] = useState<SkillGapData>(MOCK_GAP_DATA);
+  const { jobId } = useParams<{ jobId: string }>();
+  const navigate = useNavigate();
+
+  const [data, setData] = useState<any>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
 
   const getPriorityBadge = (priority: "HIGH" | "MEDIUM" | "LOW") => {
@@ -82,12 +38,93 @@ export const SkillGapPage: React.FC = () => {
     }
   };
 
-  const handleStartInterview = (config: InterviewConfig) => {
-    console.log("Starting interview with configuration:", config);
-    alert(
-      `Interview Configured!\n\nDuration: ${config.durationMinutes} mins\nDifficulty: ${config.difficulty}\nTopics: ${config.focusTopics.join(", ")}`,
+  const loadData = async () => {
+    if (!jobId) return;
+    try {
+      setLoading(true);
+      setError(null);
+
+      //(GET /skill-gap/:jobId )resume id from Storage or User logged-in state
+      const storedResumeId = localStorage.getItem("resumeId") || "";
+      //get the SkillGap details
+      const result = await calculateJobMatch({
+        resumeId: storedResumeId,
+        jobId,
+      });
+      setData(result);
+    } catch (error) {
+      setError(
+        error instanceof Error
+          ? error.message
+          : "Failed to load skill gap data",
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadData();
+  }, [jobId]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[#0d1117] flex items-center justify-center text-zinc-400 font-mono text-sm">
+        <div className="flex items-center space-x-3">
+          <div className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
+          <span>Loading Skill Gap Analysis...</span>
+        </div>
+      </div>
     );
-    setIsModalOpen(false);
+  }
+  if (error || !data) {
+    return (
+      <div className="min-h-screen bg-[#0d1117] flex items-center justify-center p-4">
+        <div className="max-w-md w-full bg-[#161b22] border border-red-500/30 rounded-lg p-6 font-mono">
+          <p className="text-red-400 text-sm mb-4">
+            {error || "Skill gap data not found."}
+          </p>
+          <button
+            onClick={loadData}
+            className="w-full py-2 bg-red-950/60 hover:bg-red-900/80 border border-red-500/40 text-red-200 text-xs uppercase tracking-wider rounded transition"
+          >
+            Reconnect Session
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  const prepTopicsFromGaps =
+    data.missingSkills?.flatMap((item: any) => item.prepTopics || []) || [];
+
+  const handleStartInterview = async (config: InterviewConfig) => {
+    try {
+      setIsModalOpen(false);
+      setError(null);
+
+      const interview = await createInterview({
+        applicationId: data.applicationId,
+        durationMinutes: config.durationMinutes,
+        difficulty: config.difficulty,
+        focusTopics: config.focusTopics,
+      });
+
+      navigate(`/interviews/${interview.id}/prep`, {
+        state: {
+          durationMinutes: config.durationMinutes,
+          difficulty: config.difficulty,
+          focusTopics: config.focusTopics,
+          roleTitle: data.roleTitle,
+        },
+      });
+    } catch (error) {
+      setError(
+        error instanceof Error
+          ? error.message
+          : "Failed to initialize interview session",
+      );
+    }
   };
 
   return (
@@ -137,7 +174,7 @@ export const SkillGapPage: React.FC = () => {
               {data.matchedSkills.length})
             </h2>
             <div className="flex flex-wrap gap-2">
-              {data.matchedSkills.map((skill) => (
+              {data.matchedSkills.map((skill: any) => (
                 <span
                   key={skill}
                   className="px-3 py-1.5 rounded-xl text-xs font-medium bg-emerald-500/10 border border-emerald-500/20 text-emerald-300"
@@ -166,7 +203,7 @@ export const SkillGapPage: React.FC = () => {
           <h2 className="text-lg font-bold text-slate-200">
             Recommended Focus Areas
           </h2>
-          {data.missingSkills.map((item) => (
+          {data.missingSkills.map((item: any) => (
             <div
               key={item.skill}
               className="bg-slate-900/80 border border-slate-800 rounded-2xl p-6 space-y-4"
@@ -193,7 +230,7 @@ export const SkillGapPage: React.FC = () => {
                   Preparation Topics:
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  {item.prepTopics.map((topic) => (
+                  {item.prepTopics.map((topic: any) => (
                     <span
                       key={topic}
                       className="px-3 py-1 rounded-lg text-xs bg-slate-950 border border-slate-800 text-slate-300 flex items-center gap-1"
@@ -215,6 +252,7 @@ export const SkillGapPage: React.FC = () => {
         onClose={() => setIsModalOpen(false)}
         onStartInterview={handleStartInterview}
         jobTitle={data.roleTitle}
+        dynamicTopics={prepTopicsFromGaps}
       />
     </div>
   );

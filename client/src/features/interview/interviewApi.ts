@@ -10,12 +10,20 @@ import {
   GenerateEvaluationResponse,
 } from "./types";
 
+//created this , to pass the optional fields
+export interface CreateInterviewOptions {
+  applicationId: string;
+  durationMinutes?: number;
+  difficulty?: "EASY" | "MEDIUM" | "HARD";
+  focusTopics?: string[];
+}
+
 export async function createInterview(
-  applicationId: string,
+  options: CreateInterviewOptions,
 ): Promise<Interview> {
   const response = await apiClient<CreateInterviewResponse>("/interviews", {
     method: "POST",
-    body: JSON.stringify({ applicationId }),
+    body: JSON.stringify(options),
   });
   return response.data;
 }

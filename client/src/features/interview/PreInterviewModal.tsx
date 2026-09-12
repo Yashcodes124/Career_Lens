@@ -1,4 +1,6 @@
-import React, { useState } from "react";
+//PreInterviewModal.tsx
+
+import React, { useEffect, useState } from "react";
 import { Sliders, Play, X, Clock, Target, Sparkles, Brain } from "lucide-react";
 
 interface PreInterviewModalProps {
@@ -6,6 +8,7 @@ interface PreInterviewModalProps {
   onClose: () => void;
   onStartInterview: (config: InterviewConfig) => void;
   jobTitle?: string;
+  dynamicTopics?: string[];
 }
 
 export interface InterviewConfig {
@@ -19,6 +22,7 @@ const AVAILABLE_TOPICS = [
   "Frontend & UI Performance",
   "Backend & API Design",
   "Database & SQL",
+  "computer Network Fundamentals",
   "Behavioral & Leadership",
   "Data Structures & Algorithms",
 ];
@@ -28,15 +32,23 @@ export const PreInterviewModal: React.FC<PreInterviewModalProps> = ({
   onClose,
   onStartInterview,
   jobTitle = "Software Engineer",
+  dynamicTopics = [],
 }) => {
+  //Use the passed backend topics otherwise fallback
+  const topicsToDisplay =
+    dynamicTopics.length > 0 ? dynamicTopics : AVAILABLE_TOPICS;
+
   const [duration, setDuration] = useState<number>(30);
   const [difficulty, setDifficulty] = useState<"EASY" | "MEDIUM" | "HARD">(
     "MEDIUM",
   );
-  const [selectedTopics, setSelectedTopics] = useState<string[]>([
-    "System Architecture",
-    "Backend & API Design",
-  ]);
+  const [selectedTopics, setSelectedTopics] = useState<string[]>([]);
+  //Initialize the defaults when the model opens or topics load
+  useEffect(() => {
+    if (topicsToDisplay.length > 0 && selectedTopics.length === 0) {
+      setSelectedTopics(topicsToDisplay.slice(0, 2));
+    }
+  }, [topicsToDisplay]);
 
   if (!isOpen) return null;
 
@@ -130,7 +142,7 @@ export const PreInterviewModal: React.FC<PreInterviewModalProps> = ({
             <Target className="w-3.5 h-3.5 text-indigo-400" /> Focus Topics
           </label>
           <div className="flex flex-wrap gap-2 max-h-36 overflow-y-auto pr-1">
-            {AVAILABLE_TOPICS.map((topic) => {
+            {topicsToDisplay.map((topic) => {
               const isSelected = selectedTopics.includes(topic);
               return (
                 <button
