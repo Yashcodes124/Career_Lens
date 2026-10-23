@@ -50,6 +50,17 @@ export const Navbar: React.FC = () => {
           </Link>
 
           <Link
+            to="/resume"
+            className={`rounded-lg px-3 py-2 text-sm font-medium transition ${
+              isActive("/resume")
+                ? "bg-indigo-500/10 text-indigo-300"
+                : "text-slate-400 hover:text-white"
+            }`}
+          >
+            Resume
+          </Link>
+
+          <Link
             to="/profile"
             className={`rounded-lg px-3 py-2 text-sm font-medium transition ${
               isActive("/profile")

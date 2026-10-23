@@ -3,6 +3,7 @@ import { fetchJobs, fetchSavedJobs, unsaveJob, saveJob } from "./jobsApi";
 import { JobCard } from "./JobCard";
 import type { Job } from "./types";
 import { createApplication } from "../tracker/trackerApi";
+import { useLatestResumeId } from "../resume/useResumes";
 
 export const JobsPage: React.FC = () => {
   const [jobs, setJobs] = useState<Job[]>([]);
@@ -14,6 +15,7 @@ export const JobsPage: React.FC = () => {
   const [savedJobIds, setSavedJobIds] = useState<Set<string>>(new Set());
   const [isSaving, setIsSaving] = useState(false);
   const [isTracking, setIsTracking] = useState(false);
+  const resumeId = useLatestResumeId();
 
   useEffect(() => {
     const loadJobs = async () => {
@@ -213,6 +215,7 @@ export const JobsPage: React.FC = () => {
                 <JobCard
                   key={job.id}
                   job={job}
+                  resumeId={resumeId}
                   isSelected={selectedJobId === job.id}
                   onSelect={(selected) => setSelectedJobId(selected.id)}
                 />

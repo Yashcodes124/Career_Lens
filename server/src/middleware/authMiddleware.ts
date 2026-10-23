@@ -9,7 +9,7 @@ export function authMiddleware(req: Request, res: Response, next: NextFunction):
   const authHeader = req.headers.authorization;
 
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    res.status(401).json({ error: 'Unauthorized: Missing or invalid token format' });
+    res.status(401).json({ success: false, message: 'Unauthorized: Missing or invalid token format', code: 'UNAUTHORIZED' });
     return;
   }
 
@@ -20,7 +20,7 @@ export function authMiddleware(req: Request, res: Response, next: NextFunction):
     (req as AuthenticatedRequest).user = payload;
     next();
   } catch (error) {
-    res.status(401).json({ error: 'Unauthorized: Invalid or expired token' });
+    res.status(401).json({ success: false, message: 'Unauthorized: Invalid or expired token', code: 'UNAUTHORIZED' });
     return;
   }
 }

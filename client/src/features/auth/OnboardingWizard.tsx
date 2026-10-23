@@ -1,16 +1,9 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "./useAuth";
-import {
-  FileText,
-  Briefcase,
-  MapPin,
-  CheckCircle2,
-  ArrowRight,
-  ArrowLeft,
-  Loader2,
-  Upload,
-} from "lucide-react";
+import { MapPin, CheckCircle2, ArrowRight, ArrowLeft, Loader2 } from "lucide-react";
+import { ResumeUploader } from "../resume/ResumeUploader";
+import { useResumes } from "../resume/useResumes";
 
 const EXPERIENCE_LEVELS = [
   "Entry Level",
@@ -36,7 +29,8 @@ export const OnboardingWizard: React.FC = () => {
   const navigate = useNavigate();
 
   const [currentStep, setCurrentStep] = useState<number>(1);
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const { data: resumes } = useResumes();
+  const latestResume = resumes?.[0];
   const [targetRole, setTargetRole] = useState<string>(user?.targetRole || "");
   const [selectedLocations, setSelectedLocations] = useState<string[]>(
     user?.preferredLocations || [],
@@ -155,27 +149,11 @@ export const OnboardingWizard: React.FC = () => {
                 Step 1: Upload Resume
               </h2>
               <p className="text-sm text-slate-400 mt-1">
-                Upload your resume (PDF/DOCX) to pre-fill your career profile or
-                skip to enter details manually.
+                Upload a PDF or DOCX to fill in your skills and experience.
+                You can skip this and add details later.
               </p>
             </div>
-            <div className="border-2 border-dashed border-slate-800 hover:border-indigo-500/50 rounded-2xl p-8 text-center transition-all bg-slate-950/50">
-              <Upload className="w-10 h-10 text-indigo-400 mx-auto mb-3" />
-              <p className="text-sm text-slate-300 font-medium">
-                {selectedFile
-                  ? selectedFile.name
-                  : "Drag and drop your file here, or browse"}
-              </p>
-              <p className="text-xs text-slate-500 mt-1">
-                Supports PDF, DOCX up to 10MB
-              </p>
-              <input
-                type="file"
-                accept=".pdf,.docx"
-                onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
-                className="mt-4 block w-full text-xs text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-indigo-600 file:text-white hover:file:bg-indigo-500 cursor-pointer"
-              />
-            </div>
+            <ResumeUploader />
           </div>
         )}
 
@@ -290,9 +268,9 @@ export const OnboardingWizard: React.FC = () => {
                   Resume File
                 </span>
                 <p className="text-sm font-medium text-slate-200">
-                  {selectedFile
-                    ? selectedFile.name
-                    : "No file attached (Skipped)"}
+                  {latestResume
+                    ? `${latestResume.fileName ?? latestResume.title} · ${latestResume.skills.length} skills`
+                    : "No resume uploaded (skipped)"}
                 </p>
               </div>
               <div>

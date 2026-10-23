@@ -4,20 +4,35 @@ const API_BASE_URL =
 
 const AUTH_TOKEN_KEY = "truehire_auth_token";
 
+// Thrown for every failed request. `message` is safe to show to the user.
+export class ApiError extends Error {
+  readonly status: number;
+  readonly code?: string;
+
+  constructor(message: string, status: number, code?: string) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+    this.code = code;
+  }
+}
+
+interface ErrorBody {
+  message?: string;
+  error?: string;
+  code?: string;
+}
+
 export async function apiClient<T>(
   endpoint: string,
   options: RequestInit = {},
 ): Promise<T> {
-  const url = `${API_BASE_URL}${endpoint}`;
-  const headers = new Headers({
-    "Content-Type": "application/json",
-  });
+  const headers = new Headers(options.headers);
 
-  if (options.headers) {
-    const existingHeaders = options.headers as Record<string, string>;
-    Object.entries(existingHeaders).forEach(([key, value]) => {
-      headers.set(key, value);
-    });
+  // A browser must set the multipart boundary itself, so only JSON bodies get a type.
+  const isFormData = options.body instanceof FormData;
+  if (!isFormData && options.body !== undefined && !headers.has("Content-Type")) {
+    headers.set("Content-Type", "application/json");
   }
 
   const token = localStorage.getItem(AUTH_TOKEN_KEY);
@@ -25,19 +40,27 @@ export async function apiClient<T>(
     headers.set("Authorization", `Bearer ${token}`);
   }
 
-  const response = await fetch(url, {
-    ...options,
-    headers,
-  });
-
-  if (!response.ok) {
-    const error = await response
-      .json()
-      .catch(() => ({ error: "Unknown error" }));
-    throw new Error(error.error || `HTTP ${response.status}`);
+  let response: Response;
+  try {
+    response = await fetch(`${API_BASE_URL}${endpoint}`, { ...options, headers });
+  } catch {
+    throw new ApiError(
+      "Cannot reach the server. Check your connection and try again.",
+      0,
+      "NETWORK_ERROR",
+    );
   }
 
-  return response.json();
+  if (!response.ok) {
+    const body = (await response.json().catch(() => null)) as ErrorBody | null;
+    throw new ApiError(
+      body?.message || body?.error || `Request failed (HTTP ${response.status})`,
+      response.status,
+      body?.code,
+    );
+  }
+
+  return response.json() as Promise<T>;
 }
 
 export function setAuthToken(token: string): void {

@@ -20,6 +20,7 @@ import { InterviewPreparationPage } from "./features/interview/InterviewPreparat
 import { LiveInterviewPage } from "./features/interview/LiveInterviewPage";
 import { InterviewEvaluationPage } from "./features/interview/InterviewEvaluationPage";
 import { SkillGapPage } from "./features/matching/SkillGapPage";
+import { ResumePage } from "./features/resume/ResumePage";
 
 export const App: React.FC = () => {
   return (
@@ -47,7 +48,6 @@ export const App: React.FC = () => {
               </ProtectedRoute>
             }
           />
-          // Inside Routes:
           <Route
             path="/skill-gaps"
             element={
@@ -69,6 +69,14 @@ export const App: React.FC = () => {
             element={
               <ProtectedRoute>
                 <ProfileSetupPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/resume"
+            element={
+              <ProtectedRoute>
+                <ResumePage />
               </ProtectedRoute>
             }
           />

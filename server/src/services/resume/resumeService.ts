@@ -1,87 +1,111 @@
-//src/services/resume/resumeServices
-
-// file(PDF / DOCX)
-//    ↓
-// Multer
-//    ↓
-// extractTextFromDocument()
-//    ↓
-// rawText
-//    ↓
-// buildResumeAnalysisPrompt()
-//    ↓
-// Qwen3:4b via Ollama
-//    ↓
-// JSON
-//    ↓
-// Zod validation
-//    ↓
-// createResume()
-//    ↓
-// PostgreSQL
-
-import { createResume } from "../../repositories/resumeRepository";
-import { extractTextFromDocument } from "../../utils/documentParser";
+// PDF/DOCX -> raw text -> AI extraction -> Zod validation -> PostgreSQL
+import { createResume, deleteResumeForUser, getResumeById, getResumeByUserId } from "../../repositories/resumeRepository";
+import { extractTextFromDocument, getResumeFormat, RESUME_MIME_TYPES } from "../../utils/documentParser";
 import { buildResumeAnalysisPrompt } from "../../integrations/ai/resumePrompt";
-import { analyzeResume } from "../../integrations/ai/aiClient"; //replace ollma by nvidia
-import path from "path";
-import {
-  getResumeById,
-  getResumeByUserId,
-} from "../../repositories/resumeRepository";
+import { analyzeResume } from "../../integrations/ai/aiClient";
+import { resumeAnalysisSchema, ResumeAnalysis } from "../../integrations/ai/resumeSchema";
+import { AppError } from "../../utils/appError";
+
+const MIN_READABLE_CHARACTERS = 40;
+const MAX_ANALYSIS_ATTEMPTS = 2;
+const MAX_SKILLS = 100;
+const MAX_TITLE_LENGTH = 255;
+
+// Trims, collapses whitespace, removes case-insensitive duplicates, and caps the list.
+// This is only tidying. Matching-time alias normalization lives in the matching engine.
+export const cleanSkillList = (skills: string[]): string[] => {
+  const seen = new Set<string>();
+  const result: string[] = [];
+
+  for (const raw of skills) {
+    const skill = raw.replace(/\s+/g, " ").trim();
+    const key = skill.toLowerCase();
+    if (!skill || seen.has(key)) continue;
+
+    seen.add(key);
+    result.push(skill);
+    if (result.length === MAX_SKILLS) break;
+  }
+
+  return result;
+};
+
+const clampExperienceYears = (years: number): number =>
+  Math.min(Math.max(Math.round(years), 0), 60);
+
+// Retries only when the model returns output that fails validation.
+// Provider outages are not retried here, because the same request would fail again.
+export const analyzeResumeText = async (rawText: string): Promise<ResumeAnalysis> => {
+  const prompt = buildResumeAnalysisPrompt(rawText);
+
+  for (let attempt = 1; attempt <= MAX_ANALYSIS_ATTEMPTS; attempt++) {
+    try {
+      const output = await analyzeResume(prompt);
+      const parsed = resumeAnalysisSchema.safeParse(output);
+      if (parsed.success) return parsed.data;
+    } catch (error) {
+      const isInvalidOutput =
+        error instanceof AppError && error.code === "AI_INVALID_OUTPUT";
+      if (!isInvalidOutput) throw error;
+    }
+  }
+
+  throw new AppError(
+    422,
+    "We could not read the structure of this resume. Try another file.",
+    "RESUME_UNPARSEABLE",
+  );
+};
 
 export const createResumeService = async (
   userId: string,
   file: Express.Multer.File,
 ) => {
-  //1.extract the raw text from the uploaded file
-  const rawText = await extractTextFromDocument(
-    file.buffer,
-    file.mimetype,
-    file.originalname,
-  );
+  const format = getResumeFormat(file.originalname);
+  if (!format) {
+    throw new AppError(400, "Only PDF and DOCX files are allowed", "UNSUPPORTED_FILE_TYPE");
+  }
 
-  //CHECK FOR MIME TYPE CONFIRMATION
-  const extension = path.extname(file.originalname).toLowerCase();
-  const mimeType =
-    extension === ".pdf"
-      ? "application/pdf"
-      : extension === ".docx"
-        ? "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-        : file.mimetype;
+  const rawText = await extractTextFromDocument(file.buffer, file.originalname);
+  if (rawText.replace(/\s/g, "").length < MIN_READABLE_CHARACTERS) {
+    throw new AppError(
+      422,
+      "No readable text was found. Scanned PDFs are not supported yet. Upload a text-based PDF or a DOCX file.",
+      "NO_READABLE_TEXT",
+    );
+  }
 
-  //2.Build a Ai prompt
-  const prompt = buildResumeAnalysisPrompt(rawText);
-  //3.Call the resume anlyser to run ollama extraction
-  const analysis = await analyzeResume(prompt);
-  //4.Map the fields and
-  //5.Pass them to create resume
-  const resume = await createResume({
+  const analysis = await analyzeResumeText(rawText);
+  const skills = cleanSkillList(analysis.skills);
+
+  return createResume({
     userId,
-    title: file.originalname,
+    title: file.originalname.slice(0, MAX_TITLE_LENGTH),
     fileName: file.originalname,
-    mimeType: mimeType,
+    mimeType: RESUME_MIME_TYPES[format],
     fileSize: file.size,
     rawText,
-    parsedData: analysis,
-    skills: analysis.skills,
-    experienceYrs: analysis.totalExperienceYears,
+    parsedData: { ...analysis, skills },
+    skills,
+    experienceYrs: clampExperienceYears(analysis.totalExperienceYears),
   });
-  return resume;
 };
 
 export const getUserResumeService = async (userId: string) => {
   return await getResumeByUserId(userId);
 };
 
-export const getUserResumeByIdService = async (
-  userId: string,
-  resumeId: string,
-) => {
+export const getUserResumeByIdService = async (userId: string, resumeId: string) => {
   const resume = await getResumeById(resumeId, userId);
   if (!resume) {
-    throw new Error("Resume not found");
+    throw new AppError(404, "Resume not found", "RESUME_NOT_FOUND");
   }
-
   return resume;
+};
+
+export const deleteResumeService = async (userId: string, resumeId: string) => {
+  const result = await deleteResumeForUser(resumeId, userId);
+  if (result.count === 0) {
+    throw new AppError(404, "Resume not found", "RESUME_NOT_FOUND");
+  }
 };

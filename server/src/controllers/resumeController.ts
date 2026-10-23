@@ -1,48 +1,24 @@
 //server/src/controllers/resumeController.ts
-
 import { NextFunction, Request, Response } from "express";
-import { createResumeService } from "../services/resume/resumeService";
+import { AppError } from "../utils/appError";
 import {
+  createResumeService,
+  deleteResumeService,
   getUserResumeByIdService,
   getUserResumeService,
 } from "../services/resume/resumeService";
-export const createResume = async (req: Request, res: Response) => {
-  try {
-    const userId = req.user!.userId;
-    const file = req.file;
 
+export const createResume = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const file = req.file;
     if (!file) {
-      return res.status(400).json({
-        success: false,
-        message: "Resume file is required",
-      });
+      throw new AppError(400, "Choose a PDF or DOCX resume to upload", "FILE_REQUIRED");
     }
 
-    const resume = await createResumeService(userId, file);
-
-    return res.status(201).json({
+    const resume = await createResumeService(req.user!.userId, file);
+    res.status(201).json({
       success: true,
       message: "Resume uploaded successfully",
-      resume,
-    });
-  } catch (error) {
-    return res.status(500).json({
-      success: false,
-      message:
-        error instanceof Error ? error.message : "Failed to upload resume",
-    });
-  }
-};
-
-export const getUserResumeController = async (
-  req: Request,
-  res: Response,
-  next: NextFunction,
-) => {
-  try {
-    const resume = await getUserResumeService(req.user!.userId);
-    res.status(200).json({
-      success: true,
       resume,
     });
   } catch (error) {
@@ -50,20 +26,28 @@ export const getUserResumeController = async (
   }
 };
 
-export const getUserResumeByIdController = async (
-  req: Request,
-  res: Response,
-  next: NextFunction,
-) => {
+export const getUserResumeController = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const resume = await getUserResumeByIdService(
-      req.user!.userId,
-      req.params.id,
-    );
-    res.status(200).json({
-      success: true,
-      resume,
-    });
+    const resumes = await getUserResumeService(req.user!.userId);
+    res.status(200).json({ success: true, resumes });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getUserResumeByIdController = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const resume = await getUserResumeByIdService(req.user!.userId, req.params.id);
+    res.status(200).json({ success: true, resume });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const deleteResumeController = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    await deleteResumeService(req.user!.userId, req.params.id);
+    res.status(200).json({ success: true, message: "Resume deleted" });
   } catch (error) {
     next(error);
   }
