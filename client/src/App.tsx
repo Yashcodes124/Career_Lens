@@ -49,7 +49,7 @@ export const App: React.FC = () => {
             }
           />
           <Route
-            path="/skill-gaps"
+            path="/skill-gaps/:jobId"
             element={
               <ProtectedRoute>
                 <SkillGapPage />

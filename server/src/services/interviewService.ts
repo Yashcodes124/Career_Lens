@@ -13,16 +13,18 @@ import {
   InterviewQuestionsSchema,
 } from "../modules/interview/interviewSchema";
 import {
-  createInterview,
-  createInterviewQuestions,
+  createInterviewWithQuestions,
   getInterviewSessionById,
   updateInterviewStatus,
   getQuestionById,
+  saveAnswer,
   saveQuestionAnswerAndFeedback,
-  getNextUnansweredQuestion,
+  countUnfinishedQuestions,
+  getFirstUnfinishedQuestion,
   getEvaluationByInterviewId,
   saveFinalEvaluation,
 } from "../repositories/interviewRepository";
+import { AppError } from "../utils/appError";
 import {
   buildInterviewQuestionsPrompt,
   InterviewQuestionPromptInput,
@@ -45,46 +47,37 @@ export const generateInterviewPlan = async (
     typeof rawResponse === "string" ? JSON.parse(rawResponse) : rawResponse;
 
   // 4. Validate output with InterviewPlanSchema
-  const validatedPlan = InterviewPlanSchema.parse(jsonContent);
-
-  return validatedPlan;
+  const parsed = InterviewPlanSchema.safeParse(jsonContent);
+  if (!parsed.success) {
+    throw new AppError(502, "The interview plan could not be generated. Try again.", "AI_INVALID_OUTPUT");
+  }
+  return parsed.data;
 };
 
 export const createInterviewService = async (
   userId: string,
   applicationId: string,
 ) => {
-  //fetch the application
   const application = await prisma.application.findFirst({
-    where: {
-      id: applicationId,
-      userId: userId,
-    },
-    include: {
-      job: true,
-    },
+    where: { id: applicationId, userId },
+    include: { job: true },
   });
   if (!application || !application.job) {
-    throw new Error("Application or Associated job not found");
+    throw new AppError(404, "Application or associated job not found", "APPLICATION_NOT_FOUND");
   }
-  //get stage 5 metrices
-  const matchScore = application.matchScore ?? 0;
-  const topSkillGaps = application.skillGaps ?? [];
 
-  //get the users resume
   const resume = await prisma.resume.findFirst({
-    where: {
-      userId: userId,
-    },
-    orderBy: {
-      createdAt: "desc",
-    },
+    where: { userId },
+    orderBy: { createdAt: "desc" },
   });
   if (!resume) {
-    throw new Error("User resume not found.");
+    throw new AppError(400, "Upload a resume before starting an interview", "RESUME_REQUIRED");
   }
 
-  //prepare the interview plan
+  // A job with no comparable skills has a null match score. It is never replaced with a number.
+  const matchScore = application.matchScore ?? null;
+  const topSkillGaps = application.skillGaps ?? [];
+
   const promptInput: InterviewPromptInput = {
     job: {
       title: application.job.title,
@@ -102,32 +95,24 @@ export const createInterviewService = async (
     topSkillGaps,
   };
 
-  const plan = await generateInterviewPlan(promptInput);
-
-  const title = `${application.job.title} at ${application.job.company}`;
-
-  const interview = await createInterview({
-    userId,
-    applicationId,
-    title,
-    plan,
-  });
-
-  // 5. Generate Interview Questions using the generated plan
-  const questionPromptInput = {
+  // All AI work happens before any write. If it fails, nothing is saved.
+  // The model may echo a score. The stored value is the only one we keep.
+  const generatedPlan = await generateInterviewPlan(promptInput);
+  const plan = { ...generatedPlan, matchScore };
+  const generatedQuestions = await generateInterviewQuestions({
     plan,
     job: application.job,
     resume,
     matchScore,
     topSkillGaps,
-  };
-  const generatedQuestions =
-    await generateInterviewQuestions(questionPromptInput);
+  });
 
-  // 6. Save Questions to DB
-  await createInterviewQuestions(interview.id, generatedQuestions.questions);
+  const title = `${application.job.title} at ${application.job.company}`;
+  const interview = await createInterviewWithQuestions(
+    { userId, applicationId, title, plan },
+    generatedQuestions.questions,
+  );
 
-  // 7. Fetch and return full interview record with questions included
   return await prisma.interview.findUnique({
     where: { id: interview.id },
     include: { questions: true },
@@ -221,35 +206,50 @@ export const submitAnswerService = async (
 ) => {
   const interview = await getInterviewSessionById(interviewId, userId);
   if (!interview) {
-    const error = new Error("Interview session not found");
-    (error as any).statusCode = 404;
-    throw error;
+    throw new AppError(404, "Interview session not found", "INTERVIEW_NOT_FOUND");
   }
-
   if (interview.status !== "IN_PROGRESS") {
-    const error = new Error(
-      "Cannot submit answers to an interview that is not in progress",
+    throw new AppError(
+      400,
+      "Answers can only be submitted while the interview is in progress",
+      "INTERVIEW_NOT_IN_PROGRESS",
     );
-    (error as any).statusCode = 400;
-    throw error;
   }
 
   const question = await getQuestionById(questionId, interviewId);
   if (!question) {
-    const error = new Error("Question not found for this interview");
-    (error as any).statusCode = 404;
-    throw error;
+    throw new AppError(404, "Question not found for this interview", "QUESTION_NOT_FOUND");
   }
 
-  // Generate evaluation via LLM
-  const roleTitle = interview.title;
-  const evaluation = await evaluateQuestionAnswer(
-    question.question,
-    answer,
-    roleTitle,
-  );
+  // A question is final once it has feedback. Only unevaluated questions can take an answer.
+  if (question.feedback !== null) {
+    throw new AppError(409, "This question has already been answered", "ALREADY_ANSWERED");
+  }
 
-  // Save answer and structured feedback
+  // Questions are answered in order. The next one is the first without feedback.
+  const nextDue = interview.questions.find((q) => q.feedback === null);
+  if (!nextDue || nextDue.id !== questionId) {
+    throw new AppError(
+      409,
+      `Answer the questions in order. Question ${nextDue?.order ?? ""} is next.`.trim(),
+      "OUT_OF_ORDER",
+    );
+  }
+
+  // Save first. If the evaluation below fails, the answer is still on record.
+  await saveAnswer(questionId, answer);
+
+  let evaluation: Awaited<ReturnType<typeof evaluateQuestionAnswer>>;
+  try {
+    evaluation = await evaluateQuestionAnswer(question.question, answer, interview.title);
+  } catch {
+    throw new AppError(
+      503,
+      "Your answer was saved, but evaluation is temporarily unavailable. Submit the same answer again to retry.",
+      "EVALUATION_PENDING",
+    );
+  }
+
   const updatedQuestion = await saveQuestionAnswerAndFeedback(
     questionId,
     answer,
@@ -257,14 +257,8 @@ export const submitAnswerService = async (
     evaluation.score,
   );
 
-  // Retrieve next question if available
-  const nextQuestion = await getNextUnansweredQuestion(
-    interviewId,
-    question.order,
-  );
-
-  //if no remaining questions then change Interviewstatus to COMPLETED
-  const isCompleted = !nextQuestion;
+  // Completed means no question is left without feedback, whatever order they were answered in.
+  const isCompleted = (await countUnfinishedQuestions(interviewId)) === 0;
   if (isCompleted) {
     await updateInterviewStatus(interviewId, userId, "COMPLETED");
   }
@@ -272,7 +266,7 @@ export const submitAnswerService = async (
   return {
     evaluation,
     updatedQuestion,
-    nextQuestion: nextQuestion || null,
+    nextQuestion: isCompleted ? null : await getFirstUnfinishedQuestion(interviewId),
     completed: isCompleted,
   };
 };
@@ -281,25 +275,19 @@ export const generateFinalEvaluationService = async (
   interviewId: string,
   userId: string,
 ) => {
-  //fetch the interview to verify ownership
   const interview = await getInterviewSessionById(interviewId, userId);
   if (!interview) {
-    throw new Error("Interview not found");
+    throw new AppError(404, "Interview not found", "INTERVIEW_NOT_FOUND");
   }
-  if (interview.userId !== userId) {
-    throw new Error("Unauthorized access to interview");
-  }
-
-  //make sure interview is COMPLETED
   if (interview.status !== "COMPLETED") {
-    throw new Error("Cannot generate evaluation for an incomplete interview");
+    throw new AppError(
+      409,
+      "Finish every question before the report is generated",
+      "INTERVIEW_NOT_COMPLETE",
+    );
   }
-
-  //Check: prevent duplicate evaluation genration
-  const existingEvaluation = await getEvaluationByInterviewId(interviewId);
-  //already exists
-  if (existingEvaluation) {
-    throw new Error("Interview evaluation already exists");
+  if (await getEvaluationByInterviewId(interviewId)) {
+    throw new AppError(409, "An evaluation already exists for this interview", "EVALUATION_EXISTS");
   }
 
   // 4. Extract role and application context
@@ -308,7 +296,8 @@ export const generateFinalEvaluationService = async (
   const jobTitle = job?.title || "Software Engineer";
   const companyName = job?.company || "Target Company";
   const roleDescription = job?.description || "";
-  const matchScore = application?.matchScore ?? 80;
+  // No match score is stored when the posting had no comparable skills. Never invent one.
+  const matchScore = application?.matchScore ?? null;
   const skillGaps = application?.skillGaps || [];
 
   // 5. Build prompt

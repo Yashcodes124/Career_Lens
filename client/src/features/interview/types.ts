@@ -9,7 +9,7 @@ export interface InterviewRound {
 export interface InterviewPlan {
   company: string;
   role: string;
-  matchScore: number;
+  matchScore: number | null;
   topSkillGaps: string[];
   estimatedDuration: number;
   difficulty: "EASY" | "MEDIUM" | "HARD";

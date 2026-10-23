@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useParams, useSearchParams } from "react-router-dom";
+import { Link, useParams, useSearchParams } from "react-router-dom";
 import { calculateJobMatch } from "./matchingApi";
 import type { MatchResult as MatchResultType } from "./types";
 import MatchResult from "./MatchResult";
@@ -80,6 +80,15 @@ export default function MatchPage() {
             Deterministic analysis based on your resume skills and the job
             requirements.
           </p>
+        </div>
+
+        <div className="mb-6 flex justify-end">
+          <Link
+            to={`/skill-gaps/${jobId}?resumeId=${resumeId}`}
+            className="text-sm text-indigo-400 hover:text-indigo-300"
+          >
+            Open skill gap plan
+          </Link>
         </div>
 
         <MatchResult result={result} />

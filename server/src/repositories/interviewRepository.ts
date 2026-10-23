@@ -106,15 +106,43 @@ export const saveQuestionAnswerAndFeedback = async (
 };
 
 //retrieve the next question
-export const getNextUnansweredQuestion = async (
-  interviewId: string,
-  currentOrder: number,
+// Interview and questions are written together, so a failure never leaves an empty interview.
+export const createInterviewWithQuestions = async (
+  data: { userId: string; applicationId: string; title: string; plan: object },
+  questions: InterviewQuestion[],
 ) => {
+  return await prisma.$transaction(async (tx) => {
+    const interview = await tx.interview.create({ data });
+    await tx.interviewQuestion.createMany({
+      data: questions.map((q) => ({
+        interviewId: interview.id,
+        round: q.round,
+        question: q.question,
+        order: q.order,
+      })),
+    });
+    return interview;
+  });
+};
+
+// Stores the candidate's answer before any AI call, so an evaluation failure cannot lose it.
+export const saveAnswer = async (questionId: string, answer: string) => {
+  return await prisma.interviewQuestion.update({
+    where: { id: questionId },
+    data: { answer, feedback: null, score: null },
+  });
+};
+
+// A question is unfinished until it has feedback, meaning it was answered AND evaluated.
+export const countUnfinishedQuestions = async (interviewId: string) => {
+  return await prisma.interviewQuestion.count({
+    where: { interviewId, feedback: null },
+  });
+};
+
+export const getFirstUnfinishedQuestion = async (interviewId: string) => {
   return await prisma.interviewQuestion.findFirst({
-    where: {
-      interviewId,
-      order: { gt: currentOrder },
-    },
+    where: { interviewId, feedback: null },
     orderBy: { order: "asc" },
   });
 };

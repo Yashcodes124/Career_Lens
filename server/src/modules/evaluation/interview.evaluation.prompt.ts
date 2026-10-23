@@ -4,7 +4,7 @@ export interface FinalEvaluationPromptInput {
   jobTitle: string;
   companyName: string;
   roleDescription?: string;
-  matchScore: number;
+  matchScore: number | null;
   skillGaps: string[];
   interviewPlan?: {
     focusArea?: string;
@@ -41,7 +41,7 @@ You are an expert technical interviewer and hiring manager. Perform a holistic, 
 - Target Role: ${data.jobTitle}
 - Company: ${data.companyName}
 ${data.roleDescription ? `- Role Description: ${data.roleDescription}` : ""}
-- Candidate Resume Match Score: ${data.matchScore}%
+- Candidate Resume Match Score: ${data.matchScore === null ? "not available" : `${data.matchScore}%`}
 - Identified Skill Gaps: ${
     data.skillGaps.length > 0 ? data.skillGaps.join(", ") : "None"
   }

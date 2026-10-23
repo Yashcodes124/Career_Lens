@@ -21,7 +21,7 @@ export interface InterviewPromptInput {
     skills: string[];
     experienceYrs: number;
   };
-  matchScore: number;
+  matchScore: number | null;
   topSkillGaps: string[];
 }
 
@@ -51,7 +51,7 @@ Resume:
 ${resume.rawText}
 
 STAGE 5 MATCH RESULT:
-Match Score: ${matchScore}/100
+Match Score: ${matchScore === null ? "not available (no skills could be compared)" : `${matchScore}/100`}
 
 Top Skill Gaps:
 ${topSkillGaps.length > 0 ? topSkillGaps.join(", ") : "None identified"}

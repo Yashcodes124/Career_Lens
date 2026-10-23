@@ -10,7 +10,7 @@ export const InterviewRoundSchema = z.object({
 export const InterviewPlanSchema = z.object({
   company: z.string().min(1, "Company name is required"),
   role: z.string().min(1, "Role is required"),
-  matchScore: z.number().min(0).max(100),
+  matchScore: z.number().min(0).max(100).nullable(),
   topSkillGaps: z.array(z.string()),
   estimatedDuration: z.number().positive(),
   difficulty: z.enum(["EASY", "MEDIUM", "HARD"]),

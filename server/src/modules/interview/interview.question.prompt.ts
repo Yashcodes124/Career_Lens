@@ -15,7 +15,7 @@ export interface InterviewQuestionPromptInput {
     skills?: string[] | null;
     experienceYrs?: number | null;
   };
-  matchScore: number;
+  matchScore: number | null;
   topSkillGaps: string[];
 }
 
@@ -30,7 +30,7 @@ You are an expert technical interviewer conducting an interview for the position
 ### CANDIDATE & JOB CONTEXT
 - **Target Role:** ${job.title} at ${job.company}
 - **Interview Difficulty:** ${plan.difficulty}
-- **Match Score:** ${matchScore}%
+- **Match Score:** ${matchScore === null ? "not available" : `${matchScore}%`}
 - **Target Skills:** ${plan.targetSkills.join(", ")}
 - **Identified Skill Gaps:** ${topSkillGaps.length > 0 ? topSkillGaps.join(", ") : "None specified"}
 - **Job Requirements:** ${

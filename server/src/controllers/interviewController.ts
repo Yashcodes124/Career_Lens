@@ -40,18 +40,7 @@ export const createInterviewController = async (
       message: "Interview plan created successfully",
       data: interview,
     });
-  } catch (error: any) {
-    const notFoundErrors = [
-      "Application or Associated job not found",
-      "User resume not found.",
-    ];
-
-    if (notFoundErrors.includes(error.message)) {
-      return res.status(404).json({
-        success: false,
-        message: error.message,
-      });
-    }
+  } catch (error) {
     next(error);
   }
 };
@@ -86,13 +75,7 @@ export const getInterviewSessionByIdController = async (
       message: "Interview session retrieved successfully",
       data: interview,
     });
-  } catch (error: any) {
-    if (error.message === "Interview session not found") {
-      return res.status(404).json({
-        success: false,
-        message: error.message,
-      });
-    }
+  } catch (error) {
     next(error);
   }
 };
@@ -172,13 +155,7 @@ export const submitAnswerController = async (
       message: "Answer submitted and evaluated successfully",
       data: result,
     });
-  } catch (error: any) {
-    if (error.statusCode) {
-      return res.status(error.statusCode).json({
-        success: false,
-        message: error.message,
-      });
-    }
+  } catch (error) {
     next(error);
   }
 };
@@ -209,11 +186,7 @@ export const generateFinalEvaluationController = async (
         evaluation,
       },
     });
-  } catch (error: any) {
-    // Return 400 Bad Request for status/duplicate guard errors
-    return res.status(400).json({
-      success: false,
-      message: error.message || "Failed to generate interview evaluation",
-    });
+  } catch (error) {
+    next(error);
   }
 };

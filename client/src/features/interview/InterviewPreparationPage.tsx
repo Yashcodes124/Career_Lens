@@ -115,7 +115,7 @@ export const InterviewPreparationPage: React.FC = () => {
           <div className="flex justify-between text-sm">
             <span className="text-slate-300">Match Score:</span>
             <span className="font-bold text-emerald-400">
-              {plan.matchScore}%
+              {plan.matchScore != null ? `${plan.matchScore}%` : "Not available"}
             </span>
           </div>
           <div className="flex justify-between text-sm">
