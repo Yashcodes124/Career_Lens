@@ -42,6 +42,7 @@ model User {
   savedJobs          SavedJob[]
   applications       Application[]
   interviews         Interview[]
+  userSkills         UserSkill[]
 
   @@map("users")
 }
@@ -177,4 +178,23 @@ model Evaluation {
   createdAt   DateTime  @default(now())
 
   @@map("evaluations")
+}
+
+enum SkillStatus {
+  STRONG
+  WEAK
+}
+
+// A skill's latest state for this user, backed by the evidence that set it.
+model UserSkill {
+  id        String      @id @default(uuid())
+  userId    String
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  skill     String
+  status    SkillStatus
+  evidence  String
+  updatedAt DateTime    @updatedAt
+
+  @@unique([userId, skill])
+  @@map("user_skills")
 }

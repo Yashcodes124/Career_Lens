@@ -85,10 +85,12 @@ const mocks = vi.hoisted(() => ({
   getResumeById: vi.fn(),
   getJobById: vi.fn(),
   upsertApplicationMatch: vi.fn(),
+  listUserSkills: vi.fn(),
 }));
 
 vi.mock("../repositories/resumeRepository", () => ({ getResumeById: mocks.getResumeById }));
 vi.mock("../repositories/jobRepository", () => ({ getJobById: mocks.getJobById }));
+vi.mock("../repositories/skillRepository", () => ({ listUserSkills: mocks.listUserSkills }));
 vi.mock("../repositories/matchRepository", () => ({
   upsertApplicationMatch: mocks.upsertApplicationMatch,
 }));
@@ -98,6 +100,7 @@ import { matchResumeToJob } from "../services/matching/matchService";
 describe("matchResumeToJob persistence", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.listUserSkills.mockResolvedValue([]);
   });
 
   it("saves the score and gap names onto the user's application for the job", async () => {

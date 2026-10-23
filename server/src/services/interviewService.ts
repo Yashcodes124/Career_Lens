@@ -22,9 +22,10 @@ import {
   countUnfinishedQuestions,
   getFirstUnfinishedQuestion,
   getEvaluationByInterviewId,
-  saveFinalEvaluation,
 } from "../repositories/interviewRepository";
 import { AppError } from "../utils/appError";
+import { saveEvaluationWithSkillEvidence } from "../repositories/skillRepository";
+import { skillEvidenceFromReport } from "./skills/skillEvidence";
 import {
   buildInterviewQuestionsPrompt,
   InterviewQuestionPromptInput,
@@ -347,9 +348,12 @@ export const generateFinalEvaluationService = async (
   const validatedEvaluation = FinalEvaluationSchema.parse(rawEvaluation);
 
   // 8. Persist to PostgreSQL
-  const savedEvaluation = await saveFinalEvaluation(
+  // The report and its skill updates are saved together.
+  const savedEvaluation = await saveEvaluationWithSkillEvidence(
     interviewId,
+    userId,
     validatedEvaluation,
+    skillEvidenceFromReport(validatedEvaluation),
   );
 
   return savedEvaluation;

@@ -8,6 +8,7 @@ import jobRoutes from "./routes/jobRoutes.js";
 import applicationRoutes from "./routes/applicationRoutes.js";
 import matchRoutes from "./routes/matchRoutes.js";
 import interviewRoutes from "./routes/interviewRoutes.js";
+import readinessRoutes from "./routes/readinessRoutes";
 import { AppError } from "./utils/appError";
 
 // Builds the Express app without starting the HTTP server, so tests can import it.
@@ -23,6 +24,7 @@ app.use("/api/jobs", jobRoutes);
 app.use("/api/applications", applicationRoutes);
 app.use("/api/matches", matchRoutes);
 app.use("/api/interviews", interviewRoutes);
+app.use("/api/readiness", readinessRoutes);
 
 app.get("/health", async (_req: Request, res: Response) => {
   try {

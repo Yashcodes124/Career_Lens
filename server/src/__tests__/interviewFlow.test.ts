@@ -18,12 +18,14 @@ const m = vi.hoisted(() => ({
     getEvaluationByInterviewId: vi.fn(),
     saveFinalEvaluation: vi.fn(),
   },
+  saveEvaluationWithSkillEvidence: vi.fn(),
   analyzeResume: vi.fn(),
   evaluateQuestionAnswer: vi.fn(),
 }));
 
 vi.mock("../config/db", () => ({ prisma: m.prisma }));
 vi.mock("../repositories/interviewRepository", () => m.repo);
+vi.mock("../repositories/skillRepository", () => ({ saveEvaluationWithSkillEvidence: m.saveEvaluationWithSkillEvidence }));
 vi.mock("../integrations/ai/aiClient", () => ({ analyzeResume: m.analyzeResume }));
 vi.mock("../modules/interview/interview.ai", () => ({ evaluateQuestionAnswer: m.evaluateQuestionAnswer }));
 
@@ -213,5 +215,36 @@ describe("generateFinalEvaluationService", () => {
       status: 409,
       code: "INTERVIEW_NOT_COMPLETE",
     });
+  });
+});
+
+describe("final report saves skill evidence with the report", () => {
+  it("passes WEAK and STRONG evidence from the report to the transactional save", async () => {
+    vi.clearAllMocks();
+    m.repo.getEvaluationByInterviewId.mockResolvedValue(null);
+    m.repo.getInterviewSessionById.mockResolvedValue(
+      interviewWith([question(1, { answer: "a", feedback: '{"score":70}' })], "COMPLETED"),
+    );
+    m.analyzeResume.mockResolvedValue(
+      JSON.stringify({
+        score: 70,
+        feedback: "Solid overall.",
+        breakdown: { communication: 60, technicalKnowledge: 70, problemSolving: 60, relevance: 65, confidence: 80 },
+        strengths: ["Clear React explanations"],
+        improvements: ["Docker deployment answers were vague"],
+        recommendation: "Practise Docker before the next round.",
+      }),
+    );
+    m.saveEvaluationWithSkillEvidence.mockResolvedValue({ id: "e1" });
+
+    await generateFinalEvaluationService("i1", "u1");
+
+    const evidence = m.saveEvaluationWithSkillEvidence.mock.calls[0][3];
+    expect(evidence).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ skill: "docker", status: "WEAK" }),
+        expect.objectContaining({ skill: "react", status: "STRONG" }),
+      ]),
+    );
   });
 });
