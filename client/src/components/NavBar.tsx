@@ -10,15 +10,26 @@ export const Navbar: React.FC = () => {
 
   return (
     <nav className="border-b border-slate-800 bg-slate-950">
-      <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4">
-        <Link to="/jobs" className="text-lg font-bold text-white">
+      <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 px-4 py-4">
+        <Link to="/dashboard" className="text-lg font-bold text-white">
           TrueHire
         </Link>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-1 sm:gap-2">
+          <Link
+            to="/dashboard"
+            className={`whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium transition ${
+              isActive("/dashboard")
+                ? "bg-indigo-500/10 text-indigo-300"
+                : "text-slate-400 hover:text-white"
+            }`}
+          >
+            Dashboard
+          </Link>
+
           <Link
             to="/jobs"
-            className={`rounded-lg px-3 py-2 text-sm font-medium transition ${
+            className={`whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium transition ${
               isActive("/jobs")
                 ? "bg-indigo-500/10 text-indigo-300"
                 : "text-slate-400 hover:text-white"
@@ -29,7 +40,7 @@ export const Navbar: React.FC = () => {
 
           <Link
             to="/saved-jobs"
-            className={`rounded-lg px-3 py-2 text-sm font-medium transition ${
+            className={`whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium transition ${
               isActive("/saved-jobs")
                 ? "bg-indigo-500/10 text-indigo-300"
                 : "text-slate-400 hover:text-white"
@@ -40,7 +51,7 @@ export const Navbar: React.FC = () => {
 
           <Link
             to="/applications"
-            className={`rounded-lg px-3 py-2 text-sm font-medium transition ${
+            className={`whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium transition ${
               isActive("/applications")
                 ? "bg-indigo-500/10 text-indigo-300"
                 : "text-slate-400 hover:text-white"
@@ -51,7 +62,7 @@ export const Navbar: React.FC = () => {
 
           <Link
             to="/resume"
-            className={`rounded-lg px-3 py-2 text-sm font-medium transition ${
+            className={`whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium transition ${
               isActive("/resume")
                 ? "bg-indigo-500/10 text-indigo-300"
                 : "text-slate-400 hover:text-white"
@@ -62,7 +73,7 @@ export const Navbar: React.FC = () => {
 
           <Link
             to="/profile"
-            className={`rounded-lg px-3 py-2 text-sm font-medium transition ${
+            className={`whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium transition ${
               isActive("/profile")
                 ? "bg-indigo-500/10 text-indigo-300"
                 : "text-slate-400 hover:text-white"

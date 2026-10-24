@@ -8,7 +8,7 @@ const actionLink = (action: NextAction): { to: string; label: string } | null =>
     case "UPLOAD_RESUME":
       return null;
     case "PRACTICE_SKILL":
-      return { to: "/jobs", label: "Find a job to practise for" };
+      return { to: "/jobs", label: `Find a job to practise ${action.skill}` };
     case "EXPLORE_JOBS":
       return { to: "/jobs", label: "Browse verified jobs" };
     case "START_INTERVIEW":

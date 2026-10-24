@@ -27,6 +27,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const clearError = () => setError(null);
 
+  useEffect(() => {
+    const onUnauthorized = () => {
+      setUser(null);
+      setToken(null);
+    };
+    window.addEventListener("truehire:unauthorized", onUnauthorized);
+    return () => window.removeEventListener("truehire:unauthorized", onUnauthorized);
+  }, []);
+
   // Initialize and verify existing token on app boot
   useEffect(() => {
     async function loadUser() {

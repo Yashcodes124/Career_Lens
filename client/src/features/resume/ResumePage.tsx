@@ -1,4 +1,3 @@
-import { ReadinessPanel } from "../readiness/ReadinessPanel";
 import React, { useState } from "react";
 import { Navbar } from "../../components/NavBar";
 import { ResumeParsedPreview } from "./ResumeParsedPreview";
@@ -33,9 +32,6 @@ export const ResumePage: React.FC = () => {
             Job matches and skill gaps are based on the active resume below.
           </p>
 
-        <div className="mt-6">
-          <ReadinessPanel />
-        </div>
         </header>
 
         {isLoading && (

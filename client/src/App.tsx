@@ -3,7 +3,8 @@ import {
   BrowserRouter as Router,
   Routes,
   Route,
-  Navigate,
+  useLocation,
+  useNavigate,
 } from "react-router-dom";
 import { AuthProvider } from "./features/auth/AuthContext";
 import { ProtectedRoute } from "./features/auth/ProtectedRoute";
@@ -21,6 +22,8 @@ import { LiveInterviewPage } from "./features/interview/LiveInterviewPage";
 import { InterviewEvaluationPage } from "./features/interview/InterviewEvaluationPage";
 import { SkillGapPage } from "./features/matching/SkillGapPage";
 import { ResumePage } from "./features/resume/ResumePage";
+import { DashboardPage } from "./features/dashboard/DashboardPage";
+import { LandingPage } from "./features/landing/LandingPage";
 
 export const App: React.FC = () => {
   return (
@@ -39,12 +42,11 @@ export const App: React.FC = () => {
               </ProtectedRoute>
             }
           />
-          {/* Dashboard / Profile Route */}
           <Route
             path="/dashboard"
             element={
               <ProtectedRoute>
-                <UserProfileCard />
+                <DashboardPage />
               </ProtectedRoute>
             }
           />
@@ -137,7 +139,7 @@ export const App: React.FC = () => {
             }
           />
           {/* Default route */}
-          <Route path="/" element={<Navigate to="/login" replace />} />
+          <Route path="/" element={<LandingPage />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </Router>
@@ -145,32 +147,48 @@ export const App: React.FC = () => {
   );
 };
 
-const LoginPage: React.FC = () => (
-  <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 flex items-center justify-center p-4">
-    <LoginForm
-      onSuccess={() => (window.location.href = "/profile")}
-      onSwitchToRegister={() => (window.location.href = "/register")}
-    />
-  </div>
+const AuthShell: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+  <div className="flex min-h-screen items-center justify-center bg-gray-950 p-4">{children}</div>
 );
 
-const RegisterPage: React.FC = () => (
-  <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 flex items-center justify-center p-4">
-    <RegisterForm
-      onSuccess={() => (window.location.href = "/onboarding")}
-      onSwitchToLogin={() => (window.location.href = "/login")}
-    />
-  </div>
-);
+// After sign-in, return the user to the page they asked for. Default: the dashboard.
+const LoginPage: React.FC = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const from = (location.state as { from?: string } | null)?.from ?? "/dashboard";
+  return (
+    <AuthShell>
+      <LoginForm
+        onSuccess={() => navigate(from, { replace: true })}
+        onSwitchToRegister={() => navigate("/register")}
+      />
+    </AuthShell>
+  );
+};
 
-const ProfileSetupPage: React.FC = () => (
-  <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 flex items-center justify-center p-4">
-    <ProfileSetupForm
-      onSuccess={() => (window.location.href = "/profile")}
-      onSkip={() => (window.location.href = "/profile")}
-    />
-  </div>
-);
+const RegisterPage: React.FC = () => {
+  const navigate = useNavigate();
+  return (
+    <AuthShell>
+      <RegisterForm
+        onSuccess={() => navigate("/onboarding", { replace: true })}
+        onSwitchToLogin={() => navigate("/login")}
+      />
+    </AuthShell>
+  );
+};
+
+const ProfileSetupPage: React.FC = () => {
+  const navigate = useNavigate();
+  return (
+    <AuthShell>
+      <ProfileSetupForm
+        onSuccess={() => navigate("/profile", { replace: true })}
+        onSkip={() => navigate("/profile", { replace: true })}
+      />
+    </AuthShell>
+  );
+};
 
 const NotFound: React.FC = () => (
   <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 flex items-center justify-center">

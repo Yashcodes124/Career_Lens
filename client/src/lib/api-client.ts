@@ -51,6 +51,14 @@ export async function apiClient<T>(
     );
   }
 
+  // An expired or revoked token signs the user out everywhere. Login and register are exempt.
+  const isLoginOrRegister =
+    endpoint === "/auth/login" || endpoint === "/auth/register";
+  if (response.status === 401 && token && !isLoginOrRegister) {
+    localStorage.removeItem(AUTH_TOKEN_KEY);
+    window.dispatchEvent(new Event("truehire:unauthorized"));
+  }
+
   if (!response.ok) {
     const body = (await response.json().catch(() => null)) as ErrorBody | null;
     throw new ApiError(
