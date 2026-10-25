@@ -47,7 +47,7 @@ export const SavedJobsPage: React.FC = () => {
       <div className="min-h-screen bg-slate-950 px-4 py-10 text-slate-100">
         <div className="mx-auto max-w-5xl">
           <header className="mb-8">
-            <p className="text-sm font-medium uppercase tracking-[0.28em] text-indigo-300">
+            <p className="text-sm font-medium tracking-[0.28em] text-teal-300">
               Career Lens
             </p>
 
@@ -74,7 +74,7 @@ export const SavedJobsPage: React.FC = () => {
                 No saved jobs yet
               </h2>
 
-              <p className="mt-2 text-sm text-slate-500">
+              <p className="mt-2 text-sm text-slate-400">
                 Save interesting jobs from the job board and they will appear
                 here.
               </p>
@@ -89,12 +89,12 @@ export const SavedJobsPage: React.FC = () => {
                   <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                     <div>
                       <div className="flex flex-wrap items-center gap-2">
-                        <span className="rounded-full border border-indigo-500/30 bg-indigo-500/10 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-indigo-300">
+                        <span className="rounded-full border border-teal-600/30 bg-teal-600/10 px-2 py-1 text-[10px] font-semibold tracking-wide text-teal-300">
                           Verified {job.source}
                         </span>
 
                         {job.isActive && (
-                          <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-1 text-[10px] font-medium uppercase tracking-wide text-emerald-300">
+                          <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-1 text-[10px] font-medium tracking-wide text-emerald-300">
                             Active
                           </span>
                         )}
@@ -122,7 +122,7 @@ export const SavedJobsPage: React.FC = () => {
                           href={job.url}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-indigo-500"
+                          className="rounded-lg bg-teal-700 px-4 py-2 text-sm font-medium text-white transition hover:bg-teal-600"
                         >
                           Apply
                         </a>

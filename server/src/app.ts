@@ -1,5 +1,6 @@
 import express, { NextFunction, Request, Response } from "express";
 import cors from "cors";
+import helmet from "helmet";
 import { env } from "./config/env.js";
 import { checkDatabaseConnection } from "./config/db.js";
 import authRoutes from "./routes/auth.js";
@@ -14,6 +15,7 @@ import { AppError } from "./utils/appError";
 // Builds the Express app without starting the HTTP server, so tests can import it.
 export const app = express();
 
+app.use(helmet());
 app.use(cors({ origin: env.CLIENT_URL, credentials: true }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));

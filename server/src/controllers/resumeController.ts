@@ -7,6 +7,7 @@ import {
   getUserResumeByIdService,
   getUserResumeService,
 } from "../services/resume/resumeService";
+import { tailorResumeService } from "../services/tailoring/tailoringService";
 
 export const createResume = async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -48,6 +49,23 @@ export const deleteResumeController = async (req: Request, res: Response, next: 
   try {
     await deleteResumeService(req.user!.userId, req.params.id);
     res.status(200).json({ success: true, message: "Resume deleted" });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const tailorResumeController = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const { jobId } = req.body ?? {};
+    if (typeof jobId !== "string" || jobId.length === 0) {
+      throw new AppError(400, "jobId is required", "VALIDATION_ERROR");
+    }
+    const data = await tailorResumeService(req.user!.userId, req.params.id, jobId);
+    res.status(200).json({ success: true, data });
   } catch (error) {
     next(error);
   }

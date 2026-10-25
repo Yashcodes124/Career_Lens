@@ -12,6 +12,7 @@ import {
   saveJobController,
 } from "../controllers/jobController";
 import { authMiddleware } from "../middleware/authMiddleware";
+import { requireRole } from "../middleware/requireRole";
 
 const router = Router();
 
@@ -22,6 +23,6 @@ router.get("/:id", authMiddleware, getJobByIdController);
 router.post("/:id/save", authMiddleware, saveJobController);
 router.delete("/:id/save", authMiddleware, unsaveJobController);
 
-router.post("/sync/greenhouse", authMiddleware, syncGreenhouseController);
+router.post("/sync/greenhouse", authMiddleware, requireRole("ADMIN"), syncGreenhouseController);
 
 export default router;

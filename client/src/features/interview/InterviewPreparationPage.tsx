@@ -49,7 +49,7 @@ export const InterviewPreparationPage: React.FC = () => {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-500"></div>
+        <div className="motion-safe:animate-spin rounded-full h-8 w-8 border-b-2 border-teal-600"></div>
         <span className="ml-3 text-slate-300">
           Loading interview details...
         </span>
@@ -88,7 +88,7 @@ export const InterviewPreparationPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-slate-900 py-8 px-4 text-slate-100">
       {/* Header */}
-      <div className="bg-slate-800/80 backdrop-blur border border-slate-700 mb-4  p-6 rounded-2xl shadow-xl">
+      <div className="bg-slate-800/80 border border-slate-700 mb-4  p-6 rounded-2xl ">
         <div className="flex justify-between items-start">
           <div>
             <h1 className="text-2xl font-bold text-white tracking-tight">
@@ -98,7 +98,7 @@ export const InterviewPreparationPage: React.FC = () => {
               {plan.company}
             </p>
           </div>
-          <span className="px-3 py-1 bg-indigo-500/20 text-indigo-300 border border-indigo-500/40 font-semibold text-xs rounded-full uppercase tracking-wider">
+          <span className="px-3 py-1 bg-teal-600/20 text-teal-300 border border-teal-600/40 font-semibold text-xs rounded-full ">
             Difficulty: {plan.difficulty}
           </span>
         </div>
@@ -108,7 +108,7 @@ export const InterviewPreparationPage: React.FC = () => {
       {/* Grid Specs */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4 ">
         {/* Session Stats */}
-        <div className="bg-slate-800/80 backdrop-blur border border-slate-700 p-6 rounded-2xl shadow-xl space-y-4">
+        <div className="bg-slate-800/80 border border-slate-700 p-6 rounded-2xl space-y-4">
           <h2 className="text-md font-semibold text-white border-b border-slate-700 pb-3">
             Session Overview
           </h2>
@@ -133,12 +133,12 @@ export const InterviewPreparationPage: React.FC = () => {
         </div>
 
         {/* Target Skills & Gaps */}
-        <div className="bg-slate-800/80 backdrop-blur border border-slate-700 p-6 rounded-2xl shadow-xl space-y-4">
+        <div className="bg-slate-800/80 border border-slate-700 p-6 rounded-2xl space-y-4">
           <h2 className="text-md font-semibold text-white border-b border-slate-700 pb-3">
             Skills & Focus Areas
           </h2>
           <div>
-            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
+            <p className="text-xs font-semibold text-slate-400 mb-2">
               Target Skills
             </p>
             <div className="flex flex-wrap gap-2">
@@ -154,7 +154,7 @@ export const InterviewPreparationPage: React.FC = () => {
           </div>
           {plan.topSkillGaps.length > 0 && (
             <div>
-              <p className="text-xs font-semibold text-amber-400 uppercase tracking-wider mb-2">
+              <p className="text-xs font-semibold text-amber-400 mb-2">
                 Top Focus Gaps
               </p>
               <div className="flex flex-wrap gap-2">
@@ -173,7 +173,7 @@ export const InterviewPreparationPage: React.FC = () => {
       </div>
 
       {/* Rounds Breakdown */}
-      <div className="bg-slate-800/80 backdrop-blur border border-slate-700 mb-4  p-6 rounded-2xl shadow-xl">
+      <div className="bg-slate-800/80 border border-slate-700 mb-4  p-6 rounded-2xl ">
         <h2 className="text-md font-semibold text-white mb-4 border-b border-slate-700 pb-3">
           Interview Structure
         </h2>
@@ -181,7 +181,7 @@ export const InterviewPreparationPage: React.FC = () => {
           {plan.rounds.map((round, idx) => (
             <div key={idx} className="py-3 flex justify-between items-center">
               <div className="flex items-center space-x-3">
-                <span className="w-6 h-6 rounded-full bg-slate-700 text-indigo-400 text-xs flex items-center justify-center font-bold border border-slate-600">
+                <span className="w-6 h-6 rounded-full bg-slate-700 text-teal-400 text-xs flex items-center justify-center font-bold border border-slate-600">
                   {idx + 1}
                 </span>
                 <span className="font-medium text-slate-200 text-sm">
@@ -197,11 +197,11 @@ export const InterviewPreparationPage: React.FC = () => {
       </div>
 
       {/* Action CTA */}
-      <div className="bg-slate-800/80 backdrop-blur border border-slate-700 p-6 rounded-2xl shadow-xl flex items-center justify-between">
+      <div className="bg-slate-800/80 border border-slate-700 p-6 rounded-2xl flex items-center justify-between">
         <div>
           <p className="text-sm font-medium text-slate-300">
             Current Status:{" "}
-            <span className="font-bold text-indigo-400 uppercase text-xs tracking-wider">
+            <span className="font-bold text-teal-400 text-xs ">
               {status}
             </span>
           </p>
@@ -214,7 +214,7 @@ export const InterviewPreparationPage: React.FC = () => {
           <button
             onClick={handleStartInterview}
             disabled={starting}
-            className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold rounded-lg shadow-lg shadow-indigo-600/30 disabled:opacity-50 transition"
+            className="px-6 py-2.5 bg-teal-700 hover:bg-teal-600 text-white font-semibold rounded-lg disabled:opacity-50 transition"
           >
             {starting ? "Starting..." : "Start Interview"}
           </button>
@@ -223,7 +223,7 @@ export const InterviewPreparationPage: React.FC = () => {
         {status === "IN_PROGRESS" && (
           <button
             onClick={handleStartInterview}
-            className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold rounded-lg shadow-lg shadow-indigo-600/30 transition"
+            className="px-6 py-2.5 bg-teal-700 hover:bg-teal-600 text-white font-semibold rounded-lg transition"
           >
             Continue Interview
           </button>
@@ -232,7 +232,7 @@ export const InterviewPreparationPage: React.FC = () => {
         {status === "COMPLETED" && (
           <button
             onClick={() => navigate(`/interviews/${interviewId}/evaluation`)}
-            className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-lg shadow-lg shadow-emerald-600/30 transition"
+            className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-lg transition"
           >
             View Evaluation
           </button>

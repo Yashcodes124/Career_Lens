@@ -28,10 +28,10 @@ export const ResumeUploader: React.FC = () => {
   const isBusy = upload.isPending;
 
   const borderClass = isDragging
-    ? "border-indigo-400 bg-indigo-500/10"
+    ? "border-teal-400 bg-teal-600/10"
     : errorMessage
       ? "border-red-700/60 bg-red-950/20"
-      : "border-slate-700 bg-slate-950/50";
+      : "border-slate-700 bg-transparent";
 
   return (
     <div className="space-y-3">
@@ -50,9 +50,9 @@ export const ResumeUploader: React.FC = () => {
       >
         {isBusy ? (
           <div className="flex flex-col items-center gap-2" role="status">
-            <Loader2 className="h-8 w-8 animate-spin text-indigo-400" aria-hidden="true" />
+            <Loader2 className="h-8 w-8 motion-safe:animate-spin text-teal-400" aria-hidden="true" />
             <p className="text-sm font-medium text-slate-200">Reading your resume</p>
-            <p className="text-xs text-slate-500">This usually takes under a minute.</p>
+            <p className="text-xs text-slate-400">This usually takes under a minute.</p>
           </div>
         ) : upload.isSuccess && !errorMessage ? (
           <div className="flex flex-col items-center gap-2" role="status">
@@ -60,25 +60,25 @@ export const ResumeUploader: React.FC = () => {
             <p className="text-sm font-medium text-slate-200">
               Parsed {upload.data.skills.length} skills from {upload.data.fileName ?? upload.data.title}
             </p>
-            <p className="text-xs text-slate-500">Upload another file to replace the active resume.</p>
+            <p className="text-xs text-slate-400">Upload another file to replace the active resume.</p>
           </div>
         ) : (
           <div className="flex flex-col items-center gap-2">
             {errorMessage ? (
               <AlertCircle className="h-8 w-8 text-red-400" aria-hidden="true" />
             ) : (
-              <FileUp className="h-8 w-8 text-indigo-400" aria-hidden="true" />
+              <FileUp className="h-8 w-8 text-teal-400" aria-hidden="true" />
             )}
             <p className="text-sm font-medium text-slate-200">Drop a PDF or DOCX here</p>
             <button
               type="button"
               onClick={() => inputRef.current?.click()}
               disabled={isBusy}
-              className="mt-1 rounded-xl border border-slate-700 bg-slate-800 px-4 py-2 text-xs font-medium text-slate-200 transition hover:border-indigo-500/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 disabled:opacity-50"
+              className="mt-1 rounded-xl bg-slate-800 px-4 py-2 text-xs font-medium text-slate-200 transition hover:border-teal-600/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-400 disabled:opacity-50"
             >
               Choose file
             </button>
-            <p className="text-xs text-slate-500">
+            <p className="text-pretty text-xs text-slate-400">
               Up to {MAX_RESUME_MB} MB. Use a file with selectable text, not a scan.
             </p>
           </div>

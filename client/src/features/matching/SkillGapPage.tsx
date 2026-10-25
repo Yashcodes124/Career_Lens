@@ -69,7 +69,7 @@ export const SkillGapPage: React.FC = () => {
     return (
       <Shell>
         <p className="text-gray-400">Choose a job to see its skill gaps.</p>
-        <Link to="/jobs" className="mt-4 inline-block text-indigo-400 hover:text-indigo-300">
+        <Link to="/jobs" className="mt-4 inline-block text-teal-400 hover:text-teal-300">
           Browse jobs
         </Link>
       </Shell>
@@ -92,7 +92,7 @@ export const SkillGapPage: React.FC = () => {
     return (
       <Shell>
         <p className="text-gray-400">Upload a resume to see how it compares with this job.</p>
-        <Link to="/resume" className="mt-4 inline-block text-indigo-400 hover:text-indigo-300">
+        <Link to="/resume" className="mt-4 inline-block text-teal-400 hover:text-teal-300">
           Upload a resume
         </Link>
       </Shell>
@@ -108,7 +108,7 @@ export const SkillGapPage: React.FC = () => {
         </div>
         <Link
           to={`/matches/${jobId}?resumeId=${resumeId}`}
-          className="text-sm text-indigo-400 hover:text-indigo-300"
+          className="text-sm text-teal-400 hover:text-teal-300"
         >
           Back to match details
         </Link>
@@ -141,7 +141,7 @@ export const SkillGapPage: React.FC = () => {
               type="button"
               onClick={() => setIsModalOpen(true)}
               disabled={data.status !== "OK" || !data.applicationId}
-              className="rounded-xl bg-indigo-600 px-5 py-2.5 font-medium text-white hover:bg-indigo-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300 disabled:cursor-not-allowed disabled:opacity-50"
+              className="rounded-xl bg-teal-700 px-5 py-2.5 font-medium text-white hover:bg-teal-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-300 disabled:cursor-not-allowed disabled:opacity-50"
             >
               Start mock interview
             </button>

@@ -20,7 +20,7 @@ export const Navbar: React.FC = () => {
             to="/dashboard"
             className={`whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium transition ${
               isActive("/dashboard")
-                ? "bg-indigo-500/10 text-indigo-300"
+                ? "bg-teal-600/10 text-teal-300"
                 : "text-slate-400 hover:text-white"
             }`}
           >
@@ -31,7 +31,7 @@ export const Navbar: React.FC = () => {
             to="/jobs"
             className={`whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium transition ${
               isActive("/jobs")
-                ? "bg-indigo-500/10 text-indigo-300"
+                ? "bg-teal-600/10 text-teal-300"
                 : "text-slate-400 hover:text-white"
             }`}
           >
@@ -42,7 +42,7 @@ export const Navbar: React.FC = () => {
             to="/saved-jobs"
             className={`whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium transition ${
               isActive("/saved-jobs")
-                ? "bg-indigo-500/10 text-indigo-300"
+                ? "bg-teal-600/10 text-teal-300"
                 : "text-slate-400 hover:text-white"
             }`}
           >
@@ -53,7 +53,7 @@ export const Navbar: React.FC = () => {
             to="/applications"
             className={`whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium transition ${
               isActive("/applications")
-                ? "bg-indigo-500/10 text-indigo-300"
+                ? "bg-teal-600/10 text-teal-300"
                 : "text-slate-400 hover:text-white"
             }`}
           >
@@ -64,7 +64,7 @@ export const Navbar: React.FC = () => {
             to="/resume"
             className={`whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium transition ${
               isActive("/resume")
-                ? "bg-indigo-500/10 text-indigo-300"
+                ? "bg-teal-600/10 text-teal-300"
                 : "text-slate-400 hover:text-white"
             }`}
           >
@@ -75,7 +75,7 @@ export const Navbar: React.FC = () => {
             to="/profile"
             className={`whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium transition ${
               isActive("/profile")
-                ? "bg-indigo-500/10 text-indigo-300"
+                ? "bg-teal-600/10 text-teal-300"
                 : "text-slate-400 hover:text-white"
             }`}
           >

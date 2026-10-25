@@ -67,7 +67,7 @@ export default function MatchResult({ result }: MatchResultProps) {
                   <p className="mt-1 text-xs text-gray-400">{gap.evidence}</p>
                 </div>
                 <span
-                  className={`shrink-0 rounded-full px-3 py-1 text-xs font-semibold uppercase ${PRIORITY_CLASSES[gap.priority]}`}
+                  className={`shrink-0 rounded-full px-3 py-1 text-xs font-semibold ${PRIORITY_CLASSES[gap.priority]}`}
                 >
                   {gap.priority} priority
                 </span>

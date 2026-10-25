@@ -23,6 +23,7 @@ import { InterviewEvaluationPage } from "./features/interview/InterviewEvaluatio
 import { SkillGapPage } from "./features/matching/SkillGapPage";
 import { ResumePage } from "./features/resume/ResumePage";
 import { DashboardPage } from "./features/dashboard/DashboardPage";
+import { TailoringPage } from "./features/tailoring/TailoringPage";
 import { LandingPage } from "./features/landing/LandingPage";
 
 export const App: React.FC = () => {
@@ -47,6 +48,14 @@ export const App: React.FC = () => {
             element={
               <ProtectedRoute>
                 <DashboardPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/tailor/:jobId"
+            element={
+              <ProtectedRoute>
+                <TailoringPage />
               </ProtectedRoute>
             }
           />
@@ -191,11 +200,11 @@ const ProfileSetupPage: React.FC = () => {
 };
 
 const NotFound: React.FC = () => (
-  <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 flex items-center justify-center">
+  <div className="min-h-screen bg-slate-950 flex items-center justify-center">
     <div className="text-center">
       <h1 className="text-4xl font-bold text-slate-100 mb-4">404</h1>
       <p className="text-slate-400 mb-6">Page not found</p>
-      <a href="/" className="text-indigo-400 hover:text-indigo-300 font-medium">
+      <a href="/" className="text-teal-400 hover:text-teal-300 font-medium">
         Go home
       </a>
     </div>

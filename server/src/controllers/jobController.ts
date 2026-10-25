@@ -1,6 +1,7 @@
 //server/src/controllers/jobController.ts
 
-import type { Request, Response } from "express";
+import type { NextFunction, Request, Response } from "express";
+import { parseJobQuery } from "../utils/jobQuery";
 import { getJobByIdService, getJobsService } from "../services/jobService";
 import { syncGreenhouseJobs } from "../services/greenhouseSyncService";
 import {
@@ -10,25 +11,22 @@ import {
 } from "../services/savedJobService";
 
 // get the jobs '/'
-export const getJobsController = async (req: Request, res: Response) => {
+export const getJobsController = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const jobs = await getJobsService();
-
+    const filters = parseJobQuery(req.query as Record<string, unknown>);
+    const { jobs, total } = await getJobsService(filters);
     res.status(200).json({
       success: true,
       jobs,
+      total,
+      page: filters.page,
+      pageSize: filters.pageSize,
     });
   } catch (error) {
-    console.error("Get jobs error:", error);
-
-    res.status(500).json({
-      success: false,
-      message: "Failed to fetch jobs",
-    });
+    next(error);
   }
 };
 
-//get jobs by '/:id'
 export const getJobByIdController = async (req: Request, res: Response) => {
   try {
     const job = await getJobByIdService(req.params.id);
@@ -91,7 +89,7 @@ export const syncGreenhouseController = async (req: Request, res: Response) => {
 
 //======================== Saved Jobs ======================
 
-export const saveJobController = async (req: Request, res: Response) => {
+export const saveJobController = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const userId = req.user!.userId;
     const { id } = req.params;
@@ -104,25 +102,11 @@ export const saveJobController = async (req: Request, res: Response) => {
       savedJob,
     });
   } catch (error) {
-    if (error instanceof Error && error.message === "Job not found") {
-      res.status(404).json({
-        success: false,
-        message: "Job not found",
-      });
-
-      return;
-    }
-
-    console.error("Save job error:", error);
-
-    res.status(500).json({
-      success: false,
-      message: "Failed to save job",
-    });
+    next(error);
   }
 };
 
-export const unsaveJobController = async (req: Request, res: Response) => {
+export const unsaveJobController = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const userId = req.user!.userId;
     const { id } = req.params;
@@ -134,21 +118,7 @@ export const unsaveJobController = async (req: Request, res: Response) => {
       message: "Job removed from saved jobs",
     });
   } catch (error) {
-    if (error instanceof Error && error.message === "Saved job not found") {
-      res.status(404).json({
-        success: false,
-        message: "Saved job not found",
-      });
-
-      return;
-    }
-
-    console.error("Unsave job error:", error);
-
-    res.status(500).json({
-      success: false,
-      message: "Failed to remove saved job",
-    });
+    next(error);
   }
 };
 

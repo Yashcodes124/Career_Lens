@@ -145,7 +145,7 @@ export const JobsPage: React.FC = () => {
       <div className="mx-auto max-w-7xl">
         <header className="mb-8 flex items-end justify-between gap-4">
           <div>
-            <p className="text-sm font-medium uppercase tracking-[0.28em] text-indigo-300">
+            <p className="text-sm font-medium tracking-[0.28em] text-teal-300">
               Career Lens
             </p>
             <h1 className="mt-3 text-4xl font-bold tracking-tight text-white">
@@ -160,7 +160,7 @@ export const JobsPage: React.FC = () => {
             value={search}
             onChange={(event) => setSearch(event.target.value)}
             placeholder="Search jobs or companies..."
-            className="rounded-xl border border-slate-800 bg-slate-900 px-4 py-3 text-sm text-slate-100 outline-none placeholder:text-slate-500 focus:border-indigo-500"
+            className="rounded-xl border border-slate-800 bg-slate-900 px-4 py-3 text-sm text-slate-100 outline-none placeholder:text-slate-500 focus:border-teal-600"
           />
 
           <input
@@ -168,7 +168,7 @@ export const JobsPage: React.FC = () => {
             value={locationFilter}
             onChange={(event) => setLocationFilter(event.target.value)}
             placeholder="Filter by location..."
-            className="rounded-xl border border-slate-800 bg-slate-900 px-4 py-3 text-sm text-slate-100 outline-none placeholder:text-slate-500 focus:border-indigo-500"
+            className="rounded-xl border border-slate-800 bg-slate-900 px-4 py-3 text-sm text-slate-100 outline-none placeholder:text-slate-500 focus:border-teal-600"
           />
 
           <button
@@ -183,7 +183,7 @@ export const JobsPage: React.FC = () => {
           </button>
         </div>
 
-        <p className="mb-4 text-sm text-slate-500">
+        <p className="mb-4 text-sm text-slate-400">
           {filteredJobs.length} {filteredJobs.length === 1 ? "job" : "jobs"}{" "}
           found
         </p>
@@ -222,13 +222,13 @@ export const JobsPage: React.FC = () => {
               ))}
             </div>
 
-            <aside className="rounded-3xl border border-slate-800 bg-slate-900/70 p-6 shadow-2xl shadow-slate-950/40">
+            <aside className="rounded-3xl border border-slate-800 bg-slate-900/70 p-6 ">
               {selectedJob ? (
                 <>
                   {/* Source , Role and actiness */}
                   <div className="flex items-start justify-between gap-4">
                     <div>
-                      <span className="rounded-full border border-indigo-500/30 bg-indigo-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-indigo-300">
+                      <span className="rounded-full border border-teal-600/30 bg-teal-600/10 px-3 py-1 text-xs font-semibold tracking-wide text-teal-300">
                         Verified {selectedJob.source}
                       </span>
                       <h2 className="mt-3 text-3xl font-bold text-white">
@@ -236,7 +236,7 @@ export const JobsPage: React.FC = () => {
                       </h2>
                     </div>
                     {selectedJob.isActive !== false && (
-                      <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-emerald-300">
+                      <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-1 text-[10px] font-semibold tracking-wide text-emerald-300">
                         Active
                       </span>
                     )}
@@ -246,13 +246,13 @@ export const JobsPage: React.FC = () => {
                     <span>{selectedJob.company}</span>
                     {selectedJob.location && (
                       <>
-                        <span className="text-slate-500">•</span>
+                        <span className="text-slate-400">•</span>
                         <span>{selectedJob.location}</span>
                       </>
                     )}
                   </div>
                   {/* Last Verified date and time */}
-                  <div className="mt-4 flex flex-wrap gap-4 text-xs text-slate-500">
+                  <div className="mt-4 flex flex-wrap gap-4 text-xs text-slate-400">
                     <span>
                       Last verified:{" "}
                       {formatLastSynced(selectedJob.lastSyncedAt)}
@@ -263,7 +263,7 @@ export const JobsPage: React.FC = () => {
 
                   {/* Salary range for job role */}
                   {selectedJob.salaryRange && (
-                    <p className="mt-4 text-sm text-indigo-200">
+                    <p className="mt-4 text-sm text-teal-200">
                       {selectedJob.salaryRange}
                     </p>
                   )}
@@ -275,7 +275,7 @@ export const JobsPage: React.FC = () => {
                         href={selectedJob.url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="flex-1 rounded-xl bg-indigo-600 px-5 py-3 text-center text-sm font-semibold text-white transition hover:bg-indigo-500"
+                        className="flex-1 rounded-xl bg-teal-700 px-5 py-3 text-center text-sm font-semibold text-white transition hover:bg-teal-600"
                       >
                         Apply on verified company posting
                       </a>
@@ -285,7 +285,7 @@ export const JobsPage: React.FC = () => {
                       type="button"
                       onClick={() => void handleToggleSave()}
                       disabled={isSaving}
-                      className="rounded-xl border border-slate-700 px-5 py-3 text-sm font-semibold text-slate-200 transition hover:border-indigo-500 hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
+                      className="rounded-xl border border-slate-700 px-5 py-3 text-sm font-semibold text-slate-200 transition hover:border-teal-600 hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       {isSaving
                         ? "Saving..."
@@ -296,7 +296,7 @@ export const JobsPage: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => void handleTrackApplication()}
-                      className="rounded-xl border border-slate-700 px-5 py-3 text-sm font-semibold text-slate-200 transition hover:border-indigo-500 hover:bg-slate-800"
+                      className="rounded-xl border border-slate-700 px-5 py-3 text-sm font-semibold text-slate-200 transition hover:border-teal-600 hover:bg-slate-800"
                     >
                       {isTracking ? "Tracking..." : "Track Application"}
                     </button>

@@ -95,7 +95,7 @@ export const OnboardingWizard: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-4">
-      <div className="w-full max-w-2xl bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl p-8 backdrop-blur-xl">
+      <div className="w-full max-w-2xl bg-slate-900 border border-slate-800 rounded-2xl p-8 ">
         {/* Progress Bar */}
         <div className="mb-8">
           <div className="flex justify-between items-center mb-3">
@@ -105,10 +105,10 @@ export const OnboardingWizard: React.FC = () => {
                 return (
                   <div key={label} className="flex items-center gap-2">
                     <div
-                      className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
+                      className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-colors ${
                         currentStep >= stepNum
-                          ? "bg-indigo-600 text-white shadow-lg shadow-indigo-600/30"
-                          : "bg-slate-800 text-slate-500"
+                          ? "bg-teal-700 text-white "
+                          : "bg-slate-800 text-slate-400"
                       }`}
                     >
                       {stepNum}
@@ -117,7 +117,7 @@ export const OnboardingWizard: React.FC = () => {
                       className={`text-xs font-medium hidden sm:inline ${
                         currentStep >= stepNum
                           ? "text-slate-200"
-                          : "text-slate-500"
+                          : "text-slate-400"
                       }`}
                     >
                       {label}
@@ -129,7 +129,7 @@ export const OnboardingWizard: React.FC = () => {
           </div>
           <div className="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden">
             <div
-              className="h-full bg-gradient-to-r from-indigo-500 to-purple-600 transition-all duration-300"
+              className="h-full bg-teal-600 transition-[width] duration-300"
               style={{ width: `${((currentStep - 1) / 3) * 100}%` }}
             />
           </div>
@@ -169,7 +169,7 @@ export const OnboardingWizard: React.FC = () => {
               </p>
             </div>
             <div>
-              <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
+              <label className="block text-xs font-semibold text-slate-300 mb-2">
                 Target Job Title
               </label>
               <input
@@ -177,11 +177,11 @@ export const OnboardingWizard: React.FC = () => {
                 value={targetRole}
                 onChange={(e) => setTargetRole(e.target.value)}
                 placeholder="e.g. Senior Backend Engineer, Product Manager"
-                className="w-full px-4 py-3 bg-slate-950/80 border border-slate-800 rounded-xl text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
+                className="w-full px-4 py-3 bg-slate-950/80 border border-slate-800 rounded-xl text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-teal-600 text-sm"
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
+              <label className="block text-xs font-semibold text-slate-300 mb-2">
                 Experience Level
               </label>
               <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
@@ -190,9 +190,9 @@ export const OnboardingWizard: React.FC = () => {
                     key={level}
                     type="button"
                     onClick={() => setExperienceLevel(level)}
-                    className={`px-3 py-2 rounded-lg text-xs font-medium border transition-all ${
+                    className={`px-3 py-2 rounded-lg text-xs font-medium border transition-colors ${
                       experienceLevel === level
-                        ? "bg-indigo-600 border-indigo-500 text-white"
+                        ? "bg-teal-700 border-teal-600 text-white"
                         : "bg-slate-950/50 border-slate-800 text-slate-300 hover:border-slate-700"
                     }`}
                   >
@@ -221,9 +221,9 @@ export const OnboardingWizard: React.FC = () => {
                   key={loc}
                   type="button"
                   onClick={() => handleLocationToggle(loc)}
-                  className={`px-3 py-2 rounded-lg text-xs font-medium border flex items-center gap-1.5 transition-all ${
+                  className={`px-3 py-2 rounded-lg text-xs font-medium border flex items-center gap-1.5 transition-colors ${
                     selectedLocations.includes(loc)
-                      ? "bg-indigo-600 border-indigo-500 text-white"
+                      ? "bg-teal-700 border-teal-600 text-white"
                       : "bg-slate-950/50 border-slate-800 text-slate-300 hover:border-slate-700"
                   }`}
                 >
@@ -238,7 +238,7 @@ export const OnboardingWizard: React.FC = () => {
                 value={customLocation}
                 onChange={(e) => setCustomLocation(e.target.value)}
                 placeholder="Add custom location..."
-                className="flex-1 px-3 py-2 bg-slate-950/80 border border-slate-800 rounded-xl text-slate-100 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="flex-1 px-3 py-2 bg-slate-950/80 border border-slate-800 rounded-xl text-slate-100 text-xs focus:outline-none focus:ring-2 focus:ring-teal-600"
               />
               <button
                 type="button"
@@ -264,7 +264,7 @@ export const OnboardingWizard: React.FC = () => {
             </div>
             <div className="bg-slate-950/60 border border-slate-800 rounded-xl p-5 space-y-4">
               <div>
-                <span className="text-xs text-slate-500 font-semibold uppercase">
+                <span className="text-xs text-slate-400 font-semibold ">
                   Resume File
                 </span>
                 <p className="text-sm font-medium text-slate-200">
@@ -274,7 +274,7 @@ export const OnboardingWizard: React.FC = () => {
                 </p>
               </div>
               <div>
-                <span className="text-xs text-slate-500 font-semibold uppercase">
+                <span className="text-xs text-slate-400 font-semibold ">
                   Target Role
                 </span>
                 <p className="text-sm font-medium text-slate-200">
@@ -282,7 +282,7 @@ export const OnboardingWizard: React.FC = () => {
                 </p>
               </div>
               <div>
-                <span className="text-xs text-slate-500 font-semibold uppercase">
+                <span className="text-xs text-slate-400 font-semibold ">
                   Experience Level
                 </span>
                 <p className="text-sm font-medium text-slate-200">
@@ -290,7 +290,7 @@ export const OnboardingWizard: React.FC = () => {
                 </p>
               </div>
               <div>
-                <span className="text-xs text-slate-500 font-semibold uppercase">
+                <span className="text-xs text-slate-400 font-semibold ">
                   Preferred Locations
                 </span>
                 <p className="text-sm font-medium text-slate-200">
@@ -309,7 +309,7 @@ export const OnboardingWizard: React.FC = () => {
             <button
               type="button"
               onClick={handleBack}
-              className="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-medium flex items-center gap-2 transition-all border border-slate-700"
+              className="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-medium flex items-center gap-2 transition-colors border border-slate-700"
             >
               <ArrowLeft className="w-4 h-4" />
               Back
@@ -322,7 +322,7 @@ export const OnboardingWizard: React.FC = () => {
             <button
               type="button"
               onClick={handleNext}
-              className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-medium flex items-center gap-2 transition-all shadow-lg shadow-indigo-600/20"
+              className="px-5 py-2.5 bg-teal-700 hover:bg-teal-600 text-white rounded-xl text-xs font-medium flex items-center gap-2 transition-colors "
             >
               Continue
               <ArrowRight className="w-4 h-4" />
@@ -332,11 +332,11 @@ export const OnboardingWizard: React.FC = () => {
               type="button"
               onClick={handleComplete}
               disabled={isSubmitting}
-              className="px-6 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white rounded-xl text-xs font-medium flex items-center gap-2 transition-all shadow-lg shadow-indigo-600/30 disabled:opacity-50"
+              className="px-6 py-2.5 bg-teal-700 hover:bg-teal-600 text-white rounded-xl text-xs font-medium flex items-center gap-2 transition-colors disabled:opacity-50"
             >
               {isSubmitting ? (
                 <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <Loader2 className="w-4 h-4 motion-safe:animate-spin" />
                   Saving Profile...
                 </>
               ) : (

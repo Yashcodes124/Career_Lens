@@ -67,12 +67,12 @@ export const PreInterviewModal: React.FC<PreInterviewModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md">
-      <div className="w-full max-w-lg bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl overflow-hidden p-6 space-y-6">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 ">
+      <div className="w-full max-w-lg bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden p-6 space-y-6">
         {/* Modal Header */}
         <div className="flex justify-between items-start border-b border-slate-800 pb-4">
           <div>
-            <div className="inline-flex items-center gap-1.5 text-xs font-semibold text-indigo-400 uppercase tracking-wider mb-1">
+            <div className="inline-flex items-center gap-1.5 text-xs font-semibold text-teal-400 mb-1">
               <Sliders className="w-3.5 h-3.5" /> Interview Customizer
             </div>
             <h2 className="text-lg font-bold text-slate-100">
@@ -84,7 +84,7 @@ export const PreInterviewModal: React.FC<PreInterviewModalProps> = ({
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 text-slate-400 hover:text-slate-200 rounded-lg bg-slate-800/50 hover:bg-slate-800 transition-all"
+            className="p-1.5 text-slate-400 hover:text-slate-200 rounded-lg bg-slate-800/50 hover:bg-slate-800 transition-colors"
           >
             <X className="w-4 h-4" />
           </button>
@@ -92,8 +92,8 @@ export const PreInterviewModal: React.FC<PreInterviewModalProps> = ({
 
         {/* Duration Selection */}
         <div className="space-y-2">
-          <label className="text-xs font-semibold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
-            <Clock className="w-3.5 h-3.5 text-indigo-400" /> Duration
+          <label className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
+            <Clock className="w-3.5 h-3.5 text-teal-400" /> Duration
           </label>
           <div className="grid grid-cols-3 gap-2">
             {[15, 30, 45].map((mins) => (
@@ -101,9 +101,9 @@ export const PreInterviewModal: React.FC<PreInterviewModalProps> = ({
                 key={mins}
                 type="button"
                 onClick={() => setDuration(mins)}
-                className={`py-2 px-3 rounded-xl text-xs font-semibold border transition-all ${
+                className={`py-2 px-3 rounded-xl text-xs font-semibold border transition-colors ${
                   duration === mins
-                    ? "bg-indigo-600 border-indigo-500 text-white shadow-md shadow-indigo-600/20"
+                    ? "bg-teal-700 border-teal-600 text-white "
                     : "bg-slate-950/60 border-slate-800 text-slate-400 hover:border-slate-700"
                 }`}
               >
@@ -115,8 +115,8 @@ export const PreInterviewModal: React.FC<PreInterviewModalProps> = ({
 
         {/* Difficulty Selection */}
         <div className="space-y-2">
-          <label className="text-xs font-semibold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
-            <Brain className="w-3.5 h-3.5 text-indigo-400" /> Difficulty Level
+          <label className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
+            <Brain className="w-3.5 h-3.5 text-teal-400" /> Difficulty Level
           </label>
           <div className="grid grid-cols-3 gap-2">
             {(["EASY", "MEDIUM", "HARD"] as const).map((level) => (
@@ -124,9 +124,9 @@ export const PreInterviewModal: React.FC<PreInterviewModalProps> = ({
                 key={level}
                 type="button"
                 onClick={() => setDifficulty(level)}
-                className={`py-2 px-3 rounded-xl text-xs font-semibold border transition-all ${
+                className={`py-2 px-3 rounded-xl text-xs font-semibold border transition-colors ${
                   difficulty === level
-                    ? "bg-indigo-600 border-indigo-500 text-white shadow-md shadow-indigo-600/20"
+                    ? "bg-teal-700 border-teal-600 text-white "
                     : "bg-slate-950/60 border-slate-800 text-slate-400 hover:border-slate-700"
                 }`}
               >
@@ -138,8 +138,8 @@ export const PreInterviewModal: React.FC<PreInterviewModalProps> = ({
 
         {/* Topic Focus Area */}
         <div className="space-y-2">
-          <label className="text-xs font-semibold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
-            <Target className="w-3.5 h-3.5 text-indigo-400" /> Focus Topics
+          <label className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
+            <Target className="w-3.5 h-3.5 text-teal-400" /> Focus Topics
           </label>
           <div className="flex flex-wrap gap-2 max-h-36 overflow-y-auto pr-1">
             {topicsToDisplay.map((topic) => {
@@ -149,13 +149,13 @@ export const PreInterviewModal: React.FC<PreInterviewModalProps> = ({
                   key={topic}
                   type="button"
                   onClick={() => toggleTopic(topic)}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-medium border flex items-center gap-1.5 transition-all ${
+                  className={`px-3 py-1.5 rounded-xl text-xs font-medium border flex items-center gap-1.5 transition-colors ${
                     isSelected
-                      ? "bg-indigo-600/20 border-indigo-500/50 text-indigo-300"
+                      ? "bg-teal-700/20 border-teal-600/50 text-teal-300"
                       : "bg-slate-950/60 border-slate-800 text-slate-400 hover:border-slate-700"
                   }`}
                 >
-                  <Sparkles className="w-3 h-3 text-indigo-400" />
+                  <Sparkles className="w-3 h-3 text-teal-400" />
                   {topic}
                 </button>
               );
@@ -168,14 +168,14 @@ export const PreInterviewModal: React.FC<PreInterviewModalProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2.5 rounded-xl text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-300 transition-all"
+            className="px-4 py-2.5 rounded-xl text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors"
           >
             Cancel
           </button>
           <button
             type="button"
             onClick={handleStart}
-            className="px-5 py-2.5 rounded-xl text-xs font-semibold bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white flex items-center gap-2 transition-all shadow-lg shadow-indigo-600/30"
+            className="px-5 py-2.5 rounded-xl text-xs font-semibold bg-teal-700 hover:bg-teal-600 text-white flex items-center gap-2 transition-colors "
           >
             <Play className="w-3.5 h-3.5 fill-current" />
             Start Session

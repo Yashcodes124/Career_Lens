@@ -82,10 +82,16 @@ export default function MatchPage() {
           </p>
         </div>
 
-        <div className="mb-6 flex justify-end">
+        <div className="mb-6 flex justify-end gap-4">
+          <Link
+            to={`/tailor/${jobId}?resumeId=${resumeId}`}
+            className="text-sm text-teal-400 hover:text-teal-300"
+          >
+            Tailor resume
+          </Link>
           <Link
             to={`/skill-gaps/${jobId}?resumeId=${resumeId}`}
-            className="text-sm text-indigo-400 hover:text-indigo-300"
+            className="text-sm text-teal-400 hover:text-teal-300"
           >
             Open skill gap plan
           </Link>

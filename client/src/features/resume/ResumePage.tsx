@@ -36,8 +36,8 @@ export const ResumePage: React.FC = () => {
 
         {isLoading && (
           <div className="space-y-4" aria-busy="true" aria-label="Loading resumes">
-            <div className="h-40 animate-pulse rounded-2xl bg-slate-900" />
-            <div className="h-64 animate-pulse rounded-2xl bg-slate-900" />
+            <div className="h-40 motion-safe:animate-pulse rounded-2xl bg-slate-900" />
+            <div className="h-64 motion-safe:animate-pulse rounded-2xl bg-slate-900" />
           </div>
         )}
 
@@ -71,11 +71,11 @@ export const ResumePage: React.FC = () => {
             <section className="rounded-2xl border border-slate-800 bg-slate-900/60 p-6">
               <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
                 <div className="min-w-0">
-                  <p className="text-xs uppercase tracking-wide text-slate-500">Active resume</p>
+                  <p className="text-xs tracking-wide text-slate-400">Active resume</p>
                   <h2 className="truncate text-lg font-medium text-white">
                     {active.fileName ?? active.title}
                   </h2>
-                  <p className="text-xs text-slate-500">
+                  <p className="text-xs text-slate-400">
                     Uploaded {new Date(active.createdAt).toLocaleDateString()} ·{" "}
                     {active.experienceYrs} yr experience
                   </p>
@@ -120,12 +120,12 @@ export const ResumePage: React.FC = () => {
             </section>
 
             <aside className="space-y-6">
-              <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-6">
+              <div className="border-t border-slate-800 pt-6">
                 <h2 className="mb-3 text-sm font-semibold text-slate-200">Upload a new version</h2>
                 <ResumeUploader />
               </div>
 
-              <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-6">
+              <div className="border-t border-slate-800 pt-6">
                 <h2 className="mb-3 text-sm font-semibold text-slate-200">All resumes</h2>
                 <ul className="space-y-2">
                   {resumes?.map((resume) => (
@@ -134,14 +134,14 @@ export const ResumePage: React.FC = () => {
                         type="button"
                         onClick={() => setSelectedId(resume.id)}
                         aria-pressed={resume.id === active.id}
-                        className={`w-full rounded-xl border px-3 py-2 text-left text-sm transition ${
+                        className={`w-full rounded-lg px-3 py-2 text-left text-sm transition-colors ${
                           resume.id === active.id
-                            ? "border-indigo-500/60 bg-indigo-500/10 text-indigo-200"
-                            : "border-slate-800 text-slate-300 hover:border-slate-600"
+                            ? "bg-teal-600/10 text-teal-200"
+                            : "text-slate-300 hover:bg-slate-800/60"
                         }`}
                       >
                         <span className="block truncate">{resume.fileName ?? resume.title}</span>
-                        <span className="text-xs text-slate-500">
+                        <span className="text-xs text-slate-400">
                           {new Date(resume.createdAt).toLocaleDateString()} · {resume.skills.length} skills
                         </span>
                       </button>

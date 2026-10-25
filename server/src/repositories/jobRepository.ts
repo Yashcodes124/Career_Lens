@@ -1,3 +1,5 @@
+import type { JobQuery } from "../utils/jobQuery";
+import { Prisma } from "@prisma/client";
 //src\repositories\jobRepository.ts
 
 import { prisma } from "../config/db";
@@ -52,16 +54,35 @@ export const upsertJobs = async (jobs: CanonicalJob[]) => {
 };
 
 //find the jobs that are active
-export const getJobs = async () => {
-  return await prisma.job.findMany({
-    where: {
-      isActive: true,
-    },
-    orderBy: {
-      lastSyncedAt: "desc",
-    },
-  });
+export const getJobs = async (filters: JobQuery) => {
+  const where: Prisma.JobWhereInput = { isActive: true };
+
+  if (filters.q) {
+    where.OR = [
+      { title: { contains: filters.q, mode: "insensitive" } },
+      { company: { contains: filters.q, mode: "insensitive" } },
+    ];
+  }
+  if (filters.location) {
+    where.location = { contains: filters.location, mode: "insensitive" };
+  }
+  if (filters.source) {
+    where.source = filters.source;
+  }
+
+  const [jobs, total] = await prisma.$transaction([
+    prisma.job.findMany({
+      where,
+      orderBy: { lastSyncedAt: "desc" },
+      skip: (filters.page - 1) * filters.pageSize,
+      take: filters.pageSize,
+    }),
+    prisma.job.count({ where }),
+  ]);
+
+  return { jobs, total };
 };
+
 
 //find a active job
 export const getJobById = async (id: string) => {

@@ -19,15 +19,15 @@ export const JobCard: React.FC<JobCardProps> = ({
   return (
     <div
       onClick={() => onSelect(job)}
-      className={`w-full cursor-pointer rounded-2xl border p-5 transition-all duration-200 ${
+      className={`w-full cursor-pointer rounded-2xl border p-5 transition-colors duration-200 ${
         isSelected
-          ? "border-indigo-500 bg-indigo-500/10 shadow-lg shadow-indigo-500/10"
+          ? "border-teal-600 bg-teal-600/10 "
           : "border-slate-800 bg-slate-900/60 hover:border-slate-700 hover:bg-slate-900"
       }`}
     >
       <div className="flex items-start justify-between gap-4">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-indigo-300">
+          <p className="text-xs font-semibold tracking-[0.2em] text-teal-300">
             {job.source}
           </p>
           <h3 className="mt-2 text-xl font-semibold text-slate-100">
@@ -36,7 +36,7 @@ export const JobCard: React.FC<JobCardProps> = ({
         </div>
 
         {job.isActive !== false && (
-          <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-[10px] font-medium uppercase tracking-wide text-emerald-300">
+          <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-[10px] font-medium tracking-wide text-emerald-300">
             Active
           </span>
         )}
@@ -46,7 +46,7 @@ export const JobCard: React.FC<JobCardProps> = ({
         <span>{job.company}</span>
         {job.location && (
           <>
-            <span className="text-slate-500">•</span>
+            <span className="text-slate-400">•</span>
             <span>{job.location}</span>
           </>
         )}

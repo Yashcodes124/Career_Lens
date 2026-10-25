@@ -49,7 +49,7 @@ export function ReadinessPanel() {
           {actionLink(data.nextAction) && (
             <Link
               to={actionLink(data.nextAction)!.to}
-              className="mt-4 inline-block rounded-xl bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300"
+              className="mt-4 inline-block rounded-xl bg-teal-700 px-4 py-2 text-sm font-medium text-white hover:bg-teal-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-300"
             >
               {actionLink(data.nextAction)!.label}
             </Link>
@@ -67,7 +67,7 @@ export function ReadinessPanel() {
                       className="flex items-center justify-between gap-4 rounded-xl border border-gray-800 bg-gray-950 p-3"
                     >
                       <span className="font-medium text-white">{s.skill}</span>
-                      <span className="rounded-full bg-red-500/10 px-3 py-1 text-xs font-semibold uppercase text-red-400">
+                      <span className="rounded-full bg-red-500/10 px-3 py-1 text-xs font-semibold text-red-400">
                         Weak
                       </span>
                     </li>

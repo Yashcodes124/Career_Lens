@@ -24,7 +24,7 @@ const statusLabels: Record<ApplicationStatus, string> = {
 const statusColors: Record<ApplicationStatus, string> = {
   SAVED: "bg-slate-500/10 text-slate-300 border-slate-500/20",
   APPLIED: "bg-blue-500/10 text-blue-300 border-blue-500/20",
-  INTERVIEWING: "bg-purple-500/10 text-purple-300 border-purple-500/20",
+  INTERVIEWING: "bg-sky-500/10 text-sky-300 border-sky-500/20",
   OFFER: "bg-emerald-500/10 text-emerald-300 border-emerald-500/20",
   REJECTED: "bg-red-500/10 text-red-300 border-red-500/20",
 };
@@ -109,7 +109,7 @@ export const TrackerPage: React.FC = () => {
       <div className="mx-auto max-w-7xl">
         <header className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <p className="text-sm font-medium uppercase tracking-[0.28em] text-indigo-300">
+            <p className="text-sm font-medium tracking-[0.28em] text-teal-300">
               Career Lens
             </p>
 
@@ -124,7 +124,7 @@ export const TrackerPage: React.FC = () => {
 
           <Link
             to="/jobs"
-            className="inline-flex items-center justify-center rounded-xl bg-indigo-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-indigo-500"
+            className="inline-flex items-center justify-center rounded-xl bg-teal-700 px-5 py-3 text-sm font-semibold text-white transition hover:bg-teal-600"
           >
             Find Jobs
           </Link>
@@ -142,13 +142,13 @@ export const TrackerPage: React.FC = () => {
               No applications yet
             </h2>
 
-            <p className="mt-2 text-sm text-slate-500">
+            <p className="mt-2 text-sm text-slate-400">
               Track a job from the Job Feed to see it here.
             </p>
 
             <Link
               to="/jobs"
-              className="mt-6 inline-flex rounded-xl bg-indigo-600 px-5 py-3 text-sm font-semibold text-white hover:bg-indigo-500"
+              className="mt-6 inline-flex rounded-xl bg-teal-700 px-5 py-3 text-sm font-semibold text-white hover:bg-teal-600"
             >
               Browse Jobs
             </Link>
@@ -172,7 +172,7 @@ export const TrackerPage: React.FC = () => {
                             : status === "APPLIED"
                               ? "bg-blue-400"
                               : status === "INTERVIEWING"
-                                ? "bg-purple-400"
+                                ? "bg-sky-400"
                                 : status === "OFFER"
                                   ? "bg-emerald-400"
                                   : "bg-red-400"
@@ -256,7 +256,7 @@ const ApplicationCard: React.FC<ApplicationCardProps> = ({
     <article className="rounded-xl border border-slate-800 bg-slate-950/70 p-4 transition hover:border-slate-700">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-indigo-300">
+          <p className="text-xs font-semibold tracking-wide text-teal-300">
             {job.source}
           </p>
 
@@ -265,12 +265,12 @@ const ApplicationCard: React.FC<ApplicationCardProps> = ({
           <p className="mt-1 text-sm text-slate-400">{job.company}</p>
 
           {job.location && (
-            <p className="mt-1 text-xs text-slate-500">{job.location}</p>
+            <p className="mt-1 text-xs text-slate-400">{job.location}</p>
           )}
         </div>
 
         <span
-          className={`rounded-full border px-2 py-1 text-[10px] font-semibold uppercase ${statusColors[application.status]}`}
+          className={`rounded-full border px-2 py-1 text-[10px] font-semibold ${statusColors[application.status]}`}
         >
           {statusLabels[application.status]}
         </span>
@@ -279,7 +279,7 @@ const ApplicationCard: React.FC<ApplicationCardProps> = ({
       {application.matchScore != null && (
         <div className="mt-4">
           <div className="flex justify-between text-xs">
-            <span className="text-slate-500">Match</span>
+            <span className="text-slate-400">Match</span>
 
             <span className="font-semibold text-emerald-300">
               {application.matchScore}%
@@ -297,7 +297,7 @@ const ApplicationCard: React.FC<ApplicationCardProps> = ({
         </div>
       )}
 
-      <p className="mt-4 text-xs text-slate-500">
+      <p className="mt-4 text-xs text-slate-400">
         Updated {new Date(application.updatedAt).toLocaleDateString()}
       </p>
 
@@ -307,7 +307,7 @@ const ApplicationCard: React.FC<ApplicationCardProps> = ({
             href={job.url}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex-1 rounded-lg border border-slate-700 px-3 py-2 text-center text-xs font-medium text-slate-300 transition hover:border-indigo-500 hover:text-indigo-300"
+            className="flex-1 rounded-lg border border-slate-700 px-3 py-2 text-center text-xs font-medium text-slate-300 transition hover:border-teal-600 hover:text-teal-300"
           >
             View Job
           </a>
@@ -322,7 +322,7 @@ const ApplicationCard: React.FC<ApplicationCardProps> = ({
               event.target.value as ApplicationStatus,
             )
           }
-          className="rounded-lg border border-slate-700 bg-slate-900 px-2 py-2 text-xs text-slate-300 outline-none focus:border-indigo-500"
+          className="rounded-lg border border-slate-700 bg-slate-900 px-2 py-2 text-xs text-slate-300 outline-none focus:border-teal-600"
         >
           {statuses.map((status) => (
             <option key={status} value={status}>
@@ -342,7 +342,7 @@ interface StatCardProps {
 
 const StatCard: React.FC<StatCardProps> = ({ label, value }) => (
   <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
-    <p className="text-sm text-slate-500">{label}</p>
+    <p className="text-sm text-slate-400">{label}</p>
     <p className="mt-2 text-2xl font-bold text-white">{value}</p>
   </div>
 );

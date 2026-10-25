@@ -64,7 +64,7 @@ export const ResumeParsedPreview: React.FC<{ resume: ResumeSummary }> = ({ resum
                   {item.company && <span className="text-slate-400"> at {item.company}</span>}
                 </p>
                 {formatDuration(item.durationMonths) && (
-                  <p className="text-xs text-slate-500">{formatDuration(item.durationMonths)}</p>
+                  <p className="text-xs text-slate-400">{formatDuration(item.durationMonths)}</p>
                 )}
                 {item.description && <p className="mt-1 text-slate-400">{item.description}</p>}
               </li>

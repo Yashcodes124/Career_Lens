@@ -1,9 +1,10 @@
+import type { JobQuery } from "../utils/jobQuery";
 //src\services\jobService.ts
 
 import { getJobs, getJobById } from "../repositories/jobRepository";
 
-export const getJobsService = async () => {
-  return await getJobs();
+export const getJobsService = async (filters: JobQuery) => {
+  return await getJobs(filters);
 };
 
 export const getJobByIdService = async (id: string) => {

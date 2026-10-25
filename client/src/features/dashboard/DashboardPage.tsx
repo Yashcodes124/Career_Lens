@@ -26,7 +26,7 @@ const ApplicationsCard: React.FC<{ resumeId?: string }> = ({ resumeId }) => {
         <h2 id="applications-heading" className="text-lg font-semibold text-white">
           Applications
         </h2>
-        <Link to="/applications" className="text-sm text-indigo-400 hover:text-indigo-300">
+        <Link to="/applications" className="text-sm text-teal-400 hover:text-teal-300">
           View all
         </Link>
       </div>
@@ -53,7 +53,7 @@ const ApplicationsCard: React.FC<{ resumeId?: string }> = ({ resumeId }) => {
           </p>
           <Link
             to="/jobs"
-            className="mt-3 inline-block rounded-xl border border-gray-700 px-4 py-2 text-sm text-white hover:bg-gray-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300"
+            className="mt-3 inline-block rounded-xl border border-gray-700 px-4 py-2 text-sm text-white hover:bg-gray-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-300"
           >
             Browse verified jobs
           </Link>
@@ -79,7 +79,7 @@ const ApplicationRow: React.FC<{ application: Application; resumeId?: string }> 
   return (
     <li className="flex items-center justify-between gap-4 py-3">
       <div className="min-w-0">
-        <Link to={matchPath} className="block truncate font-medium text-white hover:text-indigo-300">
+        <Link to={matchPath} className="block truncate font-medium text-white hover:text-teal-300">
           {application.job.title}
         </Link>
         <p className="truncate text-sm text-gray-400">{application.job.company}</p>
@@ -126,7 +126,7 @@ const ResumeCard: React.FC = () => {
           </p>
           <Link
             to="/resume"
-            className="mt-3 inline-block rounded-xl bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300"
+            className="mt-3 inline-block rounded-xl bg-teal-700 px-4 py-2 text-sm font-medium text-white hover:bg-teal-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-300"
           >
             Upload a resume
           </Link>
@@ -139,7 +139,7 @@ const ResumeCard: React.FC = () => {
           <p className="mt-1 text-sm text-gray-400">
             Uploaded {new Date(latest.createdAt).toLocaleDateString()} · {latest.skills.length} skills
           </p>
-          <Link to="/resume" className="mt-3 inline-block text-sm text-indigo-400 hover:text-indigo-300">
+          <Link to="/resume" className="mt-3 inline-block text-sm text-teal-400 hover:text-teal-300">
             Manage resumes
           </Link>
         </div>
@@ -169,13 +169,13 @@ export const DashboardPage: React.FC = () => {
           <div className="flex flex-wrap gap-3">
             <Link
               to="/jobs"
-              className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300"
+              className="rounded-xl bg-teal-700 px-4 py-2 text-sm font-medium text-white hover:bg-teal-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-300"
             >
               Find matching jobs
             </Link>
             <Link
               to="/applications"
-              className="rounded-xl border border-gray-700 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300"
+              className="rounded-xl border border-gray-700 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-300"
             >
               Practise an interview
             </Link>
