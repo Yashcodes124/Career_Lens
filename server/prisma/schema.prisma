@@ -27,6 +27,11 @@ enum InterviewStatus {
   CANCELLED
 }
 
+enum SkillStatus {
+  STRONG
+  WEAK
+}
+
 model User {
   id                 String        @id @default(uuid())
   email              String        @unique
@@ -63,13 +68,14 @@ model Resume {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
+  @@index([userId, createdAt(sort: Desc)])
   @@map("resumes")
 }
 
 model Job {
   id           String        @id @default(uuid())
   externalId   String?       @unique
-  source       String // e.g. GREENHOUSE, LEVER, ASHBY, MANUAL
+  source       String        // GREENHOUSE, LEVER, ASHBY, MANUAL
   title        String
   company      String
   location     String?
@@ -84,6 +90,8 @@ model Job {
   savedJobs    SavedJob[]
   applications Application[]
 
+  @@index([isActive, source])
+  @@index([company])
   @@map("jobs")
 }
 
@@ -123,24 +131,19 @@ model Application {
 }
 
 model Interview {
-  id     String @id @default(uuid())
-  userId String
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-
+  id            String          @id @default(uuid())
+  userId        String
+  user          User            @relation(fields: [userId], references: [id], onDelete: Cascade)
   applicationId String?
-  application   Application? @relation(fields: [applicationId], references: [id], onDelete: SetNull)
-
-  title  String
-  status InterviewStatus @default(SCHEDULED)
-
-  plan       Json?
-  transcript Json?
-
-  questions  InterviewQuestion[]
-  evaluation Evaluation?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  application   Application?    @relation(fields: [applicationId], references: [id], onDelete: SetNull)
+  title         String
+  status        InterviewStatus @default(SCHEDULED)
+  plan          Json?
+  transcript    Json?
+  questions     InterviewQuestion[]
+  evaluation    Evaluation?
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
 
   @@index([userId])
   @@index([applicationId])
@@ -151,17 +154,14 @@ model InterviewQuestion {
   id          String    @id @default(uuid())
   interviewId String
   interview   Interview @relation(fields: [interviewId], references: [id], onDelete: Cascade)
-
-  round    String
-  question String @db.Text
-  order    Int
-
-  answer   String? @db.Text
-  feedback String? @db.Text
-  score    Float?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  round       String
+  question    String    @db.Text
+  order       Int
+  answer      String?   @db.Text
+  feedback    String?   @db.Text
+  score       Float?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
   @@unique([interviewId, order])
   @@index([interviewId])
@@ -180,12 +180,6 @@ model Evaluation {
   @@map("evaluations")
 }
 
-enum SkillStatus {
-  STRONG
-  WEAK
-}
-
-// A skill's latest state for this user, backed by the evidence that set it.
 model UserSkill {
   id        String      @id @default(uuid())
   userId    String
@@ -196,5 +190,6 @@ model UserSkill {
   updatedAt DateTime    @updatedAt
 
   @@unique([userId, skill])
+  @@index([userId, status])
   @@map("user_skills")
 }

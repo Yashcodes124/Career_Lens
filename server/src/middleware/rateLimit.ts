@@ -1,46 +1,38 @@
 import rateLimit from "express-rate-limit";
-import { NextFunction, Request, Response } from "express";
-import { AuthenticatedRequest } from "./authMiddleware";
+import { env } from "../config/env";
 
-const FIFTEEN_MINUTES = 15 * 60 * 1000;
-const ONE_HOUR = 60 * 60 * 1000;
+const isTest = env.NODE_ENV === "test";
 
-const rejected = (message: string) => ({ success: false, message, code: "RATE_LIMITED" });
-
-// Sign-in and sign-up have no account yet, so they are limited per IP address.
-export const authLimiter = rateLimit({
-  windowMs: FIFTEEN_MINUTES,
-  limit: 10,
-  standardHeaders: "draft-7",
+export const globalRateLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: isTest ? 10000 : 300,
+  standardHeaders: true,
   legacyHeaders: false,
-  handler: (_req: Request, res: Response) =>
-    res.status(429).json(rejected("Too many attempts. Try again in 15 minutes.")),
+  message: {
+    error: "Too many requests, please try again shortly.",
+    code: "RATE_LIMITED",
+  },
 });
 
-// Signed-in routes are limited per account, so one user cannot use up another's quota.
-const keyByUser = (req: Request): string =>
-  (req as AuthenticatedRequest).user?.userId ?? req.ip ?? "unknown";
+export const authRateLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: isTest ? 1000 : 25,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    error: "Too many authentication attempts. Please wait 15 minutes.",
+    code: "AUTH_RATE_LIMITED",
+  },
+});
 
-const createUserLimiter = (windowMs: number, limit: number, message: string) =>
-  rateLimit({
-    windowMs,
-    limit,
-    keyGenerator: keyByUser,
-    standardHeaders: "draft-7",
-    legacyHeaders: false,
-    handler: (_req: Request, res: Response, _next: NextFunction) =>
-      res.status(429).json(rejected(message)),
-  });
-
-export const uploadLimiter = createUserLimiter(
-  ONE_HOUR,
-  10,
-  "You have reached the limit of 10 resume uploads per hour.",
-);
-
-// Every interview answer and report calls a paid model.
-export const aiLimiter = createUserLimiter(
-  ONE_HOUR,
-  30,
-  "You have reached the limit of AI interview requests for this hour. Try again later.",
-);
+export const aiRateLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: isTest ? 1000 : 15,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    error:
+      "AI processing rate limit reached. Please wait a moment and try again.",
+    code: "AI_RATE_LIMITED",
+  },
+});

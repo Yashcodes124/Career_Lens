@@ -1,13 +1,41 @@
-// An error with an HTTP status and a stable machine-readable code.
-// The global error handler turns it into { success: false, message, code }.
 export class AppError extends Error {
-  readonly status: number;
-  readonly code: string;
+  public readonly statusCode: number;
+  public readonly code: string;
+  public readonly details?: unknown;
+  public readonly isOperational: boolean;
 
-  constructor(status: number, message: string, code = "APP_ERROR") {
+  constructor(
+    message: string,
+    statusCode = 500,
+    code = "INTERNAL_ERROR",
+    details?: unknown,
+  ) {
     super(message);
-    this.name = "AppError";
-    this.status = status;
+    Object.setPrototypeOf(this, new.target.prototype);
+    this.statusCode = statusCode;
     this.code = code;
+    this.details = details;
+    this.isOperational = true;
+    Error.captureStackTrace(this, this.constructor);
+  }
+
+  static badRequest(message: string, details?: unknown) {
+    return new AppError(message, 400, "BAD_REQUEST", details);
+  }
+
+  static unauthorized(message = "Authentication required") {
+    return new AppError(message, 401, "UNAUTHORIZED");
+  }
+
+  static forbidden(message = "Access denied") {
+    return new AppError(message, 403, "FORBIDDEN");
+  }
+
+  static notFound(message = "Resource not found") {
+    return new AppError(message, 404, "NOT_FOUND");
+  }
+
+  static conflict(message: string) {
+    return new AppError(message, 409, "CONFLICT");
   }
 }
