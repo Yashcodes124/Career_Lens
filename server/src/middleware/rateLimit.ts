@@ -1,38 +1,48 @@
 import rateLimit from "express-rate-limit";
-import { env } from "../config/env";
 
-const isTest = env.NODE_ENV === "test";
+const rateLimitPayload = (message: string) => ({
+  success: false,
+  code: "RATE_LIMITED",
+  message,
+  error: message,
+});
 
 export const globalRateLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: isTest ? 10000 : 300,
+  max: 300,
   standardHeaders: true,
   legacyHeaders: false,
-  message: {
-    error: "Too many requests, please try again shortly.",
-    code: "RATE_LIMITED",
-  },
+  message: rateLimitPayload("Too many requests, please try again shortly."),
 });
 
-export const authRateLimiter = rateLimit({
+export const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: isTest ? 1000 : 25,
+  max: 10,
   standardHeaders: true,
   legacyHeaders: false,
-  message: {
-    error: "Too many authentication attempts. Please wait 15 minutes.",
-    code: "AUTH_RATE_LIMITED",
-  },
+  message: rateLimitPayload(
+    "Too many authentication attempts. Please wait 15 minutes.",
+  ),
 });
 
-export const aiRateLimiter = rateLimit({
-  windowMs: 60 * 1000,
-  max: isTest ? 1000 : 15,
+export const uploadLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 30,
   standardHeaders: true,
   legacyHeaders: false,
-  message: {
-    error:
-      "AI processing rate limit reached. Please wait a moment and try again.",
-    code: "AI_RATE_LIMITED",
-  },
+  message: rateLimitPayload("Too many file uploads, please try again later."),
 });
+
+export const aiLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: rateLimitPayload(
+    "AI processing rate limit reached. Please wait a moment and try again.",
+  ),
+});
+
+export const authRateLimiter = authLimiter;
+export const uploadRateLimiter = uploadLimiter;
+export const aiRateLimiter = aiLimiter;
