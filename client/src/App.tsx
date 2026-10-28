@@ -3,6 +3,7 @@ import {
   BrowserRouter as Router,
   Routes,
   Route,
+  Link,
   useLocation,
   useNavigate,
 } from "react-router-dom";
@@ -34,6 +35,7 @@ export const App: React.FC = () => {
           {/* Auth Routes */}
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
+
           {/* Protected Routes */}
           <Route
             path="/onboarding"
@@ -61,6 +63,14 @@ export const App: React.FC = () => {
           />
           <Route
             path="/skill-gaps/:jobId"
+            element={
+              <ProtectedRoute>
+                <SkillGapPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/skill-gap/:jobId"
             element={
               <ProtectedRoute>
                 <SkillGapPage />
@@ -147,7 +157,8 @@ export const App: React.FC = () => {
               </ProtectedRoute>
             }
           />
-          {/* Default route */}
+
+          {/* Default & Fallback Routes */}
           <Route path="/" element={<LandingPage />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
@@ -157,14 +168,16 @@ export const App: React.FC = () => {
 };
 
 const AuthShell: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  <div className="flex min-h-screen items-center justify-center bg-gray-950 p-4">{children}</div>
+  <div className="flex min-h-screen items-center justify-center bg-slate-950 p-4">
+    {children}
+  </div>
 );
 
-// After sign-in, return the user to the page they asked for. Default: the dashboard.
 const LoginPage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const from = (location.state as { from?: string } | null)?.from ?? "/dashboard";
+  const from =
+    (location.state as { from?: string } | null)?.from ?? "/dashboard";
   return (
     <AuthShell>
       <LoginForm
@@ -200,13 +213,21 @@ const ProfileSetupPage: React.FC = () => {
 };
 
 const NotFound: React.FC = () => (
-  <div className="min-h-screen bg-slate-950 flex items-center justify-center">
-    <div className="text-center">
-      <h1 className="text-4xl font-bold text-slate-100 mb-4">404</h1>
-      <p className="text-slate-400 mb-6">Page not found</p>
-      <a href="/" className="text-teal-400 hover:text-teal-300 font-medium">
-        Go home
-      </a>
+  <div className="flex min-h-screen items-center justify-center bg-slate-950 px-4">
+    <div className="max-w-md rounded-2xl border border-slate-800 bg-slate-900/70 p-8 text-center">
+      <p className="text-xs font-semibold uppercase tracking-widest text-teal-400">
+        Error 404
+      </p>
+      <h1 className="mt-2 text-3xl font-bold text-white">Page not found</h1>
+      <p className="mt-2 text-sm text-slate-400">
+        The page you are looking for does not exist or may have moved.
+      </p>
+      <Link
+        to="/dashboard"
+        className="mt-6 inline-flex items-center justify-center rounded-xl bg-teal-500 px-5 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-teal-400"
+      >
+        Back to Dashboard
+      </Link>
     </div>
   </div>
 );

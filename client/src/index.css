@@ -2,72 +2,38 @@
 @tailwind components;
 @tailwind utilities;
 
-@layer utilities {
-  @keyframes fadeIn {
-    from {
-      opacity: 0;
-      transform: translateY(-10px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
+@layer base {
+  :root {
+    color-scheme: dark;
+    --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+    --ease-spring: cubic-bezier(0.22, 1, 0.36, 1);
   }
 
-  .animate-fadeIn {
-    animation: fadeIn 0.3s ease-in-out;
-  }
-}
-
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
-
-html,
-body {
-  height: 100%;
-}
-
-#root {
-  display: flex;
-  flex-direction: column;
-  min-height: 100vh;
-}
-
-@keyframes landing-rise {
-  from { opacity: 0; transform: translateY(8px); }
-  to { opacity: 1; transform: none; }
-}
-
-.landing-rise {
-  animation: landing-rise 600ms cubic-bezier(0.2, 0.6, 0.2, 1) both;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .landing-rise {
-    animation: none;
+  html {
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    background-color: #09090b;
+    color: #f4f4f5;
   }
 }
 
-/* Parts of each section rise as they scroll into view, where the browser supports it. */
-@keyframes reveal-shift {
-  from { transform: translateY(24px); }
-  to { transform: none; }
-}
-
-/* Transform only: the content is always visible, and it settles into place as it enters the viewport. */
-@supports (animation-timeline: view()) {
-  .reveal {
-    animation: reveal-shift linear both;
-    animation-timeline: view();
-    animation-range: entry 0% cover 35%;
+@keyframes riseIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .reveal {
-    animation: none;
-  }
+.landing-rise,
+.reveal {
+  animation: riseIn 0.55s var(--ease-spring) both;
+}
+
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
 }

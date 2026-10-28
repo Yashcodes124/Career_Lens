@@ -1,13 +1,12 @@
-//LiveInterviewPage.tsx
 import React, { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useLocation, Link } from "react-router-dom";
+import { ArrowLeft, Send, ArrowRight, CheckCircle2 } from "lucide-react";
 import {
   fetchInterviewById,
   submitInterviewAnswer,
   generateInterviewEvaluation,
 } from "./interviewApi";
 import { Interview, InterviewQuestion } from "./types";
-import { useLocation } from "react-router-dom";
 
 interface LocationState {
   durationMinutes?: number;
@@ -24,7 +23,6 @@ export const LiveInterviewPage: React.FC = () => {
   const navState = (location.state as LocationState) || {};
   const durationMinutes = navState.durationMinutes ?? 30;
   const difficulty = navState.difficulty ?? "MEDIUM";
-  // const focusTopics = navState.focusTopics ?? [];
   const roleTitle = navState.roleTitle ?? "Software Engineer";
 
   const [interview, setInterview] = useState<Interview | null>(null);
@@ -73,7 +71,7 @@ export const LiveInterviewPage: React.FC = () => {
   };
 
   useEffect(() => {
-    loadData();
+    void loadData();
   }, [interviewId]);
 
   const handleSubmitAnswer = async () => {
@@ -90,10 +88,8 @@ export const LiveInterviewPage: React.FC = () => {
         answer.trim(),
       );
 
-      // 1. Render feedback panel
       setFeedback(result.evaluation);
 
-      // 2. Store next question state without advancing immediately
       if (result.completed || !result.nextQuestion) {
         setIsCompleted(true);
       } else {
@@ -126,12 +122,24 @@ export const LiveInterviewPage: React.FC = () => {
     }
   };
 
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (
+      (e.metaKey || e.ctrlKey) &&
+      e.key === "Enter" &&
+      !feedback &&
+      !submitting
+    ) {
+      e.preventDefault();
+      void handleSubmitAnswer();
+    }
+  };
+
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#0d1117] flex items-center justify-center text-zinc-400 font-mono text-sm">
+      <div className="flex min-h-screen items-center justify-center bg-[#0d1117] font-mono text-sm text-zinc-400">
         <div className="flex items-center space-x-3">
-          <div className="w-2 h-2 rounded-full bg-emerald-500 " />
-          <span>Initializing interview environment...</span>
+          <div className="h-2.5 w-2.5 animate-ping rounded-full bg-emerald-500" />
+          <span>Initializing live interview environment...</span>
         </div>
       </div>
     );
@@ -139,17 +147,25 @@ export const LiveInterviewPage: React.FC = () => {
 
   if (error || !interview || !currentQuestion) {
     return (
-      <div className="min-h-screen bg-[#0d1117] flex items-center justify-center p-4">
-        <div className="max-w-md w-full bg-[#161b22] border border-red-500/30 rounded-lg p-6 font-mono">
-          <p className="text-red-400 text-sm mb-4">
+      <div className="flex min-h-screen items-center justify-center bg-[#0d1117] p-4">
+        <div className="w-full max-w-md rounded-xl border border-red-500/30 bg-[#161b22] p-6 font-mono">
+          <p className="mb-4 text-sm text-red-400">
             {error || "Interview session data not found."}
           </p>
-          <button
-            onClick={loadData}
-            className="w-full py-2 bg-red-950/60 hover:bg-red-900/80 border border-red-500/40 text-red-200 text-xs rounded transition"
-          >
-            Reconnect Session
-          </button>
+          <div className="flex gap-3">
+            <button
+              onClick={() => void loadData()}
+              className="flex-1 rounded border border-red-500/40 bg-red-950/60 py-2 text-xs text-red-200 transition hover:bg-red-900/80"
+            >
+              Reconnect Session
+            </button>
+            <Link
+              to="/dashboard"
+              className="rounded border border-zinc-700 bg-zinc-800 px-4 py-2 text-xs text-zinc-200 transition hover:bg-zinc-700"
+            >
+              Dashboard
+            </Link>
+          </div>
         </div>
       </div>
     );
@@ -158,28 +174,34 @@ export const LiveInterviewPage: React.FC = () => {
   const totalQuestions = interview.questions.length;
   const currentOrder = currentQuestion.order;
   const progressPercent = Math.round((currentOrder / totalQuestions) * 100);
+  const wordCount = answer.trim() ? answer.trim().split(/\s+/).length : 0;
 
   return (
-    <div className="min-h-screen bg-[#0d1117] text-zinc-200 font-sans selection:bg-zinc-800 selection:text-white">
+    <div className="min-h-screen bg-[#0d1117] font-sans text-zinc-200 selection:bg-zinc-800 selection:text-white">
       {/* Top Header / Progress Bar */}
-      <header className="border-b border-zinc-800/80 bg-[#161b22]/90 sticky top-0 z-10">
-        <div className="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
+      <header className="sticky top-0 z-10 border-b border-zinc-800/80 bg-[#161b22]/95 backdrop-blur-md">
+        <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-4">
           <div className="space-y-1">
             <div className="flex items-center space-x-2.5">
-              <span className="inline-block w-2 h-2 rounded-full bg-emerald-500" />
-              <span className="font-mono text-xs text-emerald-400 font-medium">
+              <Link
+                to="/dashboard"
+                className="mr-2 inline-flex items-center gap-1 rounded border border-zinc-800 bg-zinc-900 px-2 py-0.5 text-[11px] text-zinc-400 transition hover:border-zinc-700 hover:text-white"
+              >
+                <ArrowLeft className="h-3 w-3" />
+                <span>Exit</span>
+              </Link>
+              <span className="inline-block h-2 w-2 rounded-full bg-emerald-500" />
+              <span className="font-mono text-xs font-medium text-emerald-400">
                 {currentQuestion.round}
               </span>
-              {/* Display difficulty badge */}
-              <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-400 bober border-zinc-700/50">
+              <span className="rounded border border-zinc-700/50 bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] text-zinc-400">
                 {difficulty}
               </span>
-              {/* Display duration */}
-              <span className="text-xs font-mono text-zinc-400">
-                . {durationMinutes}m
+              <span className="font-mono text-xs text-zinc-400">
+                · {durationMinutes}m
               </span>
             </div>
-            <h1 className="text-sm font-medium text-zinc-300 tracking-tight">
+            <h1 className="text-sm font-medium tracking-tight text-zinc-300">
               {interview.title || roleTitle}
             </h1>
           </div>
@@ -187,12 +209,12 @@ export const LiveInterviewPage: React.FC = () => {
           <div className="text-right font-mono">
             <span className="text-xs text-zinc-400">
               Question{" "}
-              <span className="text-zinc-100 font-bold">{currentOrder}</span> /{" "}
+              <span className="font-bold text-zinc-100">{currentOrder}</span> /{" "}
               {totalQuestions}
             </span>
-            <div className="w-32 bg-zinc-800 rounded-full h-1.5 mt-2 overflow-hidden">
+            <div className="mt-2 h-1.5 w-32 overflow-hidden rounded-full bg-zinc-800">
               <div
-                className="bg-emerald-500 h-1.5 transition-colors duration-300 ease-out"
+                className="h-1.5 bg-emerald-500 transition-all duration-300 ease-out"
                 style={{ width: `${progressPercent}%` }}
               />
             </div>
@@ -201,25 +223,26 @@ export const LiveInterviewPage: React.FC = () => {
       </header>
 
       {/* Main Container */}
-      <main className="max-w-5xl mx-auto px-6 py-8 space-y-6">
+      <main className="mx-auto max-w-5xl space-y-6 px-6 py-8">
         {/* Question Panel */}
-        <section className="bg-[#161b22] border border-zinc-800 rounded-xl p-6 relative overflow-hidden">
-          <div className="text-xs font-mono text-zinc-500 mb-3">
-            Prompt Execution
+        <section className="relative overflow-hidden rounded-xl border border-zinc-800 bg-[#161b22] p-6">
+          <div className="mb-3 flex items-center justify-between font-mono text-xs text-zinc-500">
+            <span>Interviewer Prompt</span>
+            <span>Round: {currentQuestion.round}</span>
           </div>
-          <h2 className="text-lg md:text-xl font-medium text-zinc-100 leading-relaxed tracking-tight">
+          <h2 className="text-lg font-medium leading-relaxed tracking-tight text-zinc-100 md:text-xl">
             {currentQuestion.question}
           </h2>
         </section>
 
         {/* Answer Input Panel */}
-        <section className="bg-[#161b22] border border-zinc-800 rounded-xl overflow-hidden ">
-          <div className="bg-[#0d1117] px-4 py-2.5 border-b border-zinc-800/80 flex items-center justify-between font-mono text-xs text-zinc-400">
+        <section className="overflow-hidden rounded-xl border border-zinc-800 bg-[#161b22]">
+          <div className="flex items-center justify-between border-b border-zinc-800/80 bg-[#0d1117] px-4 py-2.5 font-mono text-xs text-zinc-400">
             <div className="flex items-center space-x-2">
-              <span className="w-3 h-3 rounded-full bg-zinc-800 inline-block" />
-              <span>response.md</span>
+              <span className="inline-block h-2.5 w-2.5 rounded-full bg-teal-500/60" />
+              <span>candidate_response.md</span>
             </div>
-            <span>Markdown Enabled</span>
+            <span>Press Ctrl+Enter to submit</span>
           </div>
 
           <div className="p-4">
@@ -227,65 +250,79 @@ export const LiveInterviewPage: React.FC = () => {
               rows={8}
               value={answer}
               onChange={(e) => setAnswer(e.target.value)}
+              onKeyDown={handleKeyDown}
               disabled={submitting || feedback !== null}
-              placeholder="Type your response here..."
-              className="w-full bg-transparent text-zinc-100 placeholder-zinc-600 font-mono text-sm leading-relaxed outline-none resize-none disabled:opacity-50"
+              placeholder="Structure your answer clearly (e.g., Context -> Architecture/Action -> Trade-offs & Measurable Impact)..."
+              className="w-full resize-none bg-transparent font-mono text-sm leading-relaxed text-zinc-100 placeholder-zinc-600 outline-none disabled:opacity-50"
             />
           </div>
 
           {/* Action Footer */}
-          <div className="px-6 py-3.5 bg-[#0d1117]/50 border-t border-zinc-800/80 flex items-center justify-between">
+          <div className="flex items-center justify-between border-t border-zinc-800/80 bg-[#0d1117]/50 px-6 py-3.5">
             <span className="font-mono text-xs text-zinc-500">
-              {answer.trim().length} chars
+              {wordCount} words · {answer.trim().length} chars
             </span>
             {!feedback ? (
               <button
-                onClick={handleSubmitAnswer}
+                onClick={() => void handleSubmitAnswer()}
                 disabled={!answer.trim() || submitting}
-                className="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 disabled:bg-zinc-800 disabled:text-zinc-600 text-zinc-950 font-mono font-bold text-xs rounded transition-colors disabled:shadow-none"
+                className="inline-flex items-center gap-2 rounded-lg bg-emerald-500 px-5 py-2 font-mono text-xs font-bold text-zinc-950 transition-colors hover:bg-emerald-400 disabled:bg-zinc-800 disabled:text-zinc-600"
               >
-                {submitting ? "Evaluating Response..." : "Submit Answer"}
+                <Send className="h-3.5 w-3.5" />
+                <span>
+                  {submitting ? "Evaluating Response..." : "Submit Answer"}
+                </span>
               </button>
             ) : (
               <button
-                onClick={handleAdvance}
+                onClick={() => void handleAdvance()}
                 disabled={submitting}
-                className="px-5 py-2 bg-teal-700 hover:bg-teal-600 text-white font-mono font-bold text-xs rounded transition-colors "
+                className="inline-flex items-center gap-2 rounded-lg bg-teal-500 px-5 py-2 font-mono text-xs font-bold text-slate-950 transition-colors hover:bg-teal-400"
               >
-                {submitting
-                  ? "Generating Final Evaluation..."
-                  : isCompleted
-                    ? "View Final Results →"
-                    : "Next Question →"}
+                {isCompleted ? (
+                  <>
+                    <CheckCircle2 className="h-3.5 w-3.5" />
+                    <span>
+                      {submitting
+                        ? "Generating Final Evaluation..."
+                        : "View Final Results"}
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <span>Next Question</span>
+                    <ArrowRight className="h-3.5 w-3.5" />
+                  </>
+                )}
               </button>
             )}
           </div>
         </section>
 
-        {/* Terminal Feedback Output */}
+        {/* Rubric Feedback Output */}
         {feedback && (
-          <section className="bg-[#011627] border border-emerald-500/30 rounded-xl p-5 font-mono text-xs space-y-3 animate-in fade-in duration-200 relative">
+          <section className="relative space-y-3 rounded-xl border border-emerald-500/30 bg-[#011627] p-5 font-mono text-xs">
             <div className="flex items-center justify-between border-b border-emerald-500/20 pb-2">
-              <span className="text-emerald-400 font-semibold ">
-                [AI Evaluation Output]
+              <span className="font-semibold text-emerald-400">
+                [Rubric Evaluation Output]
               </span>
-              <span className="text-emerald-300 font-bold text-sm">
+              <span className="text-sm font-bold text-emerald-300">
                 Score: {feedback.score}/100
               </span>
             </div>
-            <p className="text-zinc-300 leading-relaxed pt-1">
+            <p className="pt-1 leading-relaxed text-zinc-300">
               {feedback.feedback}
             </p>
 
             {((feedback.strengths && feedback.strengths.length > 0) ||
               (feedback.improvements && feedback.improvements.length > 0)) && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2 border-t border-emerald-500/10">
+              <div className="grid grid-cols-1 gap-4 border-t border-emerald-500/10 pt-3 md:grid-cols-2">
                 {feedback.strengths && feedback.strengths.length > 0 && (
                   <div>
-                    <span className="text-emerald-400 font-semibold block mb-1">
-                      Strengths:
+                    <span className="mb-1 block font-semibold text-emerald-400">
+                      Strengths Demonstrated:
                     </span>
-                    <ul className="list-disc list-inside space-y-0.5 text-zinc-400">
+                    <ul className="list-inside list-disc space-y-1 text-zinc-300">
                       {feedback.strengths.map((s, i) => (
                         <li key={i}>{s}</li>
                       ))}
@@ -294,10 +331,10 @@ export const LiveInterviewPage: React.FC = () => {
                 )}
                 {feedback.improvements && feedback.improvements.length > 0 && (
                   <div>
-                    <span className="text-amber-400 font-semibold block mb-1">
-                      Key Focus Areas:
+                    <span className="mb-1 block font-semibold text-amber-400">
+                      Key Focus Areas (Synced to Skill Profile):
                     </span>
-                    <ul className="list-disc list-inside space-y-0.5 text-zinc-400">
+                    <ul className="list-inside list-disc space-y-1 text-zinc-300">
                       {feedback.improvements.map((imp, i) => (
                         <li key={i}>{imp}</li>
                       ))}

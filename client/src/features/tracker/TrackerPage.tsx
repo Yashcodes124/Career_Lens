@@ -1,9 +1,18 @@
-//client/src/features/tracker/TrackerPage.tsx
-
 import React, { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+import {
+  Kanban,
+  Briefcase,
+  ExternalLink,
+  Sparkles,
+  FileEdit,
+  Building2,
+  MapPin,
+} from "lucide-react";
+import { Navbar } from "../../components/NavBar";
 import { fetchApplications, updateApplicationStatus } from "./trackerApi";
 import type { Application, ApplicationStatus } from "./types";
+import { useLatestResumeId } from "../resume/useResumes";
 
 const statuses: ApplicationStatus[] = [
   "SAVED",
@@ -24,9 +33,9 @@ const statusLabels: Record<ApplicationStatus, string> = {
 const statusColors: Record<ApplicationStatus, string> = {
   SAVED: "bg-slate-500/10 text-slate-300 border-slate-500/20",
   APPLIED: "bg-blue-500/10 text-blue-300 border-blue-500/20",
-  INTERVIEWING: "bg-sky-500/10 text-sky-300 border-sky-500/20",
+  INTERVIEWING: "bg-amber-500/10 text-amber-300 border-amber-500/20",
   OFFER: "bg-emerald-500/10 text-emerald-300 border-emerald-500/20",
-  REJECTED: "bg-red-500/10 text-red-300 border-red-500/20",
+  REJECTED: "bg-rose-500/10 text-rose-300 border-rose-500/20",
 };
 
 export const TrackerPage: React.FC = () => {
@@ -34,13 +43,13 @@ export const TrackerPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const resumeId = useLatestResumeId();
 
   useEffect(() => {
     const loadApplications = async () => {
       try {
         setIsLoading(true);
         setError(null);
-
         const results = await fetchApplications();
         setApplications(results);
       } catch (err) {
@@ -61,7 +70,6 @@ export const TrackerPage: React.FC = () => {
         groups[status] = applications.filter(
           (application) => application.status === status,
         );
-
         return groups;
       },
       {} as Record<ApplicationStatus, Application[]>,
@@ -92,41 +100,32 @@ export const TrackerPage: React.FC = () => {
     }
   };
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-slate-950 px-4 py-10 text-slate-100">
-        <div className="mx-auto max-w-7xl">
-          <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-10 text-center text-slate-400">
-            Loading applications...
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="min-h-screen bg-slate-950 px-4 py-10 text-slate-100">
-      <div className="mx-auto max-w-7xl">
+    <div className="min-h-screen bg-slate-950 text-slate-100">
+      <Navbar />
+
+      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
         <header className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <p className="text-sm font-medium tracking-[0.28em] text-teal-300">
-              Career Lens
-            </p>
-
-            <h1 className="mt-3 text-4xl font-bold tracking-tight text-white">
+            <div className="inline-flex items-center gap-1.5 rounded-full border border-teal-500/30 bg-teal-500/10 px-3 py-1 text-xs font-semibold tracking-wide text-teal-300">
+              <Kanban className="h-3.5 w-3.5" />
+              <span>TrueHire Pipeline</span>
+            </div>
+            <h1 className="mt-2.5 text-3xl font-bold tracking-tight text-white sm:text-4xl">
               Application Tracker
             </h1>
-
-            <p className="mt-2 text-slate-400">
-              Track and manage your job applications.
+            <p className="mt-1 text-sm text-slate-400">
+              Move roles from Saved to Offer while tracking match scores and
+              interview readiness.
             </p>
           </div>
 
           <Link
             to="/jobs"
-            className="inline-flex items-center justify-center rounded-xl bg-teal-700 px-5 py-3 text-sm font-semibold text-white transition hover:bg-teal-600"
+            className="inline-flex items-center justify-center gap-2 rounded-xl bg-teal-500 px-5 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-teal-400"
           >
-            Find Jobs
+            <Briefcase className="h-4 w-4" />
+            <span>Find Verified Jobs</span>
           </Link>
         </header>
 
@@ -136,103 +135,112 @@ export const TrackerPage: React.FC = () => {
           </div>
         )}
 
-        {applications.length === 0 ? (
-          <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-12 text-center">
-            <h2 className="text-xl font-semibold text-slate-200">
-              No applications yet
+        {isLoading ? (
+          <div className="grid gap-4 xl:grid-cols-5">
+            {statuses.map((st) => (
+              <div
+                key={st}
+                className="h-[420px] animate-pulse rounded-2xl border border-slate-800 bg-slate-900/50 p-4"
+              />
+            ))}
+          </div>
+        ) : applications.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-slate-800 bg-slate-900/60 p-12 text-center">
+            <Briefcase className="mx-auto h-10 w-10 text-slate-600" />
+            <h2 className="mt-3 text-xl font-semibold text-slate-200">
+              No applications tracked yet
             </h2>
-
             <p className="mt-2 text-sm text-slate-400">
-              Track a job from the Job Feed to see it here.
+              Match or track a verified job from the Job Feed to manage your
+              pipeline here.
             </p>
-
             <Link
               to="/jobs"
-              className="mt-6 inline-flex rounded-xl bg-teal-700 px-5 py-3 text-sm font-semibold text-white hover:bg-teal-600"
+              className="mt-6 inline-flex items-center gap-2 rounded-xl bg-teal-500 px-5 py-2.5 text-sm font-semibold text-slate-950 hover:bg-teal-400"
             >
-              Browse Jobs
+              Browse Verified Jobs
             </Link>
           </div>
         ) : (
-          <div className="grid gap-5 xl:grid-cols-5">
-            {statuses.map((status) => {
-              const statusApplications = groupedApplications[status];
+          <>
+            <div className="mb-6 grid gap-4 sm:grid-cols-3">
+              <StatCard
+                label="Total Tracked Roles"
+                value={applications.length}
+              />
+              <StatCard
+                label="Active Interviews"
+                value={
+                  applications.filter(
+                    (application) => application.status === "INTERVIEWING",
+                  ).length
+                }
+              />
+              <StatCard
+                label="Offers Received"
+                value={
+                  applications.filter(
+                    (application) => application.status === "OFFER",
+                  ).length
+                }
+              />
+            </div>
 
-              return (
-                <section
-                  key={status}
-                  className="min-h-[420px] rounded-2xl border border-slate-800 bg-slate-900/50 p-4"
-                >
-                  <div className="mb-4 flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span
-                        className={`h-2.5 w-2.5 rounded-full ${
-                          status === "SAVED"
-                            ? "bg-slate-400"
-                            : status === "APPLIED"
-                              ? "bg-blue-400"
-                              : status === "INTERVIEWING"
-                                ? "bg-sky-400"
-                                : status === "OFFER"
-                                  ? "bg-emerald-400"
-                                  : "bg-red-400"
-                        }`}
-                      />
+            <div className="grid gap-4 xl:grid-cols-5">
+              {statuses.map((status) => {
+                const statusApplications = groupedApplications[status];
 
-                      <h2 className="font-semibold text-slate-200">
-                        {statusLabels[status]}
-                      </h2>
-
-                      <span className="rounded-full bg-slate-800 px-2 py-0.5 text-xs text-slate-400">
+                return (
+                  <section
+                    key={status}
+                    className="flex min-h-[440px] flex-col rounded-2xl border border-slate-800/90 bg-slate-900/50 p-3.5"
+                  >
+                    <div className="mb-3.5 flex items-center justify-between border-b border-slate-800/80 pb-3">
+                      <div className="flex items-center gap-2">
+                        <span
+                          className={`h-2.5 w-2.5 rounded-full ${
+                            status === "SAVED"
+                              ? "bg-slate-400"
+                              : status === "APPLIED"
+                                ? "bg-blue-400"
+                                : status === "INTERVIEWING"
+                                  ? "bg-amber-400"
+                                  : status === "OFFER"
+                                    ? "bg-emerald-400"
+                                    : "bg-rose-400"
+                          }`}
+                        />
+                        <h2 className="text-sm font-semibold text-slate-200">
+                          {statusLabels[status]}
+                        </h2>
+                      </div>
+                      <span className="rounded-full border border-slate-700 bg-slate-800 px-2 py-0.5 text-xs font-medium text-slate-300">
                         {statusApplications.length}
                       </span>
                     </div>
-                  </div>
 
-                  <div className="space-y-3">
-                    {statusApplications.map((application) => (
-                      <ApplicationCard
-                        key={application.id}
-                        application={application}
-                        isUpdating={updatingId === application.id}
-                        onStatusChange={handleStatusChange}
-                      />
-                    ))}
-                  </div>
+                    <div className="flex-1 space-y-3">
+                      {statusApplications.map((application) => (
+                        <ApplicationCard
+                          key={application.id}
+                          application={application}
+                          resumeId={resumeId}
+                          isUpdating={updatingId === application.id}
+                          onStatusChange={handleStatusChange}
+                        />
+                      ))}
 
-                  {statusApplications.length === 0 && (
-                    <div className="rounded-xl border border-dashed border-slate-800 p-6 text-center text-xs text-slate-600">
-                      No applications
+                      {statusApplications.length === 0 && (
+                        <div className="flex h-32 items-center justify-center rounded-xl border border-dashed border-slate-800/80 p-4 text-center text-xs text-slate-500">
+                          No roles in {statusLabels[status]}
+                        </div>
+                      )}
                     </div>
-                  )}
-                </section>
-              );
-            })}
-          </div>
-        )}
-
-        {applications.length > 0 && (
-          <div className="mt-6 grid gap-4 sm:grid-cols-3">
-            <StatCard label="Total Applications" value={applications.length} />
-
-            <StatCard
-              label="Interviews"
-              value={
-                applications.filter(
-                  (application) => application.status === "INTERVIEWING",
-                ).length
-              }
-            />
-
-            <StatCard
-              label="Offers"
-              value={
-                applications.filter(
-                  (application) => application.status === "OFFER",
-                ).length
-              }
-            />
-          </div>
+                  </section>
+                );
+              })}
+            </div>
+          </>
         )}
       </div>
     </div>
@@ -241,51 +249,66 @@ export const TrackerPage: React.FC = () => {
 
 interface ApplicationCardProps {
   application: Application;
+  resumeId?: string;
   isUpdating: boolean;
   onStatusChange: (applicationId: string, status: ApplicationStatus) => void;
 }
 
 const ApplicationCard: React.FC<ApplicationCardProps> = ({
   application,
+  resumeId,
   isUpdating,
   onStatusChange,
 }) => {
   const { job } = application;
+  const matchPath = `/matches/${application.jobId}${
+    resumeId ? `?resumeId=${resumeId}` : ""
+  }`;
+  const tailorPath = `/tailor/${application.jobId}${
+    resumeId ? `?resumeId=${resumeId}` : ""
+  }`;
 
   return (
-    <article className="rounded-xl border border-slate-800 bg-slate-950/70 p-4 transition hover:border-slate-700">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <p className="text-xs font-semibold tracking-wide text-teal-300">
-            {job.source}
-          </p>
-
-          <h3 className="mt-1 font-semibold text-slate-100">{job.title}</h3>
-
-          <p className="mt-1 text-sm text-slate-400">{job.company}</p>
-
-          {job.location && (
-            <p className="mt-1 text-xs text-slate-400">{job.location}</p>
-          )}
-        </div>
-
+    <article className="rounded-xl border border-slate-800 bg-slate-950/85 p-3.5 shadow-sm transition hover:border-slate-700">
+      <div className="flex items-start justify-between gap-2">
+        <span className="rounded-md border border-teal-500/20 bg-teal-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-teal-300">
+          {job.source}
+        </span>
         <span
-          className={`rounded-full border px-2 py-1 text-[10px] font-semibold ${statusColors[application.status]}`}
+          className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${statusColors[application.status]}`}
         >
           {statusLabels[application.status]}
         </span>
       </div>
 
-      {application.matchScore != null && (
-        <div className="mt-4">
-          <div className="flex justify-between text-xs">
-            <span className="text-slate-400">Match</span>
+      <Link
+        to={matchPath}
+        className="mt-2 block text-sm font-semibold text-white transition hover:text-teal-300"
+      >
+        {job.title}
+      </Link>
 
+      <div className="mt-1 space-y-0.5 text-xs text-slate-400">
+        <p className="flex items-center gap-1 truncate">
+          <Building2 className="h-3 w-3 shrink-0 text-slate-500" />
+          <span className="truncate">{job.company}</span>
+        </p>
+        {job.location && (
+          <p className="flex items-center gap-1 truncate">
+            <MapPin className="h-3 w-3 shrink-0 text-slate-500" />
+            <span className="truncate">{job.location}</span>
+          </p>
+        )}
+      </div>
+
+      {application.matchScore != null && (
+        <div className="mt-3">
+          <div className="flex justify-between text-xs">
+            <span className="text-slate-400">Match Score</span>
             <span className="font-semibold text-emerald-300">
-              {application.matchScore}%
+              {Math.round(application.matchScore)}%
             </span>
           </div>
-
           <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-slate-800">
             <div
               className="h-full rounded-full bg-emerald-500"
@@ -297,39 +320,55 @@ const ApplicationCard: React.FC<ApplicationCardProps> = ({
         </div>
       )}
 
-      <p className="mt-4 text-xs text-slate-400">
-        Updated {new Date(application.updatedAt).toLocaleDateString()}
-      </p>
+      {/* Closed-loop quick actions */}
+      <div className="mt-3 grid grid-cols-2 gap-1.5 border-t border-slate-800/80 pt-3">
+        <Link
+          to={matchPath}
+          className="inline-flex items-center justify-center gap-1 rounded-lg border border-slate-800 bg-slate-900 px-2 py-1.5 text-[11px] font-medium text-teal-300 transition hover:border-teal-500/40"
+        >
+          <Sparkles className="h-3 w-3" />
+          <span>Match & Prep</span>
+        </Link>
+        <Link
+          to={tailorPath}
+          className="inline-flex items-center justify-center gap-1 rounded-lg border border-slate-800 bg-slate-900 px-2 py-1.5 text-[11px] font-medium text-slate-300 transition hover:border-slate-700 hover:text-white"
+        >
+          <FileEdit className="h-3 w-3" />
+          <span>Tailor</span>
+        </Link>
+      </div>
 
-      <div className="mt-4 flex gap-2">
-        {job.url && (
-          <a
-            href={job.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex-1 rounded-lg border border-slate-700 px-3 py-2 text-center text-xs font-medium text-slate-300 transition hover:border-teal-600 hover:text-teal-300"
-          >
-            View Job
-          </a>
-        )}
-
+      <div className="mt-2 flex items-center gap-1.5">
         <select
           value={application.status}
           disabled={isUpdating}
+          aria-label={`Change status for ${job.title}`}
           onChange={(event) =>
             onStatusChange(
               application.id,
               event.target.value as ApplicationStatus,
             )
           }
-          className="rounded-lg border border-slate-700 bg-slate-900 px-2 py-2 text-xs text-slate-300 outline-none focus:border-teal-600"
+          className="flex-1 rounded-lg border border-slate-700 bg-slate-900 px-2 py-1.5 text-xs font-medium text-slate-200 outline-none focus:border-teal-500 disabled:opacity-50"
         >
           {statuses.map((status) => (
             <option key={status} value={status}>
-              {statusLabels[status]}
+              Move: {statusLabels[status]}
             </option>
           ))}
         </select>
+
+        {job.url && (
+          <a
+            href={job.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            title="Open official job posting"
+            className="inline-flex items-center justify-center rounded-lg border border-slate-700 bg-slate-900 p-1.5 text-slate-300 transition hover:border-teal-500/50 hover:text-teal-300"
+          >
+            <ExternalLink className="h-3.5 w-3.5" />
+          </a>
+        )}
       </div>
     </article>
   );
@@ -341,9 +380,11 @@ interface StatCardProps {
 }
 
 const StatCard: React.FC<StatCardProps> = ({ label, value }) => (
-  <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
-    <p className="text-sm text-slate-400">{label}</p>
-    <p className="mt-2 text-2xl font-bold text-white">{value}</p>
+  <div className="rounded-2xl border border-slate-800/90 bg-slate-900/70 p-4">
+    <p className="text-xs font-medium uppercase tracking-wider text-slate-400">
+      {label}
+    </p>
+    <p className="mt-1.5 text-2xl font-bold text-white">{value}</p>
   </div>
 );
 

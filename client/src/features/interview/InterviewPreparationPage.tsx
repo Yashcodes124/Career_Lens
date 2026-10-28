@@ -1,5 +1,15 @@
 import React, { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, Link } from "react-router-dom";
+import {
+  Clock,
+  Layers,
+  Target,
+  AlertTriangle,
+  Play,
+  CheckCircle2,
+  ArrowLeft,
+} from "lucide-react";
+import { Navbar } from "../../components/NavBar";
 import { fetchInterviewById, startInterview } from "./interviewApi";
 import { Interview } from "./types";
 
@@ -27,7 +37,7 @@ export const InterviewPreparationPage: React.FC = () => {
   };
 
   useEffect(() => {
-    loadInterview();
+    void loadInterview();
   }, [interviewId]);
 
   const handleStartInterview = async () => {
@@ -46,198 +56,224 @@ export const InterviewPreparationPage: React.FC = () => {
     }
   };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="motion-safe:animate-spin rounded-full h-8 w-8 border-b-2 border-teal-600"></div>
-        <span className="ml-3 text-slate-300">
-          Loading interview details...
-        </span>
-      </div>
-    );
-  }
-
-  if (error || !interview) {
-    return (
-      <div className="p-6 bg-red-950/40 border border-red-800/50 rounded-xl text-center max-w-xl mx-auto my-8">
-        <p className="text-red-300 font-medium mb-4">
-          {error || "Interview not found"}
-        </p>
-        <button
-          onClick={loadInterview}
-          className="px-4 py-2 bg-red-600 hover:bg-red-500 text-white font-medium rounded-lg transition"
-        >
-          Retry
-        </button>
-      </div>
-    );
-  }
-
-  const { plan, status, title } = interview;
-
-  if (!plan) {
-    return (
-      <div className="p-6 bg-amber-950/40 border border-amber-800/50 rounded-xl text-center max-w-xl mx-auto my-8">
-        <p className="text-amber-300 font-medium">
-          Interview plan is missing or still generating.
-        </p>
-      </div>
-    );
-  }
-
   return (
-    <div className="min-h-screen bg-slate-900 py-8 px-4 text-slate-100">
-      {/* Header */}
-      <div className="bg-slate-800/80 border border-slate-700 mb-4  p-6 rounded-2xl ">
-        <div className="flex justify-between items-start">
-          <div>
-            <h1 className="text-2xl font-bold text-white tracking-tight">
-              {plan.role}
-            </h1>
-            <p className="text-lg font-medium text-slate-300 mt-1 capitalize">
-              {plan.company}
-            </p>
-          </div>
-          <span className="px-3 py-1 bg-teal-600/20 text-teal-300 border border-teal-600/40 font-semibold text-xs rounded-full ">
-            Difficulty: {plan.difficulty}
-          </span>
-        </div>
-        <p className="text-xs text-slate-400 mt-3">{title}</p>
-      </div>
+    <div className="min-h-screen bg-slate-950 text-slate-100">
+      <Navbar />
 
-      {/* Grid Specs */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4 ">
-        {/* Session Stats */}
-        <div className="bg-slate-800/80 border border-slate-700 p-6 rounded-2xl space-y-4">
-          <h2 className="text-md font-semibold text-white border-b border-slate-700 pb-3">
-            Session Overview
-          </h2>
-          <div className="flex justify-between text-sm">
-            <span className="text-slate-300">Match Score:</span>
-            <span className="font-bold text-emerald-400">
-              {plan.matchScore != null ? `${plan.matchScore}%` : "Not available"}
-            </span>
-          </div>
-          <div className="flex justify-between text-sm">
-            <span className="text-slate-300">Estimated Duration:</span>
-            <span className="font-semibold text-slate-200">
-              {plan.estimatedDuration} minutes
-            </span>
-          </div>
-          <div className="flex justify-between text-sm">
-            <span className="text-slate-300">Total Rounds:</span>
-            <span className="font-semibold text-slate-200">
-              {plan.rounds.length} rounds
-            </span>
-          </div>
+      <main className="mx-auto max-w-4xl px-4 py-8 sm:px-6">
+        <div className="mb-6">
+          <Link
+            to="/dashboard"
+            className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-400 transition hover:text-teal-300"
+          >
+            <ArrowLeft className="h-3.5 w-3.5" />
+            <span>Back to Dashboard</span>
+          </Link>
         </div>
 
-        {/* Target Skills & Gaps */}
-        <div className="bg-slate-800/80 border border-slate-700 p-6 rounded-2xl space-y-4">
-          <h2 className="text-md font-semibold text-white border-b border-slate-700 pb-3">
-            Skills & Focus Areas
-          </h2>
-          <div>
-            <p className="text-xs font-semibold text-slate-400 mb-2">
-              Target Skills
-            </p>
-            <div className="flex flex-wrap gap-2">
-              {plan.targetSkills.map((skill, idx) => (
-                <span
-                  key={idx}
-                  className="px-2.5 py-1 bg-slate-700/80 text-slate-200 text-xs rounded-md border border-slate-600"
-                >
-                  {skill}
-                </span>
-              ))}
-            </div>
+        {loading ? (
+          <div className="flex min-h-[360px] flex-col items-center justify-center rounded-2xl border border-slate-800 bg-slate-900/60 p-8">
+            <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-teal-400" />
+            <span className="mt-3 text-sm text-slate-300">
+              Loading role-specific interview plan...
+            </span>
           </div>
-          {plan.topSkillGaps.length > 0 && (
-            <div>
-              <p className="text-xs font-semibold text-amber-400 mb-2">
-                Top Focus Gaps
-              </p>
-              <div className="flex flex-wrap gap-2">
-                {plan.topSkillGaps.map((gap, idx) => (
-                  <span
-                    key={idx}
-                    className="px-2.5 py-1 bg-amber-500/20 text-amber-200 text-xs rounded-md border border-amber-500/30 font-medium"
-                  >
-                    {gap}
+        ) : error || !interview ? (
+          <div className="mx-auto max-w-xl rounded-2xl border border-red-800/50 bg-red-950/40 p-6 text-center">
+            <p className="mb-4 text-sm font-medium text-red-300">
+              {error || "Interview not found"}
+            </p>
+            <button
+              onClick={() => void loadInterview()}
+              className="rounded-xl bg-red-600 px-4 py-2 text-xs font-semibold text-white transition hover:bg-red-500"
+            >
+              Retry
+            </button>
+          </div>
+        ) : !interview.plan ? (
+          <div className="mx-auto max-w-xl rounded-2xl border border-amber-800/50 bg-amber-950/40 p-6 text-center">
+            <p className="text-sm font-medium text-amber-300">
+              Interview plan is missing or still generating.
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-6">
+            {/* Header Card */}
+            <div className="rounded-2xl border border-slate-800 bg-slate-900/80 p-6">
+              <div className="flex flex-wrap items-start justify-between gap-4">
+                <div>
+                  <span className="inline-flex items-center gap-1.5 rounded-full border border-teal-500/30 bg-teal-500/10 px-3 py-0.5 text-xs font-semibold text-teal-300">
+                    Role-Specific Mock Interview
                   </span>
+                  <h1 className="mt-2.5 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+                    {interview.plan.role}
+                  </h1>
+                  <p className="mt-1 text-base font-medium capitalize text-slate-300">
+                    {interview.plan.company}
+                  </p>
+                </div>
+                <span className="rounded-full border border-teal-500/30 bg-teal-500/10 px-3 py-1 text-xs font-semibold text-teal-300">
+                  Difficulty: {interview.plan.difficulty}
+                </span>
+              </div>
+              <p className="mt-3 text-xs text-slate-400">{interview.title}</p>
+            </div>
+
+            {/* Overview & Target Skills */}
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+              <div className="space-y-4 rounded-2xl border border-slate-800 bg-slate-900/70 p-6">
+                <h2 className="border-b border-slate-800 pb-3 text-sm font-semibold uppercase tracking-wider text-slate-300">
+                  Session Overview
+                </h2>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="flex items-center gap-2 text-slate-400">
+                    <Target className="h-4 w-4 text-teal-400" />
+                    Match Score
+                  </span>
+                  <span className="font-bold text-emerald-400">
+                    {interview.plan.matchScore != null
+                      ? `${interview.plan.matchScore}%`
+                      : "Not available"}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="flex items-center gap-2 text-slate-400">
+                    <Clock className="h-4 w-4 text-teal-400" />
+                    Estimated Duration
+                  </span>
+                  <span className="font-semibold text-slate-200">
+                    {interview.plan.estimatedDuration} minutes
+                  </span>
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="flex items-center gap-2 text-slate-400">
+                    <Layers className="h-4 w-4 text-teal-400" />
+                    Total Rounds
+                  </span>
+                  <span className="font-semibold text-slate-200">
+                    {interview.plan.rounds.length} rounds
+                  </span>
+                </div>
+              </div>
+
+              <div className="space-y-4 rounded-2xl border border-slate-800 bg-slate-900/70 p-6">
+                <h2 className="border-b border-slate-800 pb-3 text-sm font-semibold uppercase tracking-wider text-slate-300">
+                  Skills & Focus Areas
+                </h2>
+                <div>
+                  <p className="mb-2 text-xs font-semibold text-slate-400">
+                    Target Skills Evaluated
+                  </p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {interview.plan.targetSkills.map((skill, idx) => (
+                      <span
+                        key={idx}
+                        className="rounded-lg border border-slate-700 bg-slate-950 px-2.5 py-1 text-xs text-slate-200"
+                      >
+                        {skill}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+                {interview.plan.topSkillGaps.length > 0 && (
+                  <div>
+                    <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-amber-400">
+                      <AlertTriangle className="h-3.5 w-3.5" />
+                      Priority Skill Gaps Probed
+                    </p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {interview.plan.topSkillGaps.map((gap, idx) => (
+                        <span
+                          key={idx}
+                          className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-2.5 py-1 text-xs font-medium text-amber-200"
+                        >
+                          {gap}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Rounds Breakdown */}
+            <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-6">
+              <h2 className="mb-4 border-b border-slate-800 pb-3 text-sm font-semibold uppercase tracking-wider text-slate-300">
+                Interview Structure
+              </h2>
+              <div className="divide-y divide-slate-800">
+                {interview.plan.rounds.map((round, idx) => (
+                  <div
+                    key={idx}
+                    className="flex items-center justify-between py-3.5"
+                  >
+                    <div className="flex items-center gap-3">
+                      <span className="flex h-7 w-7 items-center justify-center rounded-full border border-teal-500/30 bg-teal-500/10 text-xs font-bold text-teal-300">
+                        {idx + 1}
+                      </span>
+                      <span className="text-sm font-medium text-slate-100">
+                        {round.name}
+                      </span>
+                    </div>
+                    <span className="font-mono text-xs text-slate-400">
+                      {round.duration} min
+                    </span>
+                  </div>
                 ))}
               </div>
             </div>
-          )}
-        </div>
-      </div>
 
-      {/* Rounds Breakdown */}
-      <div className="bg-slate-800/80 border border-slate-700 mb-4  p-6 rounded-2xl ">
-        <h2 className="text-md font-semibold text-white mb-4 border-b border-slate-700 pb-3">
-          Interview Structure
-        </h2>
-        <div className="divide-y divide-slate-700">
-          {plan.rounds.map((round, idx) => (
-            <div key={idx} className="py-3 flex justify-between items-center">
-              <div className="flex items-center space-x-3">
-                <span className="w-6 h-6 rounded-full bg-slate-700 text-teal-400 text-xs flex items-center justify-center font-bold border border-slate-600">
-                  {idx + 1}
-                </span>
-                <span className="font-medium text-slate-200 text-sm">
-                  {round.name}
-                </span>
+            {/* Action CTA */}
+            <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-teal-500/30 bg-gradient-to-r from-slate-900 via-slate-900 to-teal-950/40 p-6">
+              <div>
+                <p className="text-sm font-medium text-slate-200">
+                  Session Status:{" "}
+                  <span className="rounded-md bg-teal-500/15 px-2 py-0.5 text-xs font-bold text-teal-300">
+                    {interview.status}
+                  </span>
+                </p>
+                <p className="mt-1 text-xs text-slate-400">
+                  Each answer is scored against a structured rubric and updates
+                  your readiness profile.
+                </p>
               </div>
-              <span className="text-xs text-slate-400 font-mono">
-                {round.duration} min
-              </span>
+
+              {interview.status === "SCHEDULED" && (
+                <button
+                  onClick={() => void handleStartInterview()}
+                  disabled={starting}
+                  className="inline-flex items-center gap-2 rounded-xl bg-teal-500 px-6 py-3 text-sm font-semibold text-slate-950 transition hover:bg-teal-400 disabled:opacity-50"
+                >
+                  <Play className="h-4 w-4 fill-current" />
+                  <span>{starting ? "Starting..." : "Start Interview"}</span>
+                </button>
+              )}
+
+              {interview.status === "IN_PROGRESS" && (
+                <button
+                  onClick={() => void handleStartInterview()}
+                  className="inline-flex items-center gap-2 rounded-xl bg-teal-500 px-6 py-3 text-sm font-semibold text-slate-950 transition hover:bg-teal-400"
+                >
+                  <Play className="h-4 w-4 fill-current" />
+                  <span>Continue Interview</span>
+                </button>
+              )}
+
+              {interview.status === "COMPLETED" && (
+                <button
+                  onClick={() =>
+                    navigate(`/interviews/${interviewId}/evaluation`)
+                  }
+                  className="inline-flex items-center gap-2 rounded-xl bg-emerald-500 px-6 py-3 text-sm font-semibold text-slate-950 transition hover:bg-emerald-400"
+                >
+                  <CheckCircle2 className="h-4 w-4" />
+                  <span>View Evaluation Report</span>
+                </button>
+              )}
             </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Action CTA */}
-      <div className="bg-slate-800/80 border border-slate-700 p-6 rounded-2xl flex items-center justify-between">
-        <div>
-          <p className="text-sm font-medium text-slate-300">
-            Current Status:{" "}
-            <span className="font-bold text-teal-400 text-xs ">
-              {status}
-            </span>
-          </p>
-          <p className="text-xs text-slate-400 mt-1">
-            Ensure your setup is ready before beginning.
-          </p>
-        </div>
-
-        {status === "SCHEDULED" && (
-          <button
-            onClick={handleStartInterview}
-            disabled={starting}
-            className="px-6 py-2.5 bg-teal-700 hover:bg-teal-600 text-white font-semibold rounded-lg disabled:opacity-50 transition"
-          >
-            {starting ? "Starting..." : "Start Interview"}
-          </button>
+          </div>
         )}
-
-        {status === "IN_PROGRESS" && (
-          <button
-            onClick={handleStartInterview}
-            className="px-6 py-2.5 bg-teal-700 hover:bg-teal-600 text-white font-semibold rounded-lg transition"
-          >
-            Continue Interview
-          </button>
-        )}
-
-        {status === "COMPLETED" && (
-          <button
-            onClick={() => navigate(`/interviews/${interviewId}/evaluation`)}
-            className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-lg transition"
-          >
-            View Evaluation
-          </button>
-        )}
-      </div>
+      </main>
     </div>
   );
 };

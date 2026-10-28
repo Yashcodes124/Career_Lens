@@ -12,27 +12,34 @@ const envSchema = z.object({
     .string()
     .min(1, "DATABASE_URL is required")
     .default(
-      "postgresql://postgres:postgres@localhost:5432/truehire?schema=public",
+      "postgresql://career_lens_user:@localhost:5433/career_lens?schema=public",
     ),
+  DIRECT_URL: z.string().optional(),
+  CLIENT_URL: z.string().default("http://localhost:5173"),
+  SERVER_URL: z.string().default("http://localhost:5000"),
+
   JWT_SECRET: z
     .string()
     .min(16, "JWT_SECRET must be at least 16 characters")
-    .default("truehire-dev-secret-key-change-in-prod-2026"),
+    .default("truehire-secure-jwt-secret-key-2026"),
   JWT_EXPIRES_IN: z.string().default("7d"),
-  CLIENT_URL: z.string().default("http://localhost:5173"),
 
-  // Supports NVIDIA NIM, Groq, Gemini OpenAI-compatible URL, or OpenAI
+  // Multi-provider Free AI settings (NVIDIA NIM, Groq, or Gemini)
   AI_BASE_URL: z.string().default("https://integrate.api.nvidia.com/v1"),
   AI_API_KEY: z.string().optional(),
   NVIDIA_API_KEY: z.string().optional(),
   OPENAI_API_KEY: z.string().optional(),
-  AI_MODEL: z.string().default("meta/llama-3.1-70b-instruct"),
+  AI_MODEL: z.string().optional(),
+  NVIDIA_MODEL: z.string().default("meta/llama-3.1-70b-instruct"),
   AI_TIMEOUT_MS: z.coerce.number().int().positive().default(25000),
 
-  // Comma-separated public Greenhouse board tokens (100% free, no API key needed)
-  GREENHOUSE_BOARDS: z
-    .string()
-    .default("stripe,vercel,cloudflare,datadog,discord"),
+  // ATS / Greenhouse settings
+  GREENHOUSE_BOARD_TOKEN: z.string().default("stripe"),
+  GREENHOUSE_COMPANY: z.string().default("stripe"),
+  GREENHOUSE_BOARDS: z.string().default("stripe,cloudflare,vercel"),
+  GREENHOUSE_API_KEY: z.string().optional(),
+  LEVER_API_KEY: z.string().optional(),
+  ASHBY_API_KEY: z.string().optional(),
 });
 
 const parsed = envSchema.safeParse(process.env);
@@ -49,11 +56,27 @@ if (!parsed.success) {
 
 const rawEnv = parsed.success ? parsed.data : envSchema.parse({});
 
+const resolvedApiKey =
+  rawEnv.NVIDIA_API_KEY || rawEnv.AI_API_KEY || rawEnv.OPENAI_API_KEY || "";
+const resolvedModel =
+  rawEnv.AI_MODEL || rawEnv.NVIDIA_MODEL || "meta/llama-3.1-70b-instruct";
+
+// Keep process.env synchronized for modules reading process.env directly
+if (resolvedApiKey) {
+  process.env.NVIDIA_API_KEY = resolvedApiKey;
+  process.env.AI_API_KEY = resolvedApiKey;
+}
+process.env.NVIDIA_MODEL = resolvedModel;
+process.env.AI_MODEL = resolvedModel;
+process.env.AI_BASE_URL = rawEnv.AI_BASE_URL;
+
 export const env = {
   ...rawEnv,
-  // Resolve whichever AI key is provided
-  resolvedAiApiKey:
-    rawEnv.AI_API_KEY || rawEnv.NVIDIA_API_KEY || rawEnv.OPENAI_API_KEY || "",
+  NVIDIA_API_KEY: resolvedApiKey,
+  AI_API_KEY: resolvedApiKey,
+  NVIDIA_MODEL: resolvedModel,
+  AI_MODEL: resolvedModel,
+  resolvedAiApiKey: resolvedApiKey,
   greenhouseBoardList: rawEnv.GREENHOUSE_BOARDS.split(",")
     .map((b) => b.trim().toLowerCase())
     .filter(Boolean),
