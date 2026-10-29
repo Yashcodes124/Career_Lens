@@ -1,17 +1,21 @@
-import React, { useState } from 'react';
-import { useAuth } from './useAuth';
-import { User as UserIcon, Mail, Lock, ArrowRight, Loader2, AlertCircle, Sparkles } from 'lucide-react';
+import React, { useState } from "react";
+import { Link } from "react-router-dom";
+import { useAuth } from "./useAuth";
+import { ArrowRight, Loader2, AlertCircle } from "lucide-react";
 
 interface RegisterFormProps {
   onSuccess?: () => void;
   onSwitchToLogin?: () => void;
 }
 
-export const RegisterForm: React.FC<RegisterFormProps> = ({ onSuccess, onSwitchToLogin }) => {
+export const RegisterForm: React.FC<RegisterFormProps> = ({
+  onSuccess,
+  onSwitchToLogin,
+}) => {
   const { register, error, clearError } = useAuth();
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
 
@@ -21,12 +25,12 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onSuccess, onSwitchT
     setLocalError(null);
 
     if (!name.trim() || !email.trim() || !password) {
-      setLocalError('Please fill in all required fields');
+      setLocalError("Please fill in all required fields");
       return;
     }
 
     if (password.length < 8) {
-      setLocalError('Password must be at least 8 characters long');
+      setLocalError("Password must be at least 8 characters long");
       return;
     }
 
@@ -35,108 +39,110 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onSuccess, onSwitchT
       await register({ name, email, password });
       if (onSuccess) onSuccess();
     } catch (err: any) {
-      setLocalError(err.message || 'Registration failed');
+      setLocalError(err.message || "Registration failed");
     } finally {
       setIsSubmitting(false);
     }
   };
 
   return (
-    <div className="w-full max-w-md p-8 bg-slate-900/90 border border-slate-800 rounded-2xl transition-colors duration-300">
-      <div className="text-center mb-8">
-        <div className="inline-flex items-center justify-center w-12 h-12 mb-4 rounded-xl bg-teal-600 ">
-          <Sparkles className="w-6 h-6 text-white" />
-        </div>
-        <h2 className="text-2xl font-bold text-slate-100 tracking-tight">Create Account</h2>
-        <p className="mt-2 text-sm text-slate-400">Join TrueHire to accelerate your career readiness</p>
+    <div className="w-full max-w-sm rounded-xl border border-zinc-800/90 bg-zinc-900/40 p-7 shadow-2xl">
+      <div className="mb-7">
+        <Link
+          to="/"
+          className="inline-flex items-center gap-2 text-xs font-semibold tracking-tight text-zinc-300 hover:text-white"
+        >
+          <span className="h-2 w-2 rounded-full bg-teal-400" />
+          <span>TrueHire</span>
+        </Link>
+        <h1 className="mt-4 text-xl font-semibold tracking-tight text-white">
+          Create your account
+        </h1>
+        <p className="mt-1 text-xs text-zinc-400">
+          Start matching your resume against verified ATS job listings.
+        </p>
       </div>
 
       {(localError || error) && (
-        <div className="mb-6 p-4 rounded-xl bg-red-950/50 border border-red-800/60 flex items-start gap-3 text-red-400 text-sm animate-fadeIn">
-          <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
+        <div
+          role="alert"
+          className="mb-5 flex items-start gap-2.5 rounded-lg border border-red-500/30 bg-red-950/30 p-3.5 text-xs text-red-300"
+        >
+          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-red-400" />
           <span>{localError || error}</span>
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="space-y-5">
+      <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label className="block text-xs font-semibold text-slate-300 mb-2">
+          <label className="mb-1.5 block font-mono text-[11px] uppercase tracking-wider text-zinc-400">
             Full Name
           </label>
-          <div className="relative">
-            <UserIcon className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-            <input
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Jane Doe"
-              required
-              className="w-full pl-11 pr-4 py-3 bg-slate-950/80 border border-slate-800 rounded-xl text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-teal-600 focus:border-transparent transition-colors"
-            />
-          </div>
+          <input
+            type="text"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Jane Doe"
+            required
+            className="w-full rounded-lg border border-zinc-800 bg-[#09090b] px-3.5 py-2.5 text-sm text-zinc-100 placeholder-zinc-600 outline-none transition focus:border-teal-500"
+          />
         </div>
 
         <div>
-          <label className="block text-xs font-semibold text-slate-300 mb-2">
+          <label className="mb-1.5 block font-mono text-[11px] uppercase tracking-wider text-zinc-400">
             Email Address
           </label>
-          <div className="relative">
-            <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="you@example.com"
-              required
-              className="w-full pl-11 pr-4 py-3 bg-slate-950/80 border border-slate-800 rounded-xl text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-teal-600 focus:border-transparent transition-colors"
-            />
-          </div>
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="you@example.com"
+            required
+            className="w-full rounded-lg border border-zinc-800 bg-[#09090b] px-3.5 py-2.5 text-sm text-zinc-100 placeholder-zinc-600 outline-none transition focus:border-teal-500"
+          />
         </div>
 
         <div>
-          <label className="block text-xs font-semibold text-slate-300 mb-2">
+          <label className="mb-1.5 block font-mono text-[11px] uppercase tracking-wider text-zinc-400">
             Password (min. 8 characters)
           </label>
-          <div className="relative">
-            <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••"
-              required
-              minLength={8}
-              className="w-full pl-11 pr-4 py-3 bg-slate-950/80 border border-slate-800 rounded-xl text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-teal-600 focus:border-transparent transition-colors"
-            />
-          </div>
+          <input
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="••••••••"
+            required
+            minLength={8}
+            className="w-full rounded-lg border border-zinc-800 bg-[#09090b] px-3.5 py-2.5 text-sm text-zinc-100 placeholder-zinc-600 outline-none transition focus:border-teal-500"
+          />
         </div>
 
         <button
           type="submit"
           disabled={isSubmitting}
-          className="w-full py-3.5 px-4 bg-teal-700 hover:bg-teal-600 text-white font-medium rounded-xl hover:focus:outline-none focus:ring-2 focus:ring-teal-600 focus:ring-offset-2 focus:ring-offset-slate-900 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+          className="mt-2 flex w-full items-center justify-center gap-2 rounded-lg bg-teal-500 px-4 py-2.5 text-xs font-semibold text-zinc-950 transition hover:bg-teal-400 active:scale-[0.98] disabled:opacity-50"
         >
           {isSubmitting ? (
             <>
-              <Loader2 className="w-5 h-5 motion-safe:animate-spin" />
+              <Loader2 className="h-4 w-4 animate-spin" />
               <span>Creating Account...</span>
             </>
           ) : (
             <>
               <span>Get Started</span>
-              <ArrowRight className="w-5 h-5" />
+              <ArrowRight className="h-4 w-4" />
             </>
           )}
         </button>
       </form>
 
       {onSwitchToLogin && (
-        <div className="mt-8 text-center text-sm text-slate-400">
-          Already have an account?{' '}
+        <div className="mt-6 border-t border-zinc-800/80 pt-5 text-center text-xs text-zinc-400">
+          Already have an account?{" "}
           <button
             type="button"
             onClick={onSwitchToLogin}
-            className="text-teal-400 hover:text-teal-300 font-semibold underline-offset-4 hover:underline transition-colors"
+            className="font-semibold text-teal-400 hover:text-teal-300"
           >
             Sign in
           </button>

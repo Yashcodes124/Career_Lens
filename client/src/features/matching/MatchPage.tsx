@@ -1,13 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
-import {
-  Sparkles,
-  FileEdit,
-  BarChart3,
-  ArrowLeft,
-  UploadCloud,
-  Layers,
-} from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { Navbar } from "../../components/NavBar";
 import { calculateJobMatch } from "./matchingApi";
 import type { MatchResult as MatchResultType } from "./types";
@@ -64,14 +57,14 @@ export default function MatchPage() {
   }, [jobId, activeResumeId, resumesLoading]);
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100">
+    <div className="min-h-screen bg-[#09090b] text-zinc-100">
       <Navbar />
 
       <main className="mx-auto max-w-5xl px-4 py-8 sm:px-6">
         <div className="mb-6">
           <Link
             to="/jobs"
-            className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-400 transition hover:text-teal-300"
+            className="inline-flex items-center gap-1.5 text-xs font-medium text-zinc-400 transition hover:text-teal-300"
           >
             <ArrowLeft className="h-3.5 w-3.5" />
             <span>Back to Verified Jobs</span>
@@ -79,32 +72,29 @@ export default function MatchPage() {
         </div>
 
         {loading || resumesLoading ? (
-          <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-10 text-center">
-            <div className="mx-auto h-8 w-8 animate-spin rounded-full border-b-2 border-teal-400" />
-            <p className="mt-4 text-sm font-medium text-slate-300">
-              Analyzing your resume against this job’s requirements...
+          <div className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-10 text-center">
+            <p className="font-mono text-xs text-zinc-400">
+              Analyzing your resume against this job...
             </p>
           </div>
         ) : !activeResumeId ? (
-          <div className="rounded-2xl border border-dashed border-slate-800 bg-slate-900/60 p-10 text-center">
-            <UploadCloud className="mx-auto h-10 w-10 text-teal-400" />
-            <h2 className="mt-3 text-lg font-semibold text-white">
-              Upload a resume to run deterministic matching
+          <div className="rounded-xl border border-dashed border-zinc-800 bg-zinc-900/30 p-10 text-center">
+            <h2 className="text-base font-semibold text-white">
+              Resume required for deterministic matching
             </h2>
-            <p className="mt-1 text-sm text-slate-400">
-              TrueHire compares your verified skills against the job description
-              to compute your match score.
+            <p className="mt-1 text-xs text-zinc-400">
+              Upload a PDF or DOCX resume to compare your skills with this
+              posting.
             </p>
             <Link
               to="/resume"
-              className="mt-5 inline-flex items-center gap-2 rounded-xl bg-teal-500 px-5 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-teal-400"
+              className="mt-4 inline-block rounded-lg bg-teal-500 px-4 py-2 text-xs font-semibold text-zinc-950 hover:bg-teal-400"
             >
-              <UploadCloud className="h-4 w-4" />
-              <span>Upload Resume</span>
+              Upload Resume
             </Link>
           </div>
         ) : error ? (
-          <div className="rounded-2xl border border-red-500/30 bg-red-950/30 p-6 text-sm text-red-300">
+          <div className="rounded-xl border border-red-500/30 bg-red-950/20 p-6 text-sm text-red-300">
             <p className="font-semibold text-red-200">
               Unable to compute match
             </p>
@@ -112,42 +102,32 @@ export default function MatchPage() {
           </div>
         ) : result ? (
           <>
-            <header className="mb-8 flex flex-wrap items-end justify-between gap-4 rounded-2xl border border-slate-800/90 bg-slate-900/70 p-6">
+            <header className="mb-8 flex flex-wrap items-end justify-between gap-4 border-b border-zinc-800/80 pb-6">
               <div>
-                <div className="inline-flex items-center gap-1.5 rounded-full border border-teal-500/30 bg-teal-500/10 px-3 py-1 text-xs font-semibold text-teal-300">
-                  <Sparkles className="h-3.5 w-3.5" />
-                  <span>Deterministic Skill Matcher</span>
-                </div>
-                <h1 className="mt-3 text-2xl font-bold text-white sm:text-3xl">
+                <p className="font-mono text-xs uppercase tracking-wider text-teal-400">
+                  Resume Matcher
+                </p>
+                <h1 className="mt-2 text-2xl font-semibold tracking-tight text-white sm:text-3xl">
                   Skill Gap & Qualification Analysis
                 </h1>
-                <p className="mt-1 text-sm text-slate-400">
-                  Transparent overlap between your parsed resume skills and this
-                  posting’s requirements.
+                <p className="mt-1 text-sm text-zinc-400">
+                  Deterministic analysis based on your resume skills and the job
+                  requirements.
                 </p>
               </div>
 
               <div className="flex flex-wrap gap-2.5">
                 <Link
                   to={`/skill-gaps/${jobId}?resumeId=${activeResumeId}`}
-                  className="inline-flex items-center gap-1.5 rounded-xl bg-teal-500 px-4 py-2.5 text-xs font-semibold text-slate-950 transition hover:bg-teal-400"
+                  className="rounded-lg bg-teal-500 px-4 py-2 text-xs font-semibold text-zinc-950 transition hover:bg-teal-400 active:scale-[0.98]"
                 >
-                  <BarChart3 className="h-4 w-4" />
-                  <span>Open Skill Gap Plan</span>
+                  Open skill gap plan & interview
                 </Link>
                 <Link
                   to={`/tailor/${jobId}?resumeId=${activeResumeId}`}
-                  className="inline-flex items-center gap-1.5 rounded-xl border border-slate-700 bg-slate-950 px-4 py-2.5 text-xs font-semibold text-slate-200 transition hover:border-teal-500/50 hover:text-white"
+                  className="rounded-lg border border-zinc-800 bg-zinc-900/70 px-4 py-2 text-xs font-medium text-zinc-200 transition hover:border-zinc-700 hover:text-white"
                 >
-                  <FileEdit className="h-4 w-4 text-teal-400" />
-                  <span>Tailor Resume</span>
-                </Link>
-                <Link
-                  to="/applications"
-                  className="inline-flex items-center gap-1.5 rounded-xl border border-slate-700 bg-slate-950 px-4 py-2.5 text-xs font-semibold text-slate-200 transition hover:border-teal-500/50 hover:text-white"
-                >
-                  <Layers className="h-4 w-4 text-teal-400" />
-                  <span>View in Tracker</span>
+                  Tailor resume
                 </Link>
               </div>
             </header>

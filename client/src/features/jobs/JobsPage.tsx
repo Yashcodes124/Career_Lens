@@ -3,17 +3,16 @@ import { Link, useNavigate } from "react-router-dom";
 import {
   Search,
   MapPin,
-  ShieldCheck,
   Bookmark,
   BookmarkCheck,
   ExternalLink,
-  Sparkles,
-  Layers,
-  Filter,
   RotateCcw,
-  BarChart3,
   Building2,
   Clock,
+  X,
+  ChevronLeft,
+  ChevronRight,
+  ArrowUpRight,
 } from "lucide-react";
 import { Navbar } from "../../components/NavBar";
 import { fetchJobs, fetchSavedJobs, unsaveJob, saveJob } from "./jobsApi";
@@ -22,18 +21,23 @@ import type { Job } from "./types";
 import { createApplication } from "../tracker/trackerApi";
 import { useLatestResumeId } from "../resume/useResumes";
 
-const PAGE_SIZE = 30;
+const JOBS_PER_PAGE = 12;
 
 export const JobsPage: React.FC = () => {
   const navigate = useNavigate();
   const [jobs, setJobs] = useState<Job[]>([]);
-  const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
+  const [activeDrawerJob, setActiveDrawerJob] = useState<Job | null>(null);
+  const [drawerTab, setDrawerTab] = useState<"OVERVIEW" | "DESCRIPTION">(
+    "OVERVIEW",
+  );
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
   const [search, setSearch] = useState("");
   const [locationFilter, setLocationFilter] = useState("");
   const [sourceFilter, setSourceFilter] = useState("ALL");
-  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+  const [currentPage, setCurrentPage] = useState(1);
+
   const [savedJobIds, setSavedJobIds] = useState<Set<string>>(new Set());
   const [isSaving, setIsSaving] = useState(false);
   const [isTracking, setIsTracking] = useState(false);
@@ -51,9 +55,6 @@ export const JobsPage: React.FC = () => {
         ]);
 
         setJobs(results);
-        if (results.length > 0 && !selectedJobId) {
-          setSelectedJobId(results[0].id);
-        }
         setSavedJobIds(new Set(savedJobs.map((job) => job.id)));
       } catch (err) {
         setError(err instanceof Error ? err.message : "Unable to load jobs.");
@@ -64,6 +65,37 @@ export const JobsPage: React.FC = () => {
 
     void loadJobs();
   }, []);
+
+  // Compute the most common role titles/categories dynamically from the loaded job list
+  const commonRoleTitles = useMemo(() => {
+    const counts = new Map<string, number>();
+
+    const normalizeRoleTitle = (rawTitle: string): string => {
+      const cleaned = rawTitle
+        .split(/[-–—,|/()]/)[0]
+        .replace(
+          /\b(Sr\.?|Senior|Jr\.?|Junior|Staff|Principal|Lead|I|II|III|IV)\b/gi,
+          "",
+        )
+        .replace(/\s+/g, " ")
+        .trim();
+      return cleaned.length > 3 && cleaned.length <= 36
+        ? cleaned
+        : rawTitle.slice(0, 30);
+    };
+
+    jobs.forEach((job) => {
+      const role = normalizeRoleTitle(job.title);
+      if (role) {
+        counts.set(role, (counts.get(role) ?? 0) + 1);
+      }
+    });
+
+    return Array.from(counts.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 8)
+      .map(([title, count]) => ({ title, count }));
+  }, [jobs]);
 
   const sources = useMemo(() => {
     const set = new Set<string>();
@@ -88,7 +120,11 @@ export const JobsPage: React.FC = () => {
 
       const matchesLocation =
         !normalizedLocation ||
-        job.location?.toLowerCase().includes(normalizedLocation);
+        (normalizedLocation === "india"
+          ? /india|bengaluru|bangalore|hyderabad|pune|mumbai|gurgaon|gurugram|noida|chennai|delhi/i.test(
+              job.location ?? "",
+            )
+          : job.location?.toLowerCase().includes(normalizedLocation));
 
       const matchesSource =
         sourceFilter === "ALL" || job.source?.toUpperCase() === sourceFilter;
@@ -97,38 +133,44 @@ export const JobsPage: React.FC = () => {
     });
   }, [jobs, search, locationFilter, sourceFilter]);
 
-  const visibleJobs = useMemo(
-    () => filteredJobs.slice(0, visibleCount),
-    [filteredJobs, visibleCount],
+  const totalPages = Math.max(
+    1,
+    Math.ceil(filteredJobs.length / JOBS_PER_PAGE),
   );
+  const safePage = Math.min(currentPage, totalPages);
 
-  const selectedJob = useMemo(
-    () =>
-      filteredJobs.find((job) => job.id === selectedJobId) ??
-      filteredJobs[0] ??
-      null,
-    [filteredJobs, selectedJobId],
-  );
+  const paginatedJobs = useMemo(() => {
+    const start = (safePage - 1) * JOBS_PER_PAGE;
+    return filteredJobs.slice(start, start + JOBS_PER_PAGE);
+  }, [filteredJobs, safePage]);
 
-  const handleToggleSave = async () => {
-    if (!selectedJob || isSaving) return;
+  const pageNumbers = useMemo(() => {
+    const pages: number[] = [];
+    const maxButtons = 5;
+    let start = Math.max(1, safePage - 2);
+    const end = Math.min(totalPages, start + maxButtons - 1);
+    start = Math.max(1, end - maxButtons + 1);
+    for (let i = start; i <= end; i++) pages.push(i);
+    return pages;
+  }, [safePage, totalPages]);
 
+  const handleToggleSave = async (job: Job) => {
+    if (isSaving) return;
     try {
       setIsSaving(true);
-      const isSaved = savedJobIds.has(selectedJob.id);
-
+      const isSaved = savedJobIds.has(job.id);
       if (isSaved) {
-        await unsaveJob(selectedJob.id);
+        await unsaveJob(job.id);
         setSavedJobIds((current) => {
           const next = new Set(current);
-          next.delete(selectedJob.id);
+          next.delete(job.id);
           return next;
         });
       } else {
-        await saveJob(selectedJob.id);
+        await saveJob(job.id);
         setSavedJobIds((current) => {
           const next = new Set(current);
-          next.add(selectedJob.id);
+          next.add(job.id);
           return next;
         });
       }
@@ -139,11 +181,11 @@ export const JobsPage: React.FC = () => {
     }
   };
 
-  const handleTrackApplication = async () => {
-    if (!selectedJob || isTracking) return;
+  const handleTrackApplication = async (job: Job) => {
+    if (isTracking) return;
     try {
       setIsTracking(true);
-      await createApplication(selectedJob.id);
+      await createApplication(job.id);
       navigate("/applications");
     } catch (err) {
       console.error("Failed to track application:", err);
@@ -170,90 +212,81 @@ export const JobsPage: React.FC = () => {
     }
   };
 
-  const matchUrl = selectedJob
-    ? `/matches/${selectedJob.id}${resumeId ? `?resumeId=${resumeId}` : ""}`
-    : "/jobs";
-
-  const skillGapUrl = selectedJob
-    ? `/skill-gap/${selectedJob.id}${resumeId ? `?resumeId=${resumeId}` : ""}`
-    : "/jobs";
-
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100">
+    <div className="min-h-screen bg-[#09090b] text-zinc-100">
       <Navbar />
 
-      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
-        {/* Page Header */}
-        <header className="mb-6 flex flex-wrap items-end justify-between gap-4">
+      <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
+        {/* Header */}
+        <header className="mb-6 flex flex-wrap items-end justify-between gap-4 border-b border-zinc-800/80 pb-6">
           <div>
-            <div className="inline-flex items-center gap-1.5 rounded-full border border-teal-500/30 bg-teal-500/10 px-3 py-1 text-xs font-semibold tracking-wide text-teal-300">
-              <ShieldCheck className="h-3.5 w-3.5" />
-              <span>Sourced from Official Company ATS</span>
-            </div>
-            <h1 className="mt-2.5 text-3xl font-bold tracking-tight text-white sm:text-4xl">
-              Verified Job Discovery
+            <p className="font-mono text-xs uppercase tracking-wider text-teal-400">
+              Verified ATS Directory
+            </p>
+            <h1 className="mt-2 text-2xl font-semibold tracking-tight text-white sm:text-3xl">
+              Job Board
             </h1>
-            <p className="mt-1 text-sm text-slate-400">
-              Select a role to inspect deterministic skill overlap, missing
-              gaps, and launch a targeted mock interview.
+            <p className="mt-1 text-sm text-zinc-400">
+              Browse verified listings by common role titles or location. Click
+              any role to inspect skills or launch a mock interview.
             </p>
           </div>
 
           <Link
             to="/saved-jobs"
-            className="inline-flex items-center gap-2 rounded-xl border border-slate-800 bg-slate-900 px-4 py-2.5 text-xs font-semibold text-slate-200 transition hover:border-teal-500/40 hover:text-white"
+            className="inline-flex items-center gap-2 rounded-lg border border-zinc-800 bg-zinc-900/60 px-3.5 py-2 text-xs font-medium text-zinc-200 transition hover:border-zinc-700 hover:text-white"
           >
-            <BookmarkCheck className="h-4 w-4 text-teal-400" />
-            <span>Saved Jobs ({savedJobIds.size})</span>
+            <BookmarkCheck className="h-3.5 w-3.5 text-teal-400" />
+            <span>Saved ({savedJobIds.size})</span>
           </Link>
         </header>
 
-        {/* Filter Bar */}
-        <div className="mb-6 grid gap-3 rounded-2xl border border-slate-800/90 bg-slate-900/70 p-4 md:grid-cols-[1.5fr_1fr_auto_auto]">
+        {/* Search & Location Filter Bar */}
+        <div className="mb-4 grid gap-3 rounded-xl border border-zinc-800/90 bg-zinc-900/40 p-3.5 md:grid-cols-[1.5fr_1fr_auto_auto]">
           <div className="relative">
-            <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+            <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500" />
             <input
               type="text"
               value={search}
               onChange={(event) => {
                 setSearch(event.target.value);
-                setVisibleCount(PAGE_SIZE);
+                setCurrentPage(1);
               }}
               placeholder="Search role title, company, or skill..."
-              className="w-full rounded-xl border border-slate-800 bg-slate-950 pl-10 pr-4 py-2.5 text-sm text-slate-100 outline-none placeholder:text-slate-500 focus:border-teal-500"
+              className="w-full rounded-lg border border-zinc-800 bg-[#09090b] pl-10 pr-4 py-2 text-xs text-zinc-100 outline-none placeholder:text-zinc-500 focus:border-teal-500"
             />
           </div>
 
           <div className="relative">
-            <MapPin className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+            <MapPin className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500" />
             <input
               type="text"
               value={locationFilter}
               onChange={(event) => {
                 setLocationFilter(event.target.value);
-                setVisibleCount(PAGE_SIZE);
+                setCurrentPage(1);
               }}
-              placeholder="Filter by location (e.g. Remote, Bengaluru)..."
-              className="w-full rounded-xl border border-slate-800 bg-slate-950 pl-10 pr-4 py-2.5 text-sm text-slate-100 outline-none placeholder:text-slate-500 focus:border-teal-500"
+              placeholder="Filter location (e.g., India, Bengaluru, Remote)..."
+              className="w-full rounded-lg border border-zinc-800 bg-[#09090b] pl-10 pr-4 py-2 text-xs text-zinc-100 outline-none placeholder:text-zinc-500 focus:border-teal-500"
             />
           </div>
 
           {sources.length > 2 && (
-            <div className="relative flex items-center">
-              <Filter className="pointer-events-none absolute left-3 h-3.5 w-3.5 text-slate-500" />
-              <select
-                value={sourceFilter}
-                onChange={(e) => setSourceFilter(e.target.value)}
-                aria-label="Filter by ATS source"
-                className="h-full rounded-xl border border-slate-800 bg-slate-950 pl-8 pr-8 py-2.5 text-xs font-medium text-slate-200 outline-none focus:border-teal-500"
-              >
-                {sources.map((src) => (
-                  <option key={src} value={src}>
-                    {src === "ALL" ? "All ATS Sources" : src}
-                  </option>
-                ))}
-              </select>
-            </div>
+            <select
+              value={sourceFilter}
+              onChange={(e) => {
+                setSourceFilter(e.target.value);
+                setCurrentPage(1);
+              }}
+              aria-label="Filter by ATS source"
+              className="rounded-lg border border-zinc-800 bg-[#09090b] px-3 py-2 font-mono text-xs text-zinc-300 outline-none focus:border-teal-500"
+            >
+              {sources.map((src) => (
+                <option key={src} value={src}>
+                  {src === "ALL" ? "All Sources" : src}
+                </option>
+              ))}
+            </select>
           )}
 
           <button
@@ -262,22 +295,86 @@ export const JobsPage: React.FC = () => {
               setSearch("");
               setLocationFilter("");
               setSourceFilter("ALL");
-              setVisibleCount(PAGE_SIZE);
+              setCurrentPage(1);
             }}
-            className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-slate-700 bg-slate-950 px-4 py-2.5 text-xs font-medium text-slate-300 transition hover:border-slate-600 hover:bg-slate-800 hover:text-white"
+            className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-zinc-800 bg-[#09090b] px-3.5 py-2 text-xs font-medium text-zinc-300 transition hover:border-zinc-700 hover:text-white"
           >
             <RotateCcw className="h-3.5 w-3.5" />
-            <span>Clear</span>
+            <span>Reset</span>
           </button>
         </div>
 
-        <div className="mb-4 flex items-center justify-between text-xs text-slate-400">
-          <p>
-            Showing{" "}
-            <span className="font-semibold text-white">
-              {filteredJobs.length}
-            </span>{" "}
-            {filteredJobs.length === 1 ? "verified role" : "verified roles"}
+        {/* Quick Region & Most Common Job Titles Bar */}
+        {commonRoleTitles.length > 0 && (
+          <div className="mb-6 space-y-2.5 rounded-xl border border-zinc-800/70 bg-zinc-900/20 p-3.5">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <span className="font-mono text-[10px] uppercase tracking-wider text-zinc-500">
+                Most Common Titles & Regions
+              </span>
+              <div className="flex items-center gap-1.5">
+                {[
+                  { label: "All Regions", val: "" },
+                  { label: "India Hubs", val: "India" },
+                  { label: "Bengaluru", val: "Bengaluru" },
+                  { label: "Remote", val: "Remote" },
+                ].map((loc) => {
+                  const active =
+                    locationFilter.toLowerCase() === loc.val.toLowerCase();
+                  return (
+                    <button
+                      key={loc.label}
+                      type="button"
+                      onClick={() => {
+                        setLocationFilter(loc.val);
+                        setCurrentPage(1);
+                      }}
+                      className={`rounded border px-2 py-0.5 font-mono text-[10px] transition ${
+                        active
+                          ? "border-teal-500/50 bg-teal-500/15 text-teal-300"
+                          : "border-zinc-800 bg-[#09090b] text-zinc-400 hover:text-zinc-200"
+                      }`}
+                    >
+                      {loc.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="flex flex-wrap gap-1.5">
+              {commonRoleTitles.map(({ title, count }) => {
+                const isSelected =
+                  search.trim().toLowerCase() === title.toLowerCase();
+                return (
+                  <button
+                    key={title}
+                    type="button"
+                    onClick={() => {
+                      setSearch(isSelected ? "" : title);
+                      setCurrentPage(1);
+                    }}
+                    className={`inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs transition ${
+                      isSelected
+                        ? "border-teal-500/60 bg-teal-500/15 font-medium text-teal-200"
+                        : "border-zinc-800/90 bg-[#09090b] text-zinc-300 hover:border-zinc-700 hover:text-white"
+                    }`}
+                  >
+                    <span className="truncate max-w-[200px]">{title}</span>
+                    <span className="rounded bg-zinc-800 px-1.5 py-0.2 font-mono text-[10px] text-zinc-400 tabular-nums">
+                      {count}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Status Bar */}
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-2 text-xs text-zinc-400">
+          <p className="font-mono tabular-nums">
+            {filteredJobs.length} {filteredJobs.length === 1 ? "job" : "jobs"}{" "}
+            found · Page {safePage} of {totalPages}
           </p>
           {!resumeId && (
             <Link
@@ -296,215 +393,322 @@ export const JobsPage: React.FC = () => {
         )}
 
         {isLoading ? (
-          <div className="grid gap-6 lg:grid-cols-[1.05fr_1.35fr]">
-            <div className="space-y-4">
-              {[1, 2, 3, 4].map((n) => (
-                <div
-                  key={n}
-                  className="h-32 animate-pulse rounded-2xl border border-slate-800 bg-slate-900/60"
-                />
-              ))}
-            </div>
-            <div className="h-[540px] animate-pulse rounded-3xl border border-slate-800 bg-slate-900/60" />
+          <div className="grid gap-4 md:grid-cols-2">
+            {[1, 2, 3, 4, 5, 6].map((n) => (
+              <div
+                key={n}
+                className="h-40 animate-pulse rounded-xl border border-zinc-800 bg-zinc-900/40"
+              />
+            ))}
           </div>
         ) : jobs.length === 0 ? (
-          <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-12 text-center text-slate-400">
+          <div className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-12 text-center text-sm text-zinc-400">
             No jobs available right now.
           </div>
         ) : filteredJobs.length === 0 ? (
-          <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-12 text-center text-slate-400">
+          <div className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-12 text-center text-sm text-zinc-400">
             No jobs match your current filters.
           </div>
         ) : (
-          <div className="grid items-start gap-6 lg:grid-cols-[1.05fr_1.35fr]">
-            {/* Left Feed List */}
-            <div className="space-y-3.5 lg:max-h-[calc(100vh-220px)] lg:overflow-y-auto lg:pr-2">
-              {visibleJobs.map((job) => (
+          <>
+            {/* Clean 2-Column Paginated Card Grid */}
+            <div className="grid gap-4 md:grid-cols-2">
+              {paginatedJobs.map((job) => (
                 <JobCard
                   key={job.id}
                   job={job}
                   resumeId={resumeId}
-                  isSelected={selectedJob?.id === job.id}
-                  onSelect={(selected) => setSelectedJobId(selected.id)}
+                  isSelected={activeDrawerJob?.id === job.id}
+                  onSelect={(selected) => {
+                    setActiveDrawerJob(selected);
+                    setDrawerTab("OVERVIEW");
+                  }}
                 />
               ))}
+            </div>
 
-              {visibleCount < filteredJobs.length && (
-                <button
-                  type="button"
-                  onClick={() => setVisibleCount((prev) => prev + PAGE_SIZE)}
-                  className="w-full rounded-xl border border-slate-800 bg-slate-900 py-3 text-xs font-semibold text-teal-300 transition hover:border-teal-500/40 hover:bg-slate-800"
+            {/* Numbered Pagination Controls */}
+            {totalPages > 1 && (
+              <nav
+                aria-label="Job pages"
+                className="mt-8 flex flex-wrap items-center justify-between gap-4 border-t border-zinc-800/80 pt-5"
+              >
+                <span className="font-mono text-xs text-zinc-500 tabular-nums">
+                  Showing {(safePage - 1) * JOBS_PER_PAGE + 1}–
+                  {Math.min(safePage * JOBS_PER_PAGE, filteredJobs.length)} of{" "}
+                  {filteredJobs.length}
+                </span>
+
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    disabled={safePage <= 1}
+                    onClick={() => {
+                      setCurrentPage((p) => Math.max(1, p - 1));
+                      window.scrollTo({ top: 0, behavior: "smooth" });
+                    }}
+                    className="inline-flex items-center gap-1 rounded-lg border border-zinc-800 bg-zinc-900/60 px-3 py-1.5 font-mono text-xs text-zinc-300 transition hover:border-zinc-700 hover:text-white disabled:opacity-40"
+                  >
+                    <ChevronLeft className="h-3.5 w-3.5" />
+                    <span>Prev</span>
+                  </button>
+
+                  {pageNumbers.map((pageNum) => (
+                    <button
+                      key={pageNum}
+                      type="button"
+                      onClick={() => {
+                        setCurrentPage(pageNum);
+                        window.scrollTo({ top: 0, behavior: "smooth" });
+                      }}
+                      className={`h-8 min-w-[32px] rounded-lg border px-2.5 font-mono text-xs font-semibold tabular-nums transition ${
+                        pageNum === safePage
+                          ? "border-teal-500/60 bg-teal-500/15 text-teal-300"
+                          : "border-zinc-800 bg-zinc-900/40 text-zinc-400 hover:border-zinc-700 hover:text-zinc-200"
+                      }`}
+                    >
+                      {pageNum}
+                    </button>
+                  ))}
+
+                  <button
+                    type="button"
+                    disabled={safePage >= totalPages}
+                    onClick={() => {
+                      setCurrentPage((p) => Math.min(totalPages, p + 1));
+                      window.scrollTo({ top: 0, behavior: "smooth" });
+                    }}
+                    className="inline-flex items-center gap-1 rounded-lg border border-zinc-800 bg-zinc-900/60 px-3 py-1.5 font-mono text-xs text-zinc-300 transition hover:border-zinc-700 hover:text-white disabled:opacity-40"
+                  >
+                    <span>Next</span>
+                    <ChevronRight className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              </nav>
+            )}
+          </>
+        )}
+      </div>
+
+      {/* Dedicated Slide-Over Job Inspector Drawer (Replaces Long Vertical Description Column) */}
+      {activeDrawerJob && (
+        <div
+          className="fixed inset-0 z-50 flex justify-end bg-black/75 backdrop-blur-sm"
+          onClick={() => setActiveDrawerJob(null)}
+        >
+          <aside
+            className="flex h-full w-full max-w-2xl flex-col border-l border-zinc-800 bg-[#09090b] shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Drawer Header */}
+            <div className="flex items-start justify-between gap-4 border-b border-zinc-800 p-6">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="font-mono text-[10px] font-semibold uppercase tracking-widest text-teal-400">
+                    Verified {activeDrawerJob.source}
+                  </span>
+                  {activeDrawerJob.isActive !== false && (
+                    <span className="rounded border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 font-mono text-[10px] text-emerald-300">
+                      ACTIVE
+                    </span>
+                  )}
+                </div>
+                <h2 className="mt-2 text-xl font-semibold text-white sm:text-2xl">
+                  {activeDrawerJob.title}
+                </h2>
+                <div className="mt-1.5 flex flex-wrap items-center gap-2 text-xs text-zinc-400">
+                  <span className="inline-flex items-center gap-1 font-medium text-zinc-200">
+                    <Building2 className="h-3.5 w-3.5 text-teal-400" />
+                    {activeDrawerJob.company}
+                  </span>
+                  {activeDrawerJob.location && (
+                    <>
+                      <span>·</span>
+                      <span>{activeDrawerJob.location}</span>
+                    </>
+                  )}
+                  <span>·</span>
+                  <span className="inline-flex items-center gap-1">
+                    <Clock className="h-3 w-3" />
+                    {formatLastSynced(activeDrawerJob.lastSyncedAt)}
+                  </span>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setActiveDrawerJob(null)}
+                className="rounded-lg border border-zinc-800 bg-zinc-900 p-2 text-zinc-400 hover:text-white"
+                aria-label="Close job details"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            {/* Action Bar */}
+            <div className="flex flex-wrap items-center gap-2 border-b border-zinc-800 bg-zinc-900/40 px-6 py-3.5">
+              <Link
+                to={`/matches/${activeDrawerJob.id}${
+                  resumeId ? `?resumeId=${resumeId}` : ""
+                }`}
+                className="inline-flex items-center gap-1.5 rounded-lg bg-teal-500 px-4 py-2 text-xs font-semibold text-zinc-950 transition hover:bg-teal-400"
+              >
+                <span>Match & Start Interview</span>
+                <ArrowUpRight className="h-3.5 w-3.5" />
+              </Link>
+
+              <Link
+                to={`/skill-gaps/${activeDrawerJob.id}${
+                  resumeId ? `?resumeId=${resumeId}` : ""
+                }`}
+                className="rounded-lg border border-zinc-700 bg-zinc-900 px-3.5 py-2 text-xs font-medium text-zinc-200 hover:border-zinc-600 hover:text-white"
+              >
+                Skill Gaps
+              </Link>
+
+              <button
+                type="button"
+                onClick={() => void handleToggleSave(activeDrawerJob)}
+                disabled={isSaving}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-zinc-800 bg-[#09090b] px-3 py-2 text-xs font-medium text-zinc-300 hover:border-zinc-700 hover:text-white"
+              >
+                {savedJobIds.has(activeDrawerJob.id) ? (
+                  <BookmarkCheck className="h-3.5 w-3.5 text-teal-400" />
+                ) : (
+                  <Bookmark className="h-3.5 w-3.5" />
+                )}
+                <span>
+                  {savedJobIds.has(activeDrawerJob.id) ? "Saved" : "Save"}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => void handleTrackApplication(activeDrawerJob)}
+                disabled={isTracking}
+                className="rounded-lg border border-zinc-800 bg-[#09090b] px-3 py-2 text-xs font-medium text-zinc-300 hover:border-zinc-700 hover:text-white"
+              >
+                {isTracking ? "Tracking..." : "Track"}
+              </button>
+
+              {activeDrawerJob.url && (
+                <a
+                  href={activeDrawerJob.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="ml-auto inline-flex items-center gap-1 rounded-lg border border-zinc-800 bg-[#09090b] px-3 py-2 text-xs font-medium text-teal-400 hover:border-teal-500/40"
                 >
-                  Load more roles ({filteredJobs.length - visibleCount}{" "}
-                  remaining)
-                </button>
+                  <span>Official ATS</span>
+                  <ExternalLink className="h-3 w-3" />
+                </a>
               )}
             </div>
 
-            {/* Right Sticky Detail & Readiness Action Pane */}
-            <aside className="rounded-3xl border border-slate-800/90 bg-slate-900/80 p-6 shadow-xl lg:sticky lg:top-20 lg:max-h-[calc(100vh-120px)] lg:overflow-y-auto">
-              {selectedJob ? (
-                <>
-                  <div className="flex items-start justify-between gap-4">
-                    <div>
-                      <span className="inline-flex items-center gap-1.5 rounded-full border border-teal-500/30 bg-teal-500/10 px-3 py-1 text-xs font-semibold tracking-wide text-teal-300">
-                        <ShieldCheck className="h-3.5 w-3.5" />
-                        Verified {selectedJob.source}
+            {/* Segmented View Tabs (Overview vs Full Description) */}
+            <div className="flex border-b border-zinc-800 px-6">
+              <button
+                type="button"
+                onClick={() => setDrawerTab("OVERVIEW")}
+                className={`border-b-2 py-3 pr-5 font-mono text-xs font-semibold transition ${
+                  drawerTab === "OVERVIEW"
+                    ? "border-teal-400 text-teal-300"
+                    : "border-transparent text-zinc-400 hover:text-zinc-200"
+                }`}
+              >
+                Overview & Required Skills (
+                {activeDrawerJob.requirements.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setDrawerTab("DESCRIPTION")}
+                className={`border-b-2 px-5 py-3 font-mono text-xs font-semibold transition ${
+                  drawerTab === "DESCRIPTION"
+                    ? "border-teal-400 text-teal-300"
+                    : "border-transparent text-zinc-400 hover:text-zinc-200"
+                }`}
+              >
+                Full Job Description
+              </button>
+            </div>
+
+            {/* Drawer Body */}
+            <div className="flex-1 overflow-y-auto p-6">
+              {drawerTab === "OVERVIEW" ? (
+                <div className="space-y-6">
+                  {activeDrawerJob.salaryRange && (
+                    <div className="rounded-lg border border-zinc-800 bg-zinc-900/40 p-4">
+                      <span className="font-mono text-[10px] uppercase tracking-wider text-zinc-500">
+                        Compensation Range
                       </span>
-                      <h2 className="mt-3 text-2xl font-bold text-white sm:text-3xl">
-                        {selectedJob.title}
-                      </h2>
+                      <p className="mt-1 font-mono text-sm font-semibold text-teal-300">
+                        {activeDrawerJob.salaryRange}
+                      </p>
                     </div>
-                    {selectedJob.isActive !== false && (
-                      <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-[11px] font-semibold tracking-wide text-emerald-300">
-                        Active
-                      </span>
-                    )}
-                  </div>
-
-                  <div className="mt-3 flex flex-wrap items-center gap-3 text-sm text-slate-300">
-                    <span className="inline-flex items-center gap-1.5 font-medium text-white">
-                      <Building2 className="h-4 w-4 text-teal-400" />
-                      {selectedJob.company}
-                    </span>
-                    {selectedJob.location && (
-                      <>
-                        <span className="text-slate-600">•</span>
-                        <span className="inline-flex items-center gap-1 text-slate-300">
-                          <MapPin className="h-3.5 w-3.5 text-slate-400" />
-                          {selectedJob.location}
-                        </span>
-                      </>
-                    )}
-                  </div>
-
-                  <div className="mt-3 flex flex-wrap gap-4 text-xs text-slate-400">
-                    <span className="inline-flex items-center gap-1">
-                      <Clock className="h-3.5 w-3.5 text-slate-500" />
-                      Last verified:{" "}
-                      {formatLastSynced(selectedJob.lastSyncedAt)}
-                    </span>
-                    <span>Source: {selectedJob.source}</span>
-                  </div>
-
-                  {selectedJob.salaryRange && (
-                    <p className="mt-3 inline-block rounded-lg border border-teal-500/20 bg-teal-500/10 px-3 py-1 text-xs font-semibold text-teal-200">
-                      {selectedJob.salaryRange}
-                    </p>
                   )}
 
-                  {/* Closed-Loop Readiness Actions */}
-                  <div className="mt-5 rounded-2xl border border-teal-500/20 bg-gradient-to-br from-teal-950/40 via-slate-900 to-slate-950 p-4">
-                    <p className="text-xs font-semibold uppercase tracking-wider text-teal-300">
-                      Closed-Loop Readiness Actions
-                    </p>
-                    <p className="mt-1 text-xs text-slate-400">
-                      Compare your resume against this role’s requirements to
-                      see matched skills, priority gaps, and start a
-                      role-specific AI mock interview.
-                    </p>
-                    <div className="mt-3 flex flex-wrap gap-2.5">
-                      <Link
-                        to={matchUrl}
-                        className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-teal-500 px-4 py-2.5 text-xs font-semibold text-slate-950 shadow-sm transition hover:bg-teal-400"
-                      >
-                        <Sparkles className="h-4 w-4" />
-                        <span>Analyze Match & Start Prep</span>
-                      </Link>
-                      <Link
-                        to={skillGapUrl}
-                        className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-teal-500/30 bg-teal-500/10 px-3.5 py-2.5 text-xs font-semibold text-teal-200 transition hover:bg-teal-500/20"
-                      >
-                        <BarChart3 className="h-4 w-4" />
-                        <span>Skill Gaps</span>
-                      </Link>
-                    </div>
-                  </div>
-
-                  {/* Secondary Job Actions */}
-                  <div className="mt-3 flex flex-wrap gap-2.5">
-                    {selectedJob.url && (
-                      <a
-                        href={selectedJob.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-slate-700 bg-slate-800/90 px-4 py-2.5 text-center text-xs font-semibold text-white transition hover:border-teal-500/40 hover:bg-slate-800"
-                      >
-                        <span>Apply on Official ATS</span>
-                        <ExternalLink className="h-3.5 w-3.5 text-teal-400" />
-                      </a>
-                    )}
-
-                    <button
-                      type="button"
-                      onClick={() => void handleToggleSave()}
-                      disabled={isSaving}
-                      className="inline-flex items-center gap-1.5 rounded-xl border border-slate-700 px-4 py-2.5 text-xs font-semibold text-slate-200 transition hover:border-teal-600 hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      {savedJobIds.has(selectedJob.id) ? (
-                        <BookmarkCheck className="h-3.5 w-3.5 text-teal-400" />
-                      ) : (
-                        <Bookmark className="h-3.5 w-3.5" />
-                      )}
-                      {isSaving
-                        ? "Saving..."
-                        : savedJobIds.has(selectedJob.id)
-                          ? "Saved"
-                          : "Save Job"}
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => void handleTrackApplication()}
-                      disabled={isTracking}
-                      className="inline-flex items-center gap-1.5 rounded-xl border border-slate-700 px-4 py-2.5 text-xs font-semibold text-slate-200 transition hover:border-teal-600 hover:bg-slate-800 disabled:opacity-50"
-                    >
-                      <Layers className="h-3.5 w-3.5 text-teal-400" />
-                      {isTracking ? "Tracking..." : "Track Application"}
-                    </button>
-                  </div>
-
-                  {/* Extracted Requirements */}
-                  {selectedJob.requirements.length > 0 && (
-                    <div className="mt-6 border-t border-slate-800 pt-5">
-                      <h3 className="text-sm font-semibold uppercase tracking-wider text-slate-300">
-                        Required Skills & Qualifications
-                      </h3>
+                  <div>
+                    <h3 className="font-mono text-xs uppercase tracking-wider text-zinc-400">
+                      Extracted Skills & Requirements
+                    </h3>
+                    {activeDrawerJob.requirements.length === 0 ? (
+                      <p className="mt-2 text-xs text-zinc-500">
+                        No structured skill tags extracted. Switch to the Full
+                        Job Description tab to read the complete posting.
+                      </p>
+                    ) : (
                       <div className="mt-3 flex flex-wrap gap-2">
-                        {selectedJob.requirements.map((req) => (
+                        {activeDrawerJob.requirements.map((req) => (
                           <span
                             key={req}
-                            className="rounded-lg border border-slate-700/80 bg-slate-950 px-3 py-1 text-xs font-medium text-slate-200"
+                            className="rounded-md border border-zinc-800 bg-zinc-900/70 px-3 py-1.5 font-mono text-xs text-zinc-200"
                           >
                             {req}
                           </span>
                         ))}
                       </div>
-                    </div>
-                  )}
-
-                  {/* Full Job Description */}
-                  <div className="mt-6 border-t border-slate-800 pt-5">
-                    <h3 className="text-sm font-semibold uppercase tracking-wider text-slate-300">
-                      Job Description
-                    </h3>
-                    <div
-                      className="prose prose-invert mt-4 max-w-none text-sm leading-7 prose-headings:text-slate-100 prose-p:text-slate-300 prose-li:text-slate-300"
-                      dangerouslySetInnerHTML={{
-                        __html: decodeHtml(selectedJob.description),
-                      }}
-                    />
+                    )}
                   </div>
-                </>
-              ) : (
-                <div className="text-slate-400">
-                  Select a job to view its details.
+
+                  <div className="rounded-xl border border-zinc-800 bg-zinc-900/30 p-5">
+                    <h4 className="text-sm font-semibold text-white">
+                      Ready to test your fit for {activeDrawerJob.company}?
+                    </h4>
+                    <p className="mt-1 text-xs leading-relaxed text-zinc-400">
+                      Run a deterministic skill comparison against your active
+                      resume, inspect missing priority skills, and start a
+                      role-specific mock interview.
+                    </p>
+                    <div className="mt-4 flex flex-wrap gap-2.5">
+                      <Link
+                        to={`/matches/${activeDrawerJob.id}${
+                          resumeId ? `?resumeId=${resumeId}` : ""
+                        }`}
+                        className="rounded-lg bg-teal-500 px-4 py-2 text-xs font-semibold text-zinc-950 hover:bg-teal-400"
+                      >
+                        Run Resume Match
+                      </Link>
+                      <button
+                        type="button"
+                        onClick={() => setDrawerTab("DESCRIPTION")}
+                        className="rounded-lg border border-zinc-700 px-4 py-2 text-xs font-medium text-zinc-300 hover:text-white"
+                      >
+                        Read Full Posting →
+                      </button>
+                    </div>
+                  </div>
                 </div>
+              ) : (
+                <div
+                  className="prose prose-invert max-w-none text-sm leading-7 prose-headings:text-zinc-100 prose-p:text-zinc-300 prose-li:text-zinc-300"
+                  dangerouslySetInnerHTML={{
+                    __html: decodeHtml(activeDrawerJob.description),
+                  }}
+                />
               )}
-            </aside>
-          </div>
-        )}
-      </div>
+            </div>
+          </aside>
+        </div>
+      )}
     </div>
   );
 };

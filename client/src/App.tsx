@@ -32,7 +32,8 @@ export const App: React.FC = () => {
     <AuthProvider>
       <Router>
         <Routes>
-          {/* Auth Routes */}
+          {/* Public Landing & Auth Routes */}
+          <Route path="/" element={<LandingPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
 
@@ -89,7 +90,7 @@ export const App: React.FC = () => {
             path="/profile-setup"
             element={
               <ProtectedRoute>
-                <ProfileSetupPage />
+                <ProfileSetupForm />
               </ProtectedRoute>
             }
           />
@@ -158,8 +159,6 @@ export const App: React.FC = () => {
             }
           />
 
-          {/* Default & Fallback Routes */}
-          <Route path="/" element={<LandingPage />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </Router>
@@ -168,7 +167,7 @@ export const App: React.FC = () => {
 };
 
 const AuthShell: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  <div className="flex min-h-screen items-center justify-center bg-slate-950 p-4">
+  <div className="flex min-h-screen items-center justify-center bg-[#09090b] p-4">
     {children}
   </div>
 );
@@ -200,31 +199,19 @@ const RegisterPage: React.FC = () => {
   );
 };
 
-const ProfileSetupPage: React.FC = () => {
-  const navigate = useNavigate();
-  return (
-    <AuthShell>
-      <ProfileSetupForm
-        onSuccess={() => navigate("/profile", { replace: true })}
-        onSkip={() => navigate("/profile", { replace: true })}
-      />
-    </AuthShell>
-  );
-};
-
 const NotFound: React.FC = () => (
-  <div className="flex min-h-screen items-center justify-center bg-slate-950 px-4">
-    <div className="max-w-md rounded-2xl border border-slate-800 bg-slate-900/70 p-8 text-center">
-      <p className="text-xs font-semibold uppercase tracking-widest text-teal-400">
+  <div className="flex min-h-screen items-center justify-center bg-[#09090b] px-4">
+    <div className="max-w-md rounded-xl border border-zinc-800 bg-zinc-900/40 p-8 text-center">
+      <p className="font-mono text-xs uppercase tracking-widest text-teal-400">
         Error 404
       </p>
-      <h1 className="mt-2 text-3xl font-bold text-white">Page not found</h1>
-      <p className="mt-2 text-sm text-slate-400">
+      <h1 className="mt-2 text-2xl font-semibold text-white">Page not found</h1>
+      <p className="mt-2 text-xs text-zinc-400">
         The page you are looking for does not exist or may have moved.
       </p>
       <Link
         to="/dashboard"
-        className="mt-6 inline-flex items-center justify-center rounded-xl bg-teal-500 px-5 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-teal-400"
+        className="mt-6 inline-flex items-center justify-center rounded-lg bg-teal-500 px-4 py-2 text-xs font-semibold text-zinc-950 transition hover:bg-teal-400"
       >
         Back to Dashboard
       </Link>

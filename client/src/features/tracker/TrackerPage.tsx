@@ -1,13 +1,11 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import {
-  Kanban,
   Briefcase,
   ExternalLink,
-  Sparkles,
-  FileEdit,
   Building2,
   MapPin,
+  ArrowUpRight,
 } from "lucide-react";
 import { Navbar } from "../../components/NavBar";
 import { fetchApplications, updateApplicationStatus } from "./trackerApi";
@@ -31,11 +29,11 @@ const statusLabels: Record<ApplicationStatus, string> = {
 };
 
 const statusColors: Record<ApplicationStatus, string> = {
-  SAVED: "bg-slate-500/10 text-slate-300 border-slate-500/20",
-  APPLIED: "bg-blue-500/10 text-blue-300 border-blue-500/20",
-  INTERVIEWING: "bg-amber-500/10 text-amber-300 border-amber-500/20",
-  OFFER: "bg-emerald-500/10 text-emerald-300 border-emerald-500/20",
-  REJECTED: "bg-rose-500/10 text-rose-300 border-rose-500/20",
+  SAVED: "border-zinc-700 bg-zinc-800 text-zinc-300",
+  APPLIED: "border-sky-500/30 bg-sky-500/10 text-sky-300",
+  INTERVIEWING: "border-amber-500/30 bg-amber-500/10 text-amber-300",
+  OFFER: "border-emerald-500/30 bg-emerald-500/10 text-emerald-300",
+  REJECTED: "border-rose-500/30 bg-rose-500/10 text-rose-300",
 };
 
 export const TrackerPage: React.FC = () => {
@@ -43,6 +41,9 @@ export const TrackerPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [activeStageFilter, setActiveStageFilter] = useState<
+    ApplicationStatus | "ALL"
+  >("ALL");
   const resumeId = useLatestResumeId();
 
   useEffect(() => {
@@ -76,6 +77,16 @@ export const TrackerPage: React.FC = () => {
     );
   }, [applications]);
 
+  // Only show stages that actually have applications
+  const populatedStatuses = useMemo(() => {
+    return statuses.filter((st) => groupedApplications[st]?.length > 0);
+  }, [groupedApplications]);
+
+  const visibleStatuses = useMemo(() => {
+    if (activeStageFilter === "ALL") return populatedStatuses;
+    return populatedStatuses.filter((st) => st === activeStageFilter);
+  }, [populatedStatuses, activeStageFilter]);
+
   const handleStatusChange = async (
     applicationId: string,
     status: ApplicationStatus,
@@ -83,9 +94,7 @@ export const TrackerPage: React.FC = () => {
     try {
       setUpdatingId(applicationId);
       setError(null);
-
       const updated = await updateApplicationStatus(applicationId, status);
-
       setApplications((current) =>
         current.map((application) =>
           application.id === updated.id ? updated : application,
@@ -101,160 +110,150 @@ export const TrackerPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100">
+    <div className="min-h-screen bg-[#09090b] text-zinc-100">
       <Navbar />
 
-      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
-        <header className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+      <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
+        <header className="mb-6 flex flex-col gap-4 border-b border-zinc-800/80 pb-6 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <div className="inline-flex items-center gap-1.5 rounded-full border border-teal-500/30 bg-teal-500/10 px-3 py-1 text-xs font-semibold tracking-wide text-teal-300">
-              <Kanban className="h-3.5 w-3.5" />
-              <span>TrueHire Pipeline</span>
-            </div>
-            <h1 className="mt-2.5 text-3xl font-bold tracking-tight text-white sm:text-4xl">
+            <p className="font-mono text-xs uppercase tracking-wider text-teal-400">
+              Active Pipeline
+            </p>
+            <h1 className="mt-2 text-2xl font-semibold tracking-tight text-white sm:text-3xl">
               Application Tracker
             </h1>
-            <p className="mt-1 text-sm text-slate-400">
-              Move roles from Saved to Offer while tracking match scores and
-              interview readiness.
+            <p className="mt-1 text-sm text-zinc-400">
+              Only active stages with tracked roles are shown below.
             </p>
           </div>
 
           <Link
             to="/jobs"
-            className="inline-flex items-center justify-center gap-2 rounded-xl bg-teal-500 px-5 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-teal-400"
+            className="inline-flex items-center gap-2 rounded-lg bg-teal-500 px-4 py-2 text-xs font-semibold text-zinc-950 transition hover:bg-teal-400 active:scale-[0.98]"
           >
-            <Briefcase className="h-4 w-4" />
-            <span>Find Verified Jobs</span>
+            <Briefcase className="h-3.5 w-3.5" />
+            <span>Find Jobs</span>
           </Link>
         </header>
 
         {error && (
-          <div className="mb-6 rounded-xl border border-red-900/70 bg-red-950/40 p-4 text-sm text-red-300">
+          <div className="mb-6 rounded-xl border border-red-500/30 bg-red-950/20 p-4 text-xs text-red-300">
             {error}
           </div>
         )}
 
         {isLoading ? (
-          <div className="grid gap-4 xl:grid-cols-5">
-            {statuses.map((st) => (
+          <div className="space-y-4">
+            {[1, 2].map((n) => (
               <div
-                key={st}
-                className="h-[420px] animate-pulse rounded-2xl border border-slate-800 bg-slate-900/50 p-4"
+                key={n}
+                className="h-36 animate-pulse rounded-xl border border-zinc-800 bg-zinc-900/40"
               />
             ))}
           </div>
         ) : applications.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-slate-800 bg-slate-900/60 p-12 text-center">
-            <Briefcase className="mx-auto h-10 w-10 text-slate-600" />
-            <h2 className="mt-3 text-xl font-semibold text-slate-200">
+          <div className="rounded-xl border border-dashed border-zinc-800 bg-zinc-900/30 p-12 text-center">
+            <h2 className="text-base font-semibold text-white">
               No applications tracked yet
             </h2>
-            <p className="mt-2 text-sm text-slate-400">
-              Match or track a verified job from the Job Feed to manage your
-              pipeline here.
+            <p className="mt-1 text-xs text-zinc-400">
+              Match or track a verified job from the Job Board and its stage
+              will appear here.
             </p>
             <Link
               to="/jobs"
-              className="mt-6 inline-flex items-center gap-2 rounded-xl bg-teal-500 px-5 py-2.5 text-sm font-semibold text-slate-950 hover:bg-teal-400"
+              className="mt-5 inline-flex items-center gap-2 rounded-lg bg-teal-500 px-4 py-2 text-xs font-semibold text-zinc-950 hover:bg-teal-400"
             >
-              Browse Verified Jobs
+              Browse Jobs
             </Link>
           </div>
         ) : (
-          <>
-            <div className="mb-6 grid gap-4 sm:grid-cols-3">
-              <StatCard
-                label="Total Tracked Roles"
-                value={applications.length}
-              />
-              <StatCard
-                label="Active Interviews"
-                value={
-                  applications.filter(
-                    (application) => application.status === "INTERVIEWING",
-                  ).length
-                }
-              />
-              <StatCard
-                label="Offers Received"
-                value={
-                  applications.filter(
-                    (application) => application.status === "OFFER",
-                  ).length
-                }
-              />
+          <div className="space-y-6">
+            {/* Horizontal Stage Filter Pills (Only shows populated stages) */}
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-zinc-800/80 bg-zinc-900/30 p-3">
+              <div className="flex flex-wrap items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => setActiveStageFilter("ALL")}
+                  className={`rounded-lg px-3 py-1.5 font-mono text-xs font-medium transition ${
+                    activeStageFilter === "ALL"
+                      ? "bg-zinc-100 text-zinc-950"
+                      : "text-zinc-400 hover:bg-zinc-900 hover:text-zinc-200"
+                  }`}
+                >
+                  All Active ({applications.length})
+                </button>
+                {populatedStatuses.map((status) => (
+                  <button
+                    key={status}
+                    type="button"
+                    onClick={() => setActiveStageFilter(status)}
+                    className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 font-mono text-xs font-medium transition ${
+                      activeStageFilter === status
+                        ? "bg-teal-500/20 text-teal-300 border border-teal-500/40"
+                        : "text-zinc-400 hover:bg-zinc-900 hover:text-zinc-200"
+                    }`}
+                  >
+                    <span>{statusLabels[status]}</span>
+                    <span className="rounded bg-zinc-800 px-1.5 py-0.2 text-[10px] text-zinc-300 tabular-nums">
+                      {groupedApplications[status].length}
+                    </span>
+                  </button>
+                ))}
+              </div>
             </div>
 
-            <div className="grid gap-4 xl:grid-cols-5">
-              {statuses.map((status) => {
-                const statusApplications = groupedApplications[status];
-
-                return (
-                  <section
-                    key={status}
-                    className="flex min-h-[440px] flex-col rounded-2xl border border-slate-800/90 bg-slate-900/50 p-3.5"
-                  >
-                    <div className="mb-3.5 flex items-center justify-between border-b border-slate-800/80 pb-3">
-                      <div className="flex items-center gap-2">
-                        <span
-                          className={`h-2.5 w-2.5 rounded-full ${
-                            status === "SAVED"
-                              ? "bg-slate-400"
-                              : status === "APPLIED"
-                                ? "bg-blue-400"
-                                : status === "INTERVIEWING"
-                                  ? "bg-amber-400"
-                                  : status === "OFFER"
-                                    ? "bg-emerald-400"
-                                    : "bg-rose-400"
-                          }`}
-                        />
-                        <h2 className="text-sm font-semibold text-slate-200">
-                          {statusLabels[status]}
-                        </h2>
-                      </div>
-                      <span className="rounded-full border border-slate-700 bg-slate-800 px-2 py-0.5 text-xs font-medium text-slate-300">
-                        {statusApplications.length}
+            {/* Horizontal Stage Rows (Only populated stages rendered) */}
+            {visibleStatuses.map((status) => {
+              const list = groupedApplications[status];
+              return (
+                <section
+                  key={status}
+                  className="rounded-xl border border-zinc-800/90 bg-zinc-900/30 p-5"
+                >
+                  <div className="mb-4 flex items-center justify-between border-b border-zinc-800/80 pb-3">
+                    <div className="flex items-center gap-2.5">
+                      <span
+                        className={`rounded border px-2 py-0.5 font-mono text-[10px] font-semibold uppercase ${statusColors[status]}`}
+                      >
+                        {statusLabels[status]}
+                      </span>
+                      <span className="font-mono text-xs text-zinc-400 tabular-nums">
+                        {list.length} {list.length === 1 ? "role" : "roles"}
                       </span>
                     </div>
+                  </div>
 
-                    <div className="flex-1 space-y-3">
-                      {statusApplications.map((application) => (
-                        <ApplicationCard
-                          key={application.id}
-                          application={application}
-                          resumeId={resumeId}
-                          isUpdating={updatingId === application.id}
-                          onStatusChange={handleStatusChange}
-                        />
-                      ))}
-
-                      {statusApplications.length === 0 && (
-                        <div className="flex h-32 items-center justify-center rounded-xl border border-dashed border-slate-800/80 p-4 text-center text-xs text-slate-500">
-                          No roles in {statusLabels[status]}
-                        </div>
-                      )}
-                    </div>
-                  </section>
-                );
-              })}
-            </div>
-          </>
+                  {/* Horizontal Row of Cards */}
+                  <div className="space-y-3">
+                    {list.map((app) => (
+                      <HorizontalApplicationRow
+                        key={app.id}
+                        application={app}
+                        resumeId={resumeId}
+                        isUpdating={updatingId === app.id}
+                        onStatusChange={handleStatusChange}
+                      />
+                    ))}
+                  </div>
+                </section>
+              );
+            })}
+          </div>
         )}
       </div>
     </div>
   );
 };
 
-interface ApplicationCardProps {
+interface ApplicationRowProps {
   application: Application;
   resumeId?: string;
   isUpdating: boolean;
   onStatusChange: (applicationId: string, status: ApplicationStatus) => void;
 }
 
-const ApplicationCard: React.FC<ApplicationCardProps> = ({
+const HorizontalApplicationRow: React.FC<ApplicationRowProps> = ({
   application,
   resumeId,
   isUpdating,
@@ -264,81 +263,88 @@ const ApplicationCard: React.FC<ApplicationCardProps> = ({
   const matchPath = `/matches/${application.jobId}${
     resumeId ? `?resumeId=${resumeId}` : ""
   }`;
+  const skillGapPath = `/skill-gaps/${application.jobId}${
+    resumeId ? `?resumeId=${resumeId}` : ""
+  }`;
   const tailorPath = `/tailor/${application.jobId}${
     resumeId ? `?resumeId=${resumeId}` : ""
   }`;
 
   return (
-    <article className="rounded-xl border border-slate-800 bg-slate-950/85 p-3.5 shadow-sm transition hover:border-slate-700">
-      <div className="flex items-start justify-between gap-2">
-        <span className="rounded-md border border-teal-500/20 bg-teal-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-teal-300">
-          {job.source}
-        </span>
-        <span
-          className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${statusColors[application.status]}`}
+    <article className="flex flex-col gap-4 rounded-xl border border-zinc-800 bg-[#09090b] p-4 transition hover:border-zinc-700 lg:flex-row lg:items-center lg:justify-between">
+      {/* Left: Role & Company Info */}
+      <div className="min-w-0 flex-1">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="font-mono text-[10px] font-semibold uppercase tracking-wider text-teal-400">
+            {job.source}
+          </span>
+          <span className="text-zinc-700">·</span>
+          <span className="inline-flex items-center gap-1 text-xs font-medium text-zinc-300">
+            <Building2 className="h-3 w-3 text-zinc-500" />
+            {job.company}
+          </span>
+          {job.location && (
+            <>
+              <span className="text-zinc-700">·</span>
+              <span className="inline-flex items-center gap-1 text-xs text-zinc-400">
+                <MapPin className="h-3 w-3 text-zinc-500" />
+                {job.location}
+              </span>
+            </>
+          )}
+        </div>
+
+        <Link
+          to={matchPath}
+          className="mt-1 block truncate text-base font-semibold text-zinc-100 transition hover:text-teal-300"
         >
-          {statusLabels[application.status]}
-        </span>
+          {job.title}
+        </Link>
       </div>
 
-      <Link
-        to={matchPath}
-        className="mt-2 block text-sm font-semibold text-white transition hover:text-teal-300"
-      >
-        {job.title}
-      </Link>
-
-      <div className="mt-1 space-y-0.5 text-xs text-slate-400">
-        <p className="flex items-center gap-1 truncate">
-          <Building2 className="h-3 w-3 shrink-0 text-slate-500" />
-          <span className="truncate">{job.company}</span>
-        </p>
-        {job.location && (
-          <p className="flex items-center gap-1 truncate">
-            <MapPin className="h-3 w-3 shrink-0 text-slate-500" />
-            <span className="truncate">{job.location}</span>
-          </p>
+      {/* Middle: Match Telemetry */}
+      <div className="flex items-center gap-4 lg:w-44">
+        {application.matchScore != null ? (
+          <div className="w-full">
+            <div className="flex justify-between font-mono text-xs">
+              <span className="text-zinc-500">Match</span>
+              <span className="font-semibold text-emerald-400 tabular-nums">
+                {Math.round(application.matchScore)}%
+              </span>
+            </div>
+            <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-zinc-800">
+              <div
+                className="h-full rounded-full bg-emerald-400"
+                style={{
+                  width: `${Math.min(Math.max(application.matchScore, 0), 100)}%`,
+                }}
+              />
+            </div>
+          </div>
+        ) : (
+          <span className="font-mono text-xs text-zinc-500">
+            No match score
+          </span>
         )}
       </div>
 
-      {application.matchScore != null && (
-        <div className="mt-3">
-          <div className="flex justify-between text-xs">
-            <span className="text-slate-400">Match Score</span>
-            <span className="font-semibold text-emerald-300">
-              {Math.round(application.matchScore)}%
-            </span>
-          </div>
-          <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-slate-800">
-            <div
-              className="h-full rounded-full bg-emerald-500"
-              style={{
-                width: `${Math.min(Math.max(application.matchScore, 0), 100)}%`,
-              }}
-            />
-          </div>
-        </div>
-      )}
-
-      {/* Closed-loop quick actions */}
-      <div className="mt-3 grid grid-cols-2 gap-1.5 border-t border-slate-800/80 pt-3">
+      {/* Right: Horizontal Actions & Stage Mover */}
+      <div className="flex flex-wrap items-center gap-2">
         <Link
-          to={matchPath}
-          className="inline-flex items-center justify-center gap-1 rounded-lg border border-slate-800 bg-slate-900 px-2 py-1.5 text-[11px] font-medium text-teal-300 transition hover:border-teal-500/40"
+          to={skillGapPath}
+          className="inline-flex items-center gap-1 rounded-lg bg-teal-500/15 border border-teal-500/30 px-3 py-1.5 text-xs font-medium text-teal-300 transition hover:bg-teal-500/25"
         >
-          <Sparkles className="h-3 w-3" />
-          <span>Match & Prep</span>
+          <span>Practice Interview</span>
+          <ArrowUpRight className="h-3.5 w-3.5" />
         </Link>
+
         <Link
           to={tailorPath}
-          className="inline-flex items-center justify-center gap-1 rounded-lg border border-slate-800 bg-slate-900 px-2 py-1.5 text-[11px] font-medium text-slate-300 transition hover:border-slate-700 hover:text-white"
+          className="rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-1.5 text-xs font-medium text-zinc-300 hover:border-zinc-700 hover:text-white"
         >
-          <FileEdit className="h-3 w-3" />
-          <span>Tailor</span>
+          Tailor
         </Link>
-      </div>
 
-      <div className="mt-2 flex items-center gap-1.5">
         <select
           value={application.status}
           disabled={isUpdating}
@@ -349,11 +355,11 @@ const ApplicationCard: React.FC<ApplicationCardProps> = ({
               event.target.value as ApplicationStatus,
             )
           }
-          className="flex-1 rounded-lg border border-slate-700 bg-slate-900 px-2 py-1.5 text-xs font-medium text-slate-200 outline-none focus:border-teal-500 disabled:opacity-50"
+          className="rounded-lg border border-zinc-800 bg-zinc-900 px-2.5 py-1.5 font-mono text-xs text-zinc-200 outline-none focus:border-teal-500 disabled:opacity-50"
         >
           {statuses.map((status) => (
             <option key={status} value={status}>
-              Move: {statusLabels[status]}
+              Stage: {statusLabels[status]}
             </option>
           ))}
         </select>
@@ -364,7 +370,7 @@ const ApplicationCard: React.FC<ApplicationCardProps> = ({
             target="_blank"
             rel="noopener noreferrer"
             title="Open official job posting"
-            className="inline-flex items-center justify-center rounded-lg border border-slate-700 bg-slate-900 p-1.5 text-slate-300 transition hover:border-teal-500/50 hover:text-teal-300"
+            className="inline-flex items-center justify-center rounded-lg border border-zinc-800 bg-zinc-900 p-2 text-zinc-400 hover:text-white"
           >
             <ExternalLink className="h-3.5 w-3.5" />
           </a>
@@ -373,19 +379,5 @@ const ApplicationCard: React.FC<ApplicationCardProps> = ({
     </article>
   );
 };
-
-interface StatCardProps {
-  label: string;
-  value: number;
-}
-
-const StatCard: React.FC<StatCardProps> = ({ label, value }) => (
-  <div className="rounded-2xl border border-slate-800/90 bg-slate-900/70 p-4">
-    <p className="text-xs font-medium uppercase tracking-wider text-slate-400">
-      {label}
-    </p>
-    <p className="mt-1.5 text-2xl font-bold text-white">{value}</p>
-  </div>
-);
 
 export default TrackerPage;

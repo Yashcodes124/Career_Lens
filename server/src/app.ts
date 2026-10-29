@@ -64,11 +64,15 @@ app.get("/api/health", async (_req: Request, res: Response) => {
   }
 });
 
+// Mount API routes (supporting both plural and singular client conventions)
 app.use("/api/auth", authRoutes);
 app.use("/api/resumes", resumeRoutes);
+app.use("/api/resume", resumeRoutes);
 app.use("/api/jobs", jobRoutes);
+app.use("/api/matches", matchRoutes);
 app.use("/api/match", matchRoutes);
 app.use("/api/interviews", interviewRoutes);
+app.use("/api/interview", interviewRoutes);
 app.use("/api/applications", applicationRoutes);
 app.use("/api/readiness", readinessRoutes);
 

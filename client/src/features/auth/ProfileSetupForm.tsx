@@ -1,8 +1,6 @@
 import React, { useState, useMemo } from "react";
 import { useAuth } from "./useAuth";
 import {
-  Briefcase,
-  MapPin,
   CheckCircle2,
   AlertCircle,
   Loader2,
@@ -25,17 +23,15 @@ const EXPERIENCE_LEVELS = [
 ];
 
 const COMMON_LOCATIONS = [
-  "New York",
+  "Remote",
+  "Hybrid",
+  "Bengaluru",
   "San Francisco",
+  "New York",
   "Austin",
   "Seattle",
   "Boston",
-  "Chicago",
-  "Los Angeles",
-  "Denver",
-  "Miami",
-  "Remote",
-  "Hybrid",
+  "London",
 ];
 
 export const ProfileSetupForm: React.FC<ProfileSetupFormProps> = ({
@@ -100,10 +96,10 @@ export const ProfileSetupForm: React.FC<ProfileSetupFormProps> = ({
         preferredLocations: selectedLocations,
         experienceLevel,
       });
-      setSuccessMessage("Profile setup completed successfully!");
+      setSuccessMessage("Profile setup completed!");
       setTimeout(() => {
         if (onSuccess) onSuccess();
-      }, 1500);
+      }, 900);
     } catch (err: any) {
       setErrorMessage(err.message || "Failed to update profile");
     } finally {
@@ -112,71 +108,62 @@ export const ProfileSetupForm: React.FC<ProfileSetupFormProps> = ({
   };
 
   return (
-    <div className="w-full max-w-2xl p-8 bg-slate-900/90 border border-slate-800 rounded-2xl transition-colors">
-      <div className="text-center mb-8">
-        <div className="inline-flex items-center justify-center w-12 h-12 mb-4 rounded-xl bg-teal-600 ">
-          <Briefcase className="w-6 h-6 text-white" />
-        </div>
-        <h2 className="text-2xl font-bold text-slate-100 tracking-tight">
+    <div className="w-full max-w-xl rounded-xl border border-zinc-800 bg-zinc-900/40 p-7 shadow-2xl">
+      <div className="mb-6">
+        <p className="font-mono text-xs uppercase tracking-wider text-teal-400">
+          Profile Configuration
+        </p>
+        <h2 className="mt-1 text-xl font-semibold tracking-tight text-white">
           Complete Your Profile
         </h2>
-        <p className="mt-2 text-sm text-slate-400">
-          Help us understand your career preferences to find better
-          opportunities
+        <p className="mt-1 text-xs text-zinc-400">
+          Configure your target role and location preferences for job matching.
         </p>
       </div>
 
       {successMessage && (
-        <div className="mb-6 p-4 rounded-xl bg-emerald-950/50 border border-emerald-800/60 flex items-center gap-3 text-emerald-400 text-sm animate-fadeIn">
-          <CheckCircle2 className="w-5 h-5 shrink-0" />
+        <div className="mb-5 flex items-center gap-2.5 rounded-lg border border-emerald-500/30 bg-emerald-950/30 p-3.5 text-xs text-emerald-300">
+          <CheckCircle2 className="h-4 w-4 shrink-0" />
           <span>{successMessage}</span>
         </div>
       )}
 
       {errorMessage && (
-        <div className="mb-6 p-4 rounded-xl bg-red-950/50 border border-red-800/60 flex items-center gap-3 text-red-400 text-sm animate-fadeIn">
-          <AlertCircle className="w-5 h-5 shrink-0" />
+        <div className="mb-5 flex items-center gap-2.5 rounded-lg border border-red-500/30 bg-red-950/30 p-3.5 text-xs text-red-300">
+          <AlertCircle className="h-4 w-4 shrink-0" />
           <span>{errorMessage}</span>
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Target Role */}
+      <form onSubmit={handleSubmit} className="space-y-5">
         <div>
-          <label className="block text-xs font-semibold text-slate-300 mb-2">
+          <label className="mb-1.5 block font-mono text-[11px] uppercase tracking-wider text-zinc-400">
             Target Role / Job Title
           </label>
-          <div className="relative">
-            <Briefcase className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-            <input
-              type="text"
-              value={targetRole}
-              onChange={(e) => setTargetRole(e.target.value)}
-              placeholder="e.g., Product Manager, Full Stack Engineer, UX Designer"
-              required
-              className="w-full pl-11 pr-4 py-3 bg-slate-950/80 border border-slate-800 rounded-xl text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-teal-600 focus:border-transparent transition-colors"
-            />
-          </div>
-          <p className="mt-1 text-xs text-slate-400">
-            The role or job title you're targeting in your career
-          </p>
+          <input
+            type="text"
+            value={targetRole}
+            onChange={(e) => setTargetRole(e.target.value)}
+            placeholder="e.g., Full Stack Developer, Backend Engineer"
+            required
+            className="w-full rounded-lg border border-zinc-800 bg-[#09090b] px-3.5 py-2.5 text-sm text-zinc-100 placeholder-zinc-600 outline-none focus:border-teal-500"
+          />
         </div>
 
-        {/* Experience Level */}
         <div>
-          <label className="block text-xs font-semibold text-slate-300 mb-2">
+          <label className="mb-2 block font-mono text-[11px] uppercase tracking-wider text-zinc-400">
             Experience Level
           </label>
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
             {EXPERIENCE_LEVELS.map((level) => (
               <button
                 key={level}
                 type="button"
                 onClick={() => setExperienceLevel(level)}
-                className={`px-4 py-2.5 rounded-lg font-medium text-sm transition-colors border ${
+                className={`rounded-lg border px-3 py-2 text-xs font-medium transition ${
                   experienceLevel === level
-                    ? "bg-teal-700 border-teal-600 text-white "
-                    : "bg-slate-950/50 border-slate-800 text-slate-300 hover:border-slate-700"
+                    ? "border-teal-500/50 bg-teal-500/10 text-teal-300"
+                    : "border-zinc-800 bg-[#09090b] text-zinc-400 hover:border-zinc-700"
                 }`}
               >
                 {level}
@@ -185,25 +172,22 @@ export const ProfileSetupForm: React.FC<ProfileSetupFormProps> = ({
           </div>
         </div>
 
-        {/* Preferred Locations */}
         <div>
-          <label className="block text-xs font-semibold text-slate-300 mb-3">
+          <label className="mb-2 block font-mono text-[11px] uppercase tracking-wider text-zinc-400">
             Preferred Locations
           </label>
-
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mb-4">
+          <div className="mb-3 grid grid-cols-3 gap-2">
             {COMMON_LOCATIONS.map((location) => (
               <button
                 key={location}
                 type="button"
                 onClick={() => handleLocationToggle(location)}
-                className={`px-3 py-2 rounded-lg font-medium text-xs transition-colors border flex items-center gap-2 ${
+                className={`rounded-lg border px-3 py-2 text-xs font-medium transition ${
                   selectedLocations.includes(location)
-                    ? "bg-teal-700 border-teal-600 text-white "
-                    : "bg-slate-950/50 border-slate-800 text-slate-300 hover:border-slate-700"
+                    ? "border-teal-500/50 bg-teal-500/10 text-teal-300"
+                    : "border-zinc-800 bg-[#09090b] text-zinc-400 hover:border-zinc-700"
                 }`}
               >
-                <MapPin className="w-3.5 h-3.5" />
                 {location}
               </button>
             ))}
@@ -215,8 +199,8 @@ export const ProfileSetupForm: React.FC<ProfileSetupFormProps> = ({
               value={customLocation}
               onChange={(e) => setCustomLocation(e.target.value)}
               placeholder="Add custom location..."
-              className="flex-1 px-3 py-2 bg-slate-950/80 border border-slate-800 rounded-xl text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-teal-600 focus:border-transparent transition-colors text-sm"
-              onKeyPress={(e) => {
+              className="flex-1 rounded-lg border border-zinc-800 bg-[#09090b] px-3 py-2 text-xs text-zinc-100 placeholder-zinc-600 outline-none focus:border-teal-500"
+              onKeyDown={(e) => {
                 if (e.key === "Enter") {
                   e.preventDefault();
                   handleAddCustomLocation();
@@ -226,26 +210,26 @@ export const ProfileSetupForm: React.FC<ProfileSetupFormProps> = ({
             <button
               type="button"
               onClick={handleAddCustomLocation}
-              className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-xl text-sm font-medium transition-colors border border-slate-700"
+              className="rounded-lg border border-zinc-700 bg-zinc-900 px-4 py-2 text-xs font-medium text-zinc-200 hover:bg-zinc-800"
             >
               Add
             </button>
           </div>
 
           {selectedLocations.length > 0 && (
-            <div className="mt-3 flex flex-wrap gap-2">
+            <div className="mt-3 flex flex-wrap gap-1.5">
               {selectedLocations.map((location) => (
                 <span
                   key={location}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-teal-600/10 border border-teal-600/20 text-teal-400"
+                  className="inline-flex items-center gap-1.5 rounded border border-zinc-800 bg-[#09090b] px-2.5 py-1 font-mono text-xs text-zinc-300"
                 >
                   {location}
                   <button
                     type="button"
                     onClick={() => handleLocationToggle(location)}
-                    className="ml-1 hover:text-teal-300 transition-colors"
+                    className="text-zinc-500 hover:text-white"
                   >
-                    <X className="h-4 w-4" aria-hidden="true" />
+                    <X className="h-3 w-3" />
                   </button>
                 </span>
               ))}
@@ -253,29 +237,28 @@ export const ProfileSetupForm: React.FC<ProfileSetupFormProps> = ({
           )}
         </div>
 
-        {/* Action Buttons */}
-        <div className="flex gap-3 pt-4">
+        <div className="flex gap-3 border-t border-zinc-800/80 pt-5">
           <button
             type="button"
             onClick={onSkip}
-            className="flex-1 px-4 py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white font-medium rounded-xl transition-colors border border-slate-700"
+            className="flex-1 rounded-lg border border-zinc-800 bg-[#09090b] px-4 py-2.5 text-xs font-medium text-zinc-300 hover:border-zinc-700 hover:text-white"
           >
             Skip for Now
           </button>
           <button
             type="submit"
             disabled={isSubmitting || !isProfileComplete}
-            className="flex-1 px-4 py-3 bg-teal-700 hover:bg-teal-600 text-white font-medium rounded-xl hover:focus:outline-none focus:ring-2 focus:ring-teal-600 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+            className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-teal-500 px-4 py-2.5 text-xs font-semibold text-zinc-950 transition hover:bg-teal-400 disabled:opacity-50"
           >
             {isSubmitting ? (
               <>
-                <Loader2 className="w-5 h-5 motion-safe:animate-spin" />
+                <Loader2 className="h-4 w-4 animate-spin" />
                 <span>Saving...</span>
               </>
             ) : (
               <>
                 <span>Complete Setup</span>
-                <ArrowRight className="w-5 h-5" />
+                <ArrowRight className="h-4 w-4" />
               </>
             )}
           </button>

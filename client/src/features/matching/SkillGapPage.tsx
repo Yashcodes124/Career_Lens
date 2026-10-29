@@ -34,6 +34,7 @@ export const SkillGapPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isStartingInterview, setIsStartingInterview] = useState(false);
   const [startError, setStartError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -64,9 +65,9 @@ export const SkillGapPage: React.FC = () => {
   }, [jobId, resumeId, attempt]);
 
   const handleStartInterview = async (config: InterviewConfig) => {
-    if (!data?.applicationId) return;
-    setIsModalOpen(false);
+    if (!data?.applicationId || isStartingInterview) return;
     setStartError(null);
+    setIsStartingInterview(true);
     try {
       const interview = await createInterview({
         applicationId: data.applicationId,
@@ -74,11 +75,21 @@ export const SkillGapPage: React.FC = () => {
         difficulty: config.difficulty,
         focusTopics: config.focusTopics,
       });
-      navigate(`/interviews/${interview.id}/prep`);
+      setIsModalOpen(false);
+      navigate(`/interviews/${interview.id}/prep`, {
+        state: {
+          durationMinutes: config.durationMinutes,
+          difficulty: config.difficulty,
+          focusTopics: config.focusTopics,
+        },
+      });
     } catch (err) {
       setStartError(
         err instanceof Error ? err.message : "Could not start the interview",
       );
+      setIsModalOpen(false);
+    } finally {
+      setIsStartingInterview(false);
     }
   };
 
@@ -133,6 +144,10 @@ export const SkillGapPage: React.FC = () => {
       </Shell>
     );
   }
+
+  const priorityGapNames = data?.skillGaps?.map((g) => g.skill) ?? [];
+  const matchedSkillNames = data?.matchedSkills ?? [];
+  const missingSkillNames = data?.missingSkills ?? [];
 
   return (
     <Shell>
@@ -191,11 +206,12 @@ export const SkillGapPage: React.FC = () => {
           <div className="mt-6 flex flex-col gap-4 rounded-xl border border-zinc-800 bg-zinc-900/50 p-6 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <h2 className="text-sm font-semibold text-white">
-                Simulate the interview for this role
+                Practise the job skills & gaps above
               </h2>
               <p className="mt-1 text-xs text-zinc-400">
-                Practise the gaps above with a mock interview built specifically
-                for this role.
+                Choose specific skills from this job ({priorityGapNames.length}{" "}
+                gaps, {matchedSkillNames.length} matched), set your duration and
+                difficulty, and launch a custom mock interview.
               </p>
             </div>
             <button
@@ -207,18 +223,26 @@ export const SkillGapPage: React.FC = () => {
               Start mock interview
             </button>
           </div>
+
           {startError && (
-            <p role="alert" className="mt-3 text-sm text-red-400">
+            <div
+              role="alert"
+              className="mt-3 rounded-lg border border-red-500/30 bg-red-950/20 p-3.5 text-xs text-red-300"
+            >
               {startError}
-            </p>
+            </div>
           )}
         </>
       )}
 
       <PreInterviewModal
         isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
+        onClose={() => !isStartingInterview && setIsModalOpen(false)}
         onStartInterview={handleStartInterview}
+        priorityGaps={priorityGapNames}
+        dynamicTopics={missingSkillNames}
+        matchedSkills={matchedSkillNames}
+        isStarting={isStartingInterview}
       />
     </Shell>
   );

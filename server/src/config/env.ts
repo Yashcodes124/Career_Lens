@@ -24,19 +24,19 @@ const envSchema = z.object({
     .default("truehire-secure-jwt-secret-key-2026"),
   JWT_EXPIRES_IN: z.string().default("7d"),
 
-  // Multi-provider Free AI settings (NVIDIA NIM, Groq, or Gemini)
   AI_BASE_URL: z.string().default("https://integrate.api.nvidia.com/v1"),
   AI_API_KEY: z.string().optional(),
   NVIDIA_API_KEY: z.string().optional(),
   OPENAI_API_KEY: z.string().optional(),
   AI_MODEL: z.string().optional(),
   NVIDIA_MODEL: z.string().default("meta/llama-3.1-70b-instruct"),
-  AI_TIMEOUT_MS: z.coerce.number().int().positive().default(25000),
+  AI_TIMEOUT_MS: z.coerce.number().int().positive().default(60000), // Extended to 60s for reasoning models
 
-  // ATS / Greenhouse settings
   GREENHOUSE_BOARD_TOKEN: z.string().default("stripe"),
   GREENHOUSE_COMPANY: z.string().default("stripe"),
-  GREENHOUSE_BOARDS: z.string().default("stripe,cloudflare,vercel"),
+  GREENHOUSE_BOARDS: z
+    .string()
+    .default("stripe,razorpay,swiggy,zomato,zerodha,cloudflare,vercel"),
   GREENHOUSE_API_KEY: z.string().optional(),
   LEVER_API_KEY: z.string().optional(),
   ASHBY_API_KEY: z.string().optional(),
@@ -61,7 +61,6 @@ const resolvedApiKey =
 const resolvedModel =
   rawEnv.AI_MODEL || rawEnv.NVIDIA_MODEL || "meta/llama-3.1-70b-instruct";
 
-// Keep process.env synchronized for modules reading process.env directly
 if (resolvedApiKey) {
   process.env.NVIDIA_API_KEY = resolvedApiKey;
   process.env.AI_API_KEY = resolvedApiKey;
