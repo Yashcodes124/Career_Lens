@@ -1,0 +1,3051 @@
+==> client/src/lib/api-client.ts <==
+const API_BASE_URL =
+  (import.meta.env.VITE_API_BASE_URL as string | undefined) ||
+  "http://localhost:5000/api";
+
+const AUTH_TOKEN_KEY = "truehire_auth_token";
+
+// Thrown for every failed request. `message` is safe to show to the user.
+export class ApiError extends Error {
+  readonly status: number;
+  readonly code?: string;
+
+  constructor(message: string, status: number, code?: string) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+    this.code = code;
+  }
+}
+
+interface ErrorBody {
+  message?: string;
+  error?: string;
+  code?: string;
+}
+
+export async function apiClient<T>(
+  endpoint: string,
+  options: RequestInit = {},
+): Promise<T> {
+  const headers = new Headers(options.headers);
+
+  // A browser must set the multipart boundary itself, so only JSON bodies get a type.
+  const isFormData = options.body instanceof FormData;
+  if (!isFormData && options.body !== undefined && !headers.has("Content-Type")) {
+    headers.set("Content-Type", "application/json");
+  }
+
+  const token = localStorage.getItem(AUTH_TOKEN_KEY);
+  if (token) {
+    headers.set("Authorization", `Bearer ${token}`);
+  }
+
+  let response: Response;
+  try {
+    response = await fetch(`${API_BASE_URL}${endpoint}`, { ...options, headers });
+  } catch {
+    throw new ApiError(
+      "Cannot reach the server. Check your connection and try again.",
+      0,
+      "NETWORK_ERROR",
+    );
+  }
+
+  // An expired or revoked token signs the user out everywhere. Login and register are exempt.
+  const isLoginOrRegister =
+    endpoint === "/auth/login" || endpoint === "/auth/register";
+  if (response.status === 401 && token && !isLoginOrRegister) {
+    localStorage.removeItem(AUTH_TOKEN_KEY);
+    window.dispatchEvent(new Event("truehire:unauthorized"));
+  }
+
+  if (!response.ok) {
+    const body = (await response.json().catch(() => null)) as ErrorBody | null;
+    throw new ApiError(
+      body?.message || body?.error || `Request failed (HTTP ${response.status})`,
+      response.status,
+      body?.code,
+    );
+  }
+
+  return response.json() as Promise<T>;
+}
+
+export function setAuthToken(token: string): void {
+  localStorage.setItem(AUTH_TOKEN_KEY, token);
+}
+
+export function getAuthToken(): string | null {
+  return localStorage.getItem(AUTH_TOKEN_KEY);
+}
+
+export function clearAuthToken(): void {
+  localStorage.removeItem(AUTH_TOKEN_KEY);
+}
+
+==> client/src/features/jobs/jobsApi.ts <==
+import { apiClient } from "../../lib/api-client";
+import type { Job, JobResponse, JobsResponse } from "./types";
+
+export async function fetchJobs(): Promise<Job[]> {
+  const response = await apiClient<JobsResponse>("/jobs", {
+    method: "GET",
+  });
+
+  return response.jobs ?? [];
+}
+
+export async function fetchJobById(id: string): Promise<Job> {
+  const response = await apiClient<JobResponse>(`/jobs/${id}`, {
+    method: "GET",
+  });
+
+  return response.job;
+}
+
+export async function saveJob(id: string) {
+  return await apiClient(`/jobs/${id}/save`, { method: "POST" });
+}
+
+export async function unsaveJob(id: string) {
+  return await apiClient(`/jobs/${id}/save`, { method: "DELETE" });
+}
+
+export async function fetchSavedJobs(): Promise<Job[]> {
+  const response = await apiClient<JobsResponse>("/jobs/saved", {
+    method: "GET",
+  });
+
+  return response.jobs ?? [];
+}
+
+==> client/src/features/tracker/trackerApi.ts <==
+import { apiClient } from "@/lib/api-client";
+
+import {
+  Application,
+  ApplicationsResponse,
+  ApplicationResponse,
+  ApplicationStatus,
+} from "./types";
+
+export async function fetchApplications(): Promise<Application[]> {
+  const response = await apiClient<ApplicationsResponse>("/applications", {
+    method: "GET",
+  });
+  return response.applications ?? [];
+}
+export async function fetchApplicationById(id: string): Promise<Application> {
+  const response = await apiClient<ApplicationResponse>(`/applications/${id}`, {
+    method: "GET",
+  });
+  return response.application;
+}
+export async function createApplication(jobId: string): Promise<Application> {
+  const response = await apiClient<ApplicationResponse>(
+    `/applications/job/${jobId}`,
+    {
+      method: "POST",
+    },
+  );
+  return response.application;
+}
+
+export async function updateApplicationStatus(
+  id: string,
+  status: ApplicationStatus,
+): Promise<Application> {
+  const response = await apiClient<ApplicationResponse>(
+    `/applications/${id}/status`,
+    {
+      method: "PATCH",
+      body: JSON.stringify({ status }),
+    },
+  );
+  return response.application;
+}
+
+==> client/src/features/matching/matchingApi.ts <==
+// client / src / features / matching / matchingApi.ts;
+
+import { MatchResponse } from "./types";
+import { apiClient } from "@/lib/api-client";
+
+interface MatchRequest {
+  resumeId: string;
+  jobId: string;
+}
+
+export const calculateJobMatch = async (
+  data: MatchRequest,
+): Promise<MatchResponse> => {
+  const response = await apiClient<MatchResponse>("/matches", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+
+  return response;
+};
+
+==> client/src/features/interview/interviewApi.ts <==
+import { apiClient } from "@/lib/api-client";
+import {
+  Interview,
+  InterviewEvaluation,
+  CreateInterviewResponse,
+  GetInterviewResponse,
+  StartInterviewResponse,
+  SubmitAnswerResponse,
+  SubmitAnswerData,
+  GenerateEvaluationResponse,
+} from "./types";
+
+//created this , to pass the optional fields
+export interface CreateInterviewOptions {
+  applicationId: string;
+  durationMinutes?: number;
+  difficulty?: "EASY" | "MEDIUM" | "HARD";
+  focusTopics?: string[];
+}
+
+export async function createInterview(
+  options: CreateInterviewOptions,
+): Promise<Interview> {
+  const response = await apiClient<CreateInterviewResponse>("/interviews", {
+    method: "POST",
+    body: JSON.stringify(options),
+  });
+  return response.data;
+}
+
+export async function fetchInterviewById(
+  interviewId: string,
+): Promise<Interview> {
+  const response = await apiClient<GetInterviewResponse>(
+    `/interviews/${interviewId}`,
+    {
+      method: "GET",
+    },
+  );
+  return response.data;
+}
+
+export async function startInterview(
+  interviewId: string,
+): Promise<{ interview: Interview; firstQuestion: Interview["questions"][0] }> {
+  const response = await apiClient<StartInterviewResponse>(
+    `/interviews/${interviewId}/start`,
+    {
+      method: "POST",
+    },
+  );
+  return response.data;
+}
+
+export async function submitInterviewAnswer(
+  interviewId: string,
+  questionId: string,
+  answer: string,
+): Promise<SubmitAnswerData> {
+  const response = await apiClient<SubmitAnswerResponse>(
+    `/interviews/${interviewId}/questions/${questionId}/answer`,
+    {
+      method: "POST",
+      body: JSON.stringify({ answer }),
+    },
+  );
+  return response.data;
+}
+
+export async function generateInterviewEvaluation(
+  interviewId: string,
+): Promise<InterviewEvaluation> {
+  const response = await apiClient<GenerateEvaluationResponse>(
+    `/interviews/${interviewId}/evaluation`,
+    {
+      method: "POST",
+    },
+  );
+  return response.data.evaluation;
+}
+
+==> server/src/routes/applicationRoutes.ts <==
+//server/src/routes/applicationRoutes.ts
+
+import { Router } from "express";
+import { authMiddleware } from "../middleware/authMiddleware";
+import {
+  createApplicationController,
+  getApplicationByIdController,
+  getApplicationsController,
+  updateApplicationStatusController,
+} from "../controllers/applicationController";
+
+const router = Router();
+
+router.use(authMiddleware);
+
+router.get("/", getApplicationsController);
+router.get("/:id", getApplicationByIdController);
+router.post("/job/:jobId", createApplicationController);
+router.patch("/:id/status", updateApplicationStatusController);
+
+export default router;
+
+==> server/src/routes/auth.ts <==
+import { Router } from "express";
+import {
+  register,
+  login,
+  getMe,
+  updateProfile,
+} from "../controllers/authController.js";
+import { authMiddleware } from "../middleware/authMiddleware.js";
+import { authLimiter } from "../middleware/rateLimit.js";
+
+const router = Router();
+
+//==================  authentication/user-account routes
+
+router.post("/register", authLimiter, register); //new user register and login verification
+router.post("/login", authLimiter, login);
+
+router.get("/me", authMiddleware, getMe);
+router.put("/profile", authMiddleware, updateProfile); //user profile and updates
+
+export default router;
+
+==> server/src/routes/interviewRoutes.ts <==
+// server / src / modules / interview / interviewRoutes.ts;
+
+import { Router } from "express";
+import { aiLimiter } from "../middleware/rateLimit";
+import {
+  createInterviewController,
+  getInterviewSessionByIdController,
+  startInterviewController,
+  submitAnswerController,
+  generateFinalEvaluationController,
+} from "../controllers/interviewController";
+import { authMiddleware } from "../middleware/authMiddleware";
+
+const router = Router();
+
+router.post("/", authMiddleware, aiLimiter, createInterviewController);
+router.get("/:interviewId", authMiddleware, getInterviewSessionByIdController);
+router.post("/:interviewId/start", authMiddleware, startInterviewController);
+router.post(
+  "/:interviewId/questions/:questionId/answer",
+  authMiddleware,
+  aiLimiter,
+  submitAnswerController,
+);
+router.post(
+  "/:interviewId/evaluation",
+  authMiddleware,
+  aiLimiter,
+  generateFinalEvaluationController,
+);
+
+export default router;
+
+==> server/src/routes/jobRoutes.ts <==
+//server/src/routes/jobRoutes.ts
+
+import { Router } from "express";
+import {
+  getJobByIdController,
+  getJobsController,
+  syncGreenhouseController,
+} from "../controllers/jobController";
+import {
+  getSavedJobsController,
+  unsaveJobController,
+  saveJobController,
+} from "../controllers/jobController";
+import { authMiddleware } from "../middleware/authMiddleware";
+import { requireRole } from "../middleware/requireRole";
+
+const router = Router();
+
+router.get("/", authMiddleware, getJobsController);
+router.get("/saved", authMiddleware, getSavedJobsController);
+router.get("/:id", authMiddleware, getJobByIdController);
+
+router.post("/:id/save", authMiddleware, saveJobController);
+router.delete("/:id/save", authMiddleware, unsaveJobController);
+
+router.post("/sync/greenhouse", authMiddleware, requireRole("ADMIN"), syncGreenhouseController);
+
+export default router;
+
+==> server/src/routes/matchRoutes.ts <==
+//server/src/routes/match.routes.ts
+
+import { Router } from "express";
+import { matchResumeToJobController } from "../controllers/matchController";
+import { authMiddleware } from "../middleware/authMiddleware";
+
+const router = Router();
+router.post("/", authMiddleware, matchResumeToJobController);
+
+export default router;
+
+==> server/src/routes/readinessRoutes.ts <==
+import { Router } from "express";
+import { authMiddleware } from "../middleware/authMiddleware";
+import { getReadinessController } from "../controllers/readinessController";
+
+const router = Router();
+
+router.get("/", authMiddleware, getReadinessController);
+
+export default router;
+
+==> server/src/routes/resumeRoutes.ts <==
+import { Router } from "express";
+import { uploadLimiter } from "../middleware/rateLimit";
+import {
+  createResume,
+  deleteResumeController,
+  getUserResumeByIdController,
+  getUserResumeController,
+} from "../controllers/resumeController";
+import { tailorResumeController } from "../controllers/resumeController";
+import { authMiddleware } from "../middleware/authMiddleware";
+import { uploadResumeFile } from "../middleware/uploadMiddleware";
+
+const router = Router();
+
+router.post("/", authMiddleware, uploadLimiter, uploadResumeFile, createResume);
+router.post("/:id/tailoring", authMiddleware, tailorResumeController);
+router.get("/", authMiddleware, getUserResumeController);
+router.get("/:id", authMiddleware, getUserResumeByIdController);
+router.delete("/:id", authMiddleware, deleteResumeController);
+
+export default router;
+
+==> server/src/controllers/applicationController.ts <==
+//server/src/controllers/applicationController.ts
+
+import type { Request, Response } from "express";
+import { ApplicationStatus } from "@prisma/client";
+import {
+  createApplicationService,
+  getApplicationByIdService,
+  getApplicationsService,
+  updateApplicationStatusService,
+} from "../services/applicationService";
+
+export const createApplicationController = async (
+  req: Request,
+  res: Response,
+) => {
+  try {
+    const userId = req.user!.userId;
+    const { jobId } = req.params;
+
+    const application = await createApplicationService(userId, jobId);
+
+    res.status(201).json({
+      success: true,
+      application,
+    });
+  } catch (error) {
+    if (error instanceof Error && error.message === "Job not found") {
+      res.status(404).json({
+        success: false,
+        message: "Job not found",
+      });
+      return;
+    }
+
+    console.error("Create application error:", error);
+
+    res.status(500).json({
+      success: false,
+      message: "Failed to create application",
+    });
+  }
+};
+
+export const getApplicationsController = async (
+  req: Request,
+  res: Response,
+) => {
+  try {
+    const userId = req.user!.userId;
+
+    const applications = await getApplicationsService(userId);
+
+    res.status(200).json({
+      success: true,
+      applications,
+    });
+  } catch (error) {
+    console.error("Get applications error:", error);
+
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch applications",
+    });
+  }
+};
+
+export const getApplicationByIdController = async (
+  req: Request,
+  res: Response,
+) => {
+  try {
+    const userId = req.user!.userId;
+    const { id } = req.params;
+
+    const application = await getApplicationByIdService(userId, id);
+
+    res.status(200).json({
+      success: true,
+      application,
+    });
+  } catch (error) {
+    if (error instanceof Error && error.message === "Application not found") {
+      res.status(404).json({
+        success: false,
+        message: "Application not found",
+      });
+      return;
+    }
+
+    console.error("Get application error:", error);
+
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch application",
+    });
+  }
+};
+
+export const updateApplicationStatusController = async (
+  req: Request,
+  res: Response,
+) => {
+  try {
+    
+    const userId = req.user!.userId;
+    const { id } = req.params;
+    const { status } = req.body;
+console.log("BODY:", req.body);
+    console.log("STATUS:", req.body?.status);
+    console.log("ENUM:", ApplicationStatus);
+    console.log("VALID STATUSES:", Object.values(ApplicationStatus));
+
+    if (!Object.values(ApplicationStatus).includes(status)) {
+      res.status(400).json({
+        success: false,
+        message: "Invalid application status",
+      });
+      return;
+    }
+
+    const application = await updateApplicationStatusService(
+      userId,
+      id,
+      status,
+    );
+
+    res.status(200).json({
+      success: true,
+      application,
+    });
+  } catch (error) {
+    if (error instanceof Error && error.message === "Application not found") {
+      res.status(404).json({
+        success: false,
+        message: "Application not found",
+      });
+      return;
+    }
+
+    console.error("Update application status error:", error);
+
+    res.status(500).json({
+      success: false,
+      message: "Failed to update application status",
+    });
+  }
+};
+
+==> server/src/controllers/authController.ts <==
+import { Request, Response, NextFunction } from 'express';
+import { authService } from '../services/authService.js';
+import { registerSchema, loginSchema, updateProfileSchema } from '../validators/authValidator.js';
+import { AuthenticatedRequest } from '../middleware/authMiddleware.js';
+
+export async function register(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const validatedInput = registerSchema.parse(req.body);
+    const result = await authService.register(validatedInput);
+    res.status(201).json(result);
+  } catch (error: any) {
+    if (error.name === 'ZodError') {
+      res.status(400).json({ error: 'Validation failed', details: error.errors });
+      return;
+    }
+    if (error.message === 'User with this email already exists') {
+      res.status(409).json({ error: error.message });
+      return;
+    }
+    next(error);
+  }
+}
+
+export async function login(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const validatedInput = loginSchema.parse(req.body);
+    const result = await authService.login(validatedInput);
+    res.status(200).json(result);
+  } catch (error: any) {
+    if (error.name === 'ZodError') {
+      res.status(400).json({ error: 'Validation failed', details: error.errors });
+      return;
+    }
+    if (error.message === 'Invalid email or password') {
+      res.status(401).json({ error: error.message });
+      return;
+    }
+    next(error);
+  }
+}
+
+export async function getMe(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const userId = (req as AuthenticatedRequest).user?.userId;
+    if (!userId) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
+    const profile = await authService.getProfile(userId);
+    res.status(200).json(profile);
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function updateProfile(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const userId = (req as AuthenticatedRequest).user?.userId;
+    if (!userId) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
+    const validatedInput = updateProfileSchema.parse(req.body);
+    const updatedProfile = await authService.updateProfile(userId, validatedInput);
+    res.status(200).json(updatedProfile);
+  } catch (error: any) {
+    if (error.name === 'ZodError') {
+      res.status(400).json({ error: 'Validation failed', details: error.errors });
+      return;
+    }
+    if (error.message === 'Email is already taken by another user') {
+      res.status(409).json({ error: error.message });
+      return;
+    }
+    next(error);
+  }
+}
+
+==> server/src/controllers/interviewController.ts <==
+//server/src/modules/interview/interviewController.ts
+
+import { Request, Response, NextFunction } from "express";
+import {
+  createInterviewService,
+  generateInterviewSessionByIdService,
+  startInterviewService,
+  submitAnswerService,
+  generateFinalEvaluationService,
+} from "../services/interviewService";
+
+//POST /api/interviews
+
+export const createInterviewController = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const userId = req.user!.userId;
+    const { applicationId } = req.body;
+
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized",
+      });
+    }
+    if (!applicationId) {
+      return res.status(400).json({
+        success: false,
+        message: "application ID is required",
+      });
+    }
+
+    const interview = await createInterviewService(userId, applicationId);
+
+    return res.status(201).json({
+      success: true,
+      message: "Interview plan created successfully",
+      data: interview,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getInterviewSessionByIdController = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const { interviewId } = req.params;
+    const userId = req.user!.userId;
+    if (!interviewId) {
+      return res.status(400).json({
+        success: false,
+        message: "Interview ID is required",
+      });
+    }
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized access",
+      });
+    }
+
+    const interview = await generateInterviewSessionByIdService(
+      interviewId,
+      userId,
+    );
+    return res.status(200).json({
+      success: true,
+      message: "Interview session retrieved successfully",
+      data: interview,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const startInterviewController = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const userId = req.user?.userId;
+    const { interviewId } = req.params;
+
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized access",
+      });
+    }
+
+    if (!interviewId) {
+      return res.status(400).json({
+        success: false,
+        message: "Interview ID is required",
+      });
+    }
+
+    const result = await startInterviewService(interviewId, userId);
+
+    return res.status(200).json({
+      success: true,
+      message: "Interview session started successfully",
+      data: result,
+    });
+  } catch (error: any) {
+    if (error.statusCode) {
+      return res.status(error.statusCode).json({
+        success: false,
+        message: error.message,
+      });
+    }
+    next(error);
+  }
+};
+
+export const submitAnswerController = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const userId = req.user?.userId;
+    const { interviewId, questionId } = req.params;
+    const { answer } = req.body;
+
+    if (!userId) {
+      return res
+        .status(401)
+        .json({ success: false, message: "Unauthorized access" });
+    }
+
+    if (!answer || answer.trim() === "") {
+      return res
+        .status(400)
+        .json({ success: false, message: "Answer string is required" });
+    }
+
+    const result = await submitAnswerService(
+      interviewId,
+      questionId,
+      userId,
+      answer,
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "Answer submitted and evaluated successfully",
+      data: result,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const generateFinalEvaluationController = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const userId = req.user?.userId;
+    const { interviewId } = req.params;
+
+    if (!userId) {
+      return res
+        .status(401)
+        .json({ success: false, message: "Unauthorized access" });
+    }
+    const evaluation = await generateFinalEvaluationService(
+      interviewId,
+      userId,
+    );
+
+    return res.status(201).json({
+      success: true,
+      message: "Interview evaluation generated successfully",
+      data: {
+        evaluation,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+==> server/src/controllers/jobController.ts <==
+//server/src/controllers/jobController.ts
+
+import type { NextFunction, Request, Response } from "express";
+import { parseJobQuery } from "../utils/jobQuery";
+import { getJobByIdService, getJobsService } from "../services/jobService";
+import { syncGreenhouseJobs } from "../services/greenhouseSyncService";
+import {
+  getSavedJobsService,
+  unsaveJobService,
+  saveJobService,
+} from "../services/savedJobService";
+
+// get the jobs '/'
+export const getJobsController = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const filters = parseJobQuery(req.query as Record<string, unknown>);
+    const { jobs, total } = await getJobsService(filters);
+    res.status(200).json({
+      success: true,
+      jobs,
+      total,
+      page: filters.page,
+      pageSize: filters.pageSize,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getJobByIdController = async (req: Request, res: Response) => {
+  try {
+    const job = await getJobByIdService(req.params.id);
+
+    res.status(200).json({
+      success: true,
+      job,
+    });
+  } catch (error) {
+    if (error instanceof Error && error.message === "Job not found") {
+      res.status(404).json({
+        success: false,
+        message: "Job not found",
+      });
+
+      return;
+    }
+
+    console.error("Get job error:", error);
+
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch job",
+    });
+  }
+};
+
+//sync greenhouse  '/sync/generate'
+export const syncGreenhouseController = async (req: Request, res: Response) => {
+  try {
+    const boardToken = process.env.GREENHOUSE_BOARD_TOKEN;
+
+    const company = process.env.GREENHOUSE_COMPANY;
+
+    if (!boardToken || !company) {
+      res.status(500).json({
+        success: false,
+        message: "Greenhouse configuration is missing",
+      });
+
+      return;
+    }
+
+    const result = await syncGreenhouseJobs(boardToken, company);
+
+    res.status(200).json({
+      success: true,
+      message: "Greenhouse jobs synced successfully",
+      ...result,
+    });
+  } catch (error) {
+    console.error("Greenhouse sync error:", error);
+
+    res.status(500).json({
+      success: false,
+      message: "Failed to sync Greenhouse jobs",
+    });
+  }
+};
+
+//======================== Saved Jobs ======================
+
+export const saveJobController = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const userId = req.user!.userId;
+    const { id } = req.params;
+
+    const savedJob = await saveJobService(userId, id);
+
+    res.status(201).json({
+      success: true,
+      message: "Job saved successfully",
+      savedJob,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const unsaveJobController = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const userId = req.user!.userId;
+    const { id } = req.params;
+
+    await unsaveJobService(userId, id);
+
+    res.status(200).json({
+      success: true,
+      message: "Job removed from saved jobs",
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getSavedJobsController = async (req: Request, res: Response) => {
+  try {
+    const userId = req.user!.userId;
+
+    const jobs = await getSavedJobsService(userId);
+
+    res.status(200).json({
+      success: true,
+      jobs,
+    });
+  } catch (error) {
+    console.error("Get saved jobs error:", error);
+
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch saved jobs",
+    });
+  }
+};
+
+==> server/src/controllers/matchController.ts <==
+import { NextFunction, Request, Response } from "express";
+import { matchResumeToJob } from "../services/matching/matchService";
+import { AppError } from "../utils/appError";
+
+export const matchResumeToJobController = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const { resumeId, jobId } = req.body ?? {};
+    if (typeof resumeId !== "string" || typeof jobId !== "string" || !resumeId || !jobId) {
+      throw new AppError(400, "resumeId and jobId are required", "VALIDATION_ERROR");
+    }
+
+    const data = await matchResumeToJob(req.user!.userId, resumeId, jobId);
+    res.status(200).json({ success: true, data });
+  } catch (error) {
+    next(error);
+  }
+};
+
+==> server/src/controllers/readinessController.ts <==
+import { NextFunction, Request, Response } from "express";
+import { getReadinessService } from "../services/readiness/readinessService";
+
+export const getReadinessController = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const data = await getReadinessService(req.user!.userId);
+    res.status(200).json({ success: true, data });
+  } catch (error) {
+    next(error);
+  }
+};
+
+==> server/src/controllers/resumeController.ts <==
+//server/src/controllers/resumeController.ts
+import { NextFunction, Request, Response } from "express";
+import { AppError } from "../utils/appError";
+import {
+  createResumeService,
+  deleteResumeService,
+  getUserResumeByIdService,
+  getUserResumeService,
+} from "../services/resume/resumeService";
+import { tailorResumeService } from "../services/tailoring/tailoringService";
+
+export const createResume = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const file = req.file;
+    if (!file) {
+      throw new AppError(400, "Choose a PDF or DOCX resume to upload", "FILE_REQUIRED");
+    }
+
+    const resume = await createResumeService(req.user!.userId, file);
+    res.status(201).json({
+      success: true,
+      message: "Resume uploaded successfully",
+      resume,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getUserResumeController = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const resumes = await getUserResumeService(req.user!.userId);
+    res.status(200).json({ success: true, resumes });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getUserResumeByIdController = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const resume = await getUserResumeByIdService(req.user!.userId, req.params.id);
+    res.status(200).json({ success: true, resume });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const deleteResumeController = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    await deleteResumeService(req.user!.userId, req.params.id);
+    res.status(200).json({ success: true, message: "Resume deleted" });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const tailorResumeController = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const { jobId } = req.body ?? {};
+    if (typeof jobId !== "string" || jobId.length === 0) {
+      throw new AppError(400, "jobId is required", "VALIDATION_ERROR");
+    }
+    const data = await tailorResumeService(req.user!.userId, req.params.id, jobId);
+    res.status(200).json({ success: true, data });
+  } catch (error) {
+    next(error);
+  }
+};
+
+==> server/src/services/applicationService.ts <==
+//server/src/services/applications/applicationService.ts
+
+import { prisma } from "../config/db";
+import {
+  createApplication,
+  getApplication,
+  getApplicationById,
+  updatedApplicationStatus,
+} from "../repositories/applicationRepository";
+import type { ApplicationStatus } from "@prisma/client";
+
+export const createApplicationService = async (
+  userId: string,
+  jobId: string,
+) => {
+  const job = await prisma.job.findUnique({
+    where: {
+      id: jobId,
+    },
+  });
+
+  if (!job) {
+    throw new Error("Job not found");
+  }
+
+  return await createApplication(userId, jobId);
+};
+
+export const getApplicationsService = async (userId: string) => {
+  return await getApplication(userId);
+};
+
+export const getApplicationByIdService = async (
+  userId: string,
+  applicationId: string,
+) => {
+  const application = await getApplicationById(userId, applicationId);
+  if (!application) {
+    throw new Error("Application not found");
+  }
+
+  return application;
+};
+
+export const updateApplicationStatusService = async (
+  userId: string,
+  applicationId: string,
+  status: ApplicationStatus,
+) => {
+  const application = await getApplicationById(userId, applicationId);
+
+  if (!application) {
+    throw new Error("Application not found");
+  }
+
+  await updatedApplicationStatus(userId, applicationId, status);
+
+  //once updated then return application to requested id
+  return await getApplicationById(userId, applicationId);
+};
+
+==> server/src/services/authService.ts <==
+import {
+  userRepository,
+  UserRepository,
+} from "../repositories/userRepository.js";
+import { hashPassword, comparePassword } from "../utils/password.js";
+import { signToken } from "../utils/jwt.js";
+import {
+  RegisterInput,
+  LoginInput,
+  UpdateProfileInput,
+} from "../validators/authValidator.js";
+
+export interface UserResponse {
+  id: string;
+  email: string;
+  name: string;
+  role: string;
+  targetRole?: string | null;
+  preferredLocations?: string[];
+  experienceLevel?: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface AuthResult {
+  user: UserResponse;
+  token: string;
+}
+
+export class AuthService {
+  constructor(private userRepo: UserRepository = userRepository) {}
+
+  private sanitizeUser(user: any): UserResponse {
+    return {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      role: user.role,
+      targetRole: user.targetRole || null,
+      preferredLocations: user.preferredLocations || [],
+      experienceLevel: user.experienceLevel || null,
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt,
+    };
+  }
+
+  async register(input: RegisterInput): Promise<AuthResult> {
+    const existing = await this.userRepo.findByEmail(input.email);
+    if (existing) {
+      throw new Error("User with this email already exists");
+    }
+
+    const hashedPassword = await hashPassword(input.password);
+    const user = await this.userRepo.create({
+      email: input.email,
+      passwordHash: hashedPassword,
+      name: input.name,
+    });
+
+    const token = signToken({
+      userId: user.id,
+      email: user.email,
+      role: user.role,
+    });
+
+    return {
+      user: this.sanitizeUser(user),
+      token,
+    };
+  }
+
+  async login(input: LoginInput): Promise<AuthResult> {
+    const user = await this.userRepo.findByEmail(input.email);
+    if (!user) {
+      throw new Error("Invalid email or password");
+    }
+
+    const isMatch = await comparePassword(input.password, user.passwordHash);
+    if (!isMatch) {
+      throw new Error("Invalid email or password");
+    }
+
+    const token = signToken({
+      userId: user.id,
+      email: user.email,
+      role: user.role,
+    });
+
+    return {
+      user: this.sanitizeUser(user),
+      token,
+    };
+  }
+
+  async getProfile(userId: string): Promise<UserResponse> {
+    const user = await this.userRepo.findById(userId);
+    if (!user) {
+      throw new Error("User not found");
+    }
+    return this.sanitizeUser(user);
+  }
+
+  async updateProfile(
+    userId: string,
+    input: UpdateProfileInput,
+  ): Promise<UserResponse> {
+    const user = await this.userRepo.findById(userId);
+    if (!user) {
+      throw new Error("User not found");
+    }
+
+    const updateData: {
+      name?: string;
+      email?: string;
+      passwordHash?: string;
+      targetRole?: string;
+      preferredLocations?: string[];
+      experienceLevel?: string;
+    } = {};
+
+    if (input.name) {
+      updateData.name = input.name;
+    }
+
+    if (input.email && input.email !== user.email) {
+      const existing = await this.userRepo.findByEmail(input.email);
+      if (existing) {
+        throw new Error("Email is already taken by another user");
+      }
+      updateData.email = input.email;
+    }
+
+    if (input.password) {
+      updateData.passwordHash = await hashPassword(input.password);
+    }
+
+    if (input.targetRole) {
+      updateData.targetRole = input.targetRole;
+    }
+
+    if (input.preferredLocations) {
+      updateData.preferredLocations = input.preferredLocations;
+    }
+
+    if (input.experienceLevel) {
+      updateData.experienceLevel = input.experienceLevel;
+    }
+
+    const updatedUser = await this.userRepo.update(userId, updateData);
+    return this.sanitizeUser(updatedUser);
+  }
+}
+
+export const authService = new AuthService();
+
+==> server/src/services/greenhouseSyncService.ts <==
+//src\services\greenhouseSyncService.ts
+
+// Greenhouse API
+//       ↓
+// fetchGreenhouseJobs()
+//       ↓
+// Zod validation
+//       ↓
+// adaptGreenhouseJobs()
+//       ↓
+// CanonicalJob[]
+//       ↓
+// upsertJobs()
+//       ↓
+// isActive = true
+// lastSyncedAt = now
+//       ↓
+// Deactivate missing jobs
+// PostgreSQL
+
+import { prisma } from "../config/db";
+import { fetchGreenhouseJobs } from "../integrations/jobs/greenhouse/greenhouseClient";
+import { adaptGreenhouseJobs } from "../integrations/jobs/greenhouse/greenhouseAdapter";
+import { upsertJobs } from "../repositories/jobRepository";
+
+export const syncGreenhouseJobs = async (
+  boardToken: string,
+  company: string,
+) => {
+  // 1. Fetch and validate Greenhouse jobs
+  const response = await fetchGreenhouseJobs(boardToken);
+
+  // 2. Convert Greenhouse jobs into our canonical Job format
+  const jobs = adaptGreenhouseJobs(response.jobs, company);
+
+  // 3. Persist jobs using upsert
+  const savedJobs = await upsertJobs(jobs);
+
+  //4.to prevent unactive jobs after some time
+  const externalIds = jobs.map((job) => job.externalId);
+
+  const staleJobs = await prisma.job.updateMany({
+    where: {
+      source: "GREENHOUSE",
+      company,
+      ...(externalIds.length > 0
+        ? {
+            externalId: {
+              notIn: externalIds,
+            },
+          }
+        : {}),
+    },
+    data: {
+      isActive: false,
+    },
+  });
+
+  return {
+    totalFetched: jobs.length,
+    totalSaved: savedJobs.length,
+    totalDeactivated: staleJobs.count,
+  };
+};
+
+==> server/src/services/interviewService.ts <==
+//server/src/modules/interview/interview.service.ts
+
+import { prisma } from "../config/db";
+import { analyzeResume } from "../integrations/ai/aiClient";
+import {
+  buildInterviewPlanPrompt,
+  InterviewPromptInput,
+} from "../modules/interview/interview.prompt";
+import {
+  InterviewPlanSchema,
+  InterviewPlan,
+  InterviewQuestions,
+  InterviewQuestionsSchema,
+} from "../modules/interview/interviewSchema";
+import {
+  createInterviewWithQuestions,
+  getInterviewSessionById,
+  updateInterviewStatus,
+  getQuestionById,
+  saveAnswer,
+  saveQuestionAnswerAndFeedback,
+  countUnfinishedQuestions,
+  getFirstUnfinishedQuestion,
+  getEvaluationByInterviewId,
+} from "../repositories/interviewRepository";
+import { AppError } from "../utils/appError";
+import { saveEvaluationWithSkillEvidence } from "../repositories/skillRepository";
+import { skillEvidenceFromReport } from "./skills/skillEvidence";
+import {
+  buildInterviewQuestionsPrompt,
+  InterviewQuestionPromptInput,
+} from "../modules/interview/interview.question.prompt";
+import { evaluateQuestionAnswer } from "../modules/interview/interview.ai";
+import { buildFinalEvaluationPrompt } from "../modules/evaluation/interview.evaluation.prompt";
+import { FinalEvaluationSchema } from "../modules/evaluation/finalEvaluationSchema";
+
+export const generateInterviewPlan = async (
+  input: InterviewPromptInput,
+): Promise<InterviewPlan> => {
+  // 1. Build prompt
+  const prompt = buildInterviewPlanPrompt(input);
+
+  // 2. Call existing AI client abstraction
+  const rawResponse = await analyzeResume(prompt);
+
+  // 3. Handle JSON parsing (if analyzeResume returned string instead of parsed object)
+  const jsonContent =
+    typeof rawResponse === "string" ? JSON.parse(rawResponse) : rawResponse;
+
+  // 4. Validate output with InterviewPlanSchema
+  const parsed = InterviewPlanSchema.safeParse(jsonContent);
+  if (!parsed.success) {
+    throw new AppError(502, "The interview plan could not be generated. Try again.", "AI_INVALID_OUTPUT");
+  }
+  return parsed.data;
+};
+
+export const createInterviewService = async (
+  userId: string,
+  applicationId: string,
+) => {
+  const application = await prisma.application.findFirst({
+    where: { id: applicationId, userId },
+    include: { job: true },
+  });
+  if (!application || !application.job) {
+    throw new AppError(404, "Application or associated job not found", "APPLICATION_NOT_FOUND");
+  }
+
+  const resume = await prisma.resume.findFirst({
+    where: { userId },
+    orderBy: { createdAt: "desc" },
+  });
+  if (!resume) {
+    throw new AppError(400, "Upload a resume before starting an interview", "RESUME_REQUIRED");
+  }
+
+  // A job with no comparable skills has a null match score. It is never replaced with a number.
+  const matchScore = application.matchScore ?? null;
+  const topSkillGaps = application.skillGaps ?? [];
+
+  const promptInput: InterviewPromptInput = {
+    job: {
+      title: application.job.title,
+      company: application.job.company,
+      location: application.job.location,
+      description: application.job.description,
+      requirements: application.job.requirements,
+    },
+    resume: {
+      rawText: resume.rawText,
+      skills: resume.skills,
+      experienceYrs: resume.experienceYrs,
+    },
+    matchScore,
+    topSkillGaps,
+  };
+
+  // All AI work happens before any write. If it fails, nothing is saved.
+  // The model may echo a score. The stored value is the only one we keep.
+  const generatedPlan = await generateInterviewPlan(promptInput);
+  const plan = { ...generatedPlan, matchScore };
+  const generatedQuestions = await generateInterviewQuestions({
+    plan,
+    job: application.job,
+    resume,
+    matchScore,
+    topSkillGaps,
+  });
+
+  const title = `${application.job.title} at ${application.job.company}`;
+  const interview = await createInterviewWithQuestions(
+    { userId, applicationId, title, plan },
+    generatedQuestions.questions,
+  );
+
+  return await prisma.interview.findUnique({
+    where: { id: interview.id },
+    include: { questions: true },
+  });
+};
+
+export const generateInterviewQuestions = async (
+  input: InterviewQuestionPromptInput,
+): Promise<InterviewQuestions> => {
+  //build prompt
+  const prompt = buildInterviewQuestionsPrompt(input);
+
+  //call the ai client abstrcation
+  const rawResponse = await analyzeResume(prompt);
+
+  //clean and parse json response
+  let jsonContent =
+    typeof rawResponse === "string" ? JSON.parse(rawResponse) : rawResponse;
+
+  // / Handle case where response might be wrapped inside a code block string
+  if (typeof jsonContent === "string") {
+    const cleaned = jsonContent
+      .replace(/```json/g, "")
+      .replace(/```/g, "")
+      .trim();
+    jsonContent = JSON.parse(cleaned);
+  }
+
+  //validate output
+  const validatedQuestions = InterviewQuestionsSchema.parse(jsonContent);
+
+  return validatedQuestions;
+};
+
+export const generateInterviewSessionByIdService = async (
+  interviewId: string,
+  userId: string,
+) => {
+  const interview = await getInterviewSessionById(interviewId, userId);
+  if (!interview) {
+    throw new Error("Interview session not found");
+  }
+  return interview;
+};
+
+export const startInterviewService = async (
+  interviewId: string,
+  userId: string,
+) => {
+  //fetch the inteview
+  const interview = await getInterviewSessionById(interviewId, userId);
+  if (!interview) {
+    throw new Error("Interview session not found");
+  }
+  //validate the status
+  if (interview.status === "IN_PROGRESS") {
+    const error = new Error("Interview is already in progress");
+    (error as any).statusCode = 400;
+    throw error;
+  }
+
+  if (interview.status === "COMPLETED" || interview.status === "CANCELLED") {
+    const error = new Error(
+      `Cannot start an interview that is ${interview.status.toLowerCase()}`,
+    );
+    (error as any).statusCode = 400;
+    throw error;
+  }
+
+  //update transition status to IN_PROGRESS
+  await updateInterviewStatus(interviewId, userId, "IN_PROGRESS");
+
+  //fetch the updated interview
+  const updatedInterview = await getInterviewSessionById(interviewId, userId);
+
+  //send interview and 1st question like (order 1)
+  const firstQuestion =
+    updatedInterview?.questions.find((q) => q.order == 1) || null;
+
+  return {
+    interview: updatedInterview,
+    firstQuestion,
+  };
+};
+
+export const submitAnswerService = async (
+  interviewId: string,
+  questionId: string,
+  userId: string,
+  answer: string,
+) => {
+  const interview = await getInterviewSessionById(interviewId, userId);
+  if (!interview) {
+    throw new AppError(404, "Interview session not found", "INTERVIEW_NOT_FOUND");
+  }
+  if (interview.status !== "IN_PROGRESS") {
+    throw new AppError(
+      400,
+      "Answers can only be submitted while the interview is in progress",
+      "INTERVIEW_NOT_IN_PROGRESS",
+    );
+  }
+
+  const question = await getQuestionById(questionId, interviewId);
+  if (!question) {
+    throw new AppError(404, "Question not found for this interview", "QUESTION_NOT_FOUND");
+  }
+
+  // A question is final once it has feedback. Only unevaluated questions can take an answer.
+  if (question.feedback !== null) {
+    throw new AppError(409, "This question has already been answered", "ALREADY_ANSWERED");
+  }
+
+  // Questions are answered in order. The next one is the first without feedback.
+  const nextDue = interview.questions.find((q) => q.feedback === null);
+  if (!nextDue || nextDue.id !== questionId) {
+    throw new AppError(
+      409,
+      `Answer the questions in order. Question ${nextDue?.order ?? ""} is next.`.trim(),
+      "OUT_OF_ORDER",
+    );
+  }
+
+  // Save first. If the evaluation below fails, the answer is still on record.
+  await saveAnswer(questionId, answer);
+
+  let evaluation: Awaited<ReturnType<typeof evaluateQuestionAnswer>>;
+  try {
+    evaluation = await evaluateQuestionAnswer(question.question, answer, interview.title);
+  } catch {
+    throw new AppError(
+      503,
+      "Your answer was saved, but evaluation is temporarily unavailable. Submit the same answer again to retry.",
+      "EVALUATION_PENDING",
+    );
+  }
+
+  const updatedQuestion = await saveQuestionAnswerAndFeedback(
+    questionId,
+    answer,
+    JSON.stringify(evaluation),
+    evaluation.score,
+  );
+
+  // Completed means no question is left without feedback, whatever order they were answered in.
+  const isCompleted = (await countUnfinishedQuestions(interviewId)) === 0;
+  if (isCompleted) {
+    await updateInterviewStatus(interviewId, userId, "COMPLETED");
+  }
+
+  return {
+    evaluation,
+    updatedQuestion,
+    nextQuestion: isCompleted ? null : await getFirstUnfinishedQuestion(interviewId),
+    completed: isCompleted,
+  };
+};
+
+export const generateFinalEvaluationService = async (
+  interviewId: string,
+  userId: string,
+) => {
+  const interview = await getInterviewSessionById(interviewId, userId);
+  if (!interview) {
+    throw new AppError(404, "Interview not found", "INTERVIEW_NOT_FOUND");
+  }
+  if (interview.status !== "COMPLETED") {
+    throw new AppError(
+      409,
+      "Finish every question before the report is generated",
+      "INTERVIEW_NOT_COMPLETE",
+    );
+  }
+  if (await getEvaluationByInterviewId(interviewId)) {
+    throw new AppError(409, "An evaluation already exists for this interview", "EVALUATION_EXISTS");
+  }
+
+  // 4. Extract role and application context
+  const application = interview.application;
+  const job = application?.job;
+  const jobTitle = job?.title || "Software Engineer";
+  const companyName = job?.company || "Target Company";
+  const roleDescription = job?.description || "";
+  // No match score is stored when the posting had no comparable skills. Never invent one.
+  const matchScore = application?.matchScore ?? null;
+  const skillGaps = application?.skillGaps || [];
+
+  // 5. Build prompt
+  const prompt = buildFinalEvaluationPrompt({
+    jobTitle,
+    companyName,
+    roleDescription,
+    matchScore,
+    skillGaps,
+    questions: interview.questions.map((q) => ({
+      order: q.order,
+      round: q.round,
+      question: q.question,
+      answer: q.answer,
+      score: q.score,
+      feedback: q.feedback,
+    })),
+  });
+
+  // 6. Request evaluation from Nemotron
+  const aiResponse = await analyzeResume(prompt);
+
+  let rawEvaluation: any;
+
+  if (typeof aiResponse === "string") {
+    // If string, sanitize markdown formatting and parse
+    const cleanedResponse = aiResponse
+      .replace(/```json/g, "")
+      .replace(/```/g, "")
+      .trim();
+    rawEvaluation = JSON.parse(cleanedResponse);
+  } else {
+    // If already parsed object, use directly
+    rawEvaluation = aiResponse;
+  }
+  // Normalize key names if Nemotron misspells "confidence" as "confidance"
+  if (rawEvaluation?.breakdown) {
+    if (
+      rawEvaluation.breakdown.confidance !== undefined &&
+      rawEvaluation.breakdown.confidence === undefined
+    ) {
+      rawEvaluation.breakdown.confidence = rawEvaluation.breakdown.confidance;
+      delete rawEvaluation.breakdown.confidance;
+    }
+  }
+
+  const validatedEvaluation = FinalEvaluationSchema.parse(rawEvaluation);
+
+  // 8. Persist to PostgreSQL
+  // The report and its skill updates are saved together.
+  const savedEvaluation = await saveEvaluationWithSkillEvidence(
+    interviewId,
+    userId,
+    validatedEvaluation,
+    skillEvidenceFromReport(validatedEvaluation),
+  );
+
+  return savedEvaluation;
+};
+
+==> server/src/services/jobService.ts <==
+import type { JobQuery } from "../utils/jobQuery";
+//src\services\jobService.ts
+
+import { getJobs, getJobById } from "../repositories/jobRepository";
+
+export const getJobsService = async (filters: JobQuery) => {
+  return await getJobs(filters);
+};
+
+export const getJobByIdService = async (id: string) => {
+  const job = await getJobById(id);
+
+  if (!job) {
+    throw new Error("Job not found");
+  }
+
+  return job;
+};
+
+
+==> server/src/services/savedJobService.ts <==
+import { prisma } from "../config/db";
+import { AppError } from "../utils/appError";
+import {
+  getSavedJobs,
+  saveJob,
+  unsaveJob,
+} from "../repositories/savedJobRepository";
+
+export const saveJobService = async (userId: string, jobId: string) => {
+  const job = await prisma.job.findUnique({
+    where: { id: jobId },
+    select: { id: true, isActive: true },
+  });
+
+  if (!job || !job.isActive) {
+    throw new AppError(404, "Job not found", "JOB_NOT_FOUND");
+  }
+  return await saveJob(userId, jobId);
+};
+
+export const unsaveJobService = async (userId: string, jobId: string) => {
+  const result = await unsaveJob(userId, jobId);
+
+  if (result.count === 0) {
+    throw new AppError(404, "Saved job not found", "SAVED_JOB_NOT_FOUND");
+  }
+  return true;
+};
+
+export const getSavedJobsService = async (userId: string) => {
+  return await getSavedJobs(userId);
+};
+
+==> server/src/services/matching/jobSkillExtractor.ts <==
+// Finds canonical skills named in a job description (used at sync time).
+import { countSkillMentions } from "./skillDictionary";
+
+export const extractJobSkills = (description: string): string[] => {
+  return [...countSkillMentions(description).keys()];
+};
+
+==> server/src/services/matching/matchService.ts <==
+import { AppError } from "../../utils/appError";
+import { getResumeById } from "../../repositories/resumeRepository";
+import { getJobById } from "../../repositories/jobRepository";
+import { upsertApplicationMatch } from "../../repositories/matchRepository";
+import { listUserSkills } from "../../repositories/skillRepository";
+import { calculateMatch, InterviewEvidence, MatchResult } from "./matchingService";
+
+export interface MatchResponseData extends MatchResult {
+  applicationId: string;
+}
+
+export const matchResumeToJob = async (
+  userId: string,
+  resumeId: string,
+  jobId: string,
+): Promise<MatchResponseData> => {
+  const resume = await getResumeById(resumeId, userId);
+  if (!resume) {
+    throw new AppError(404, "Resume not found", "RESUME_NOT_FOUND");
+  }
+
+  const job = await getJobById(jobId);
+  if (!job || !job.isActive) {
+    throw new AppError(404, "Job not found", "JOB_NOT_FOUND");
+  }
+
+  const userSkills = await listUserSkills(userId);
+  const interview: InterviewEvidence = {
+    strongSkills: userSkills.filter((s) => s.status === "STRONG").map((s) => s.skill),
+    weakSkills: new Map(
+      userSkills.filter((s) => s.status === "WEAK").map((s) => [s.skill, s.evidence] as const),
+    ),
+  };
+
+  const result = calculateMatch(resume.skills, job.requirements, job.description, interview);
+
+  // Saved on the application so the interview and tracker use the same numbers.
+  const application = await upsertApplicationMatch(userId, jobId, {
+    matchScore: result.score,
+    skillGaps: result.skillGaps.map((gap) => gap.skill),
+  });
+
+  return { ...result, applicationId: application.id };
+};
+
+==> server/src/services/matching/matchingService.ts <==
+// Deterministic resume-to-job matching. Every number can be traced to a skill name,
+// a count of mentions in the job description, or an interview report. No model is involved.
+import { normalizeSkills } from "./skillNormalizer";
+import { countSkillMentions } from "./skillDictionary";
+
+export type GapPriority = "high" | "medium" | "low";
+
+export interface SkillGap {
+  skill: string;
+  priority: GapPriority;
+  evidence: string;
+}
+
+export interface MatchResult {
+  status: "OK" | "INSUFFICIENT_DATA";
+  score: number | null;
+  matchedSkills: string[];
+  missingSkills: string[];
+  skillGaps: SkillGap[];
+}
+
+// Interview evidence from earlier mock interviews. It changes what the candidate is credited with.
+export interface InterviewEvidence {
+  strongSkills: string[];
+  weakSkills: Map<string, string>; // skill -> evidence text
+}
+
+const PRIORITY_ORDER: Record<GapPriority, number> = { high: 0, medium: 1, low: 2 };
+
+// A skill named three or more times in the posting is core to the role.
+const priorityFromMentions = (mentions: number): GapPriority => {
+  if (mentions >= 3) return "high";
+  if (mentions === 2) return "medium";
+  return "low";
+};
+
+export const calculateMatch = (
+  resumeSkills: string[],
+  jobSkills: string[],
+  jobDescription?: string,
+  interview?: InterviewEvidence,
+): MatchResult => {
+  const requiredSkills = normalizeSkills(jobSkills);
+
+  if (requiredSkills.length === 0) {
+    return {
+      status: "INSUFFICIENT_DATA",
+      score: null,
+      matchedSkills: [],
+      missingSkills: [],
+      skillGaps: [],
+    };
+  }
+
+  const weakSkills = interview?.weakSkills ?? new Map<string, string>();
+
+  // Credit comes from the resume and from strong interview evidence.
+  // A skill flagged as weak in an interview is not credited, even if the resume lists it.
+  const candidateSkills = new Set(normalizeSkills(resumeSkills));
+  for (const skill of interview?.strongSkills ?? []) candidateSkills.add(skill);
+  for (const skill of weakSkills.keys()) candidateSkills.delete(skill);
+
+  const matchedSkills = requiredSkills.filter((skill) => candidateSkills.has(skill));
+  const missingSkills = requiredSkills.filter((skill) => !candidateSkills.has(skill));
+
+  const mentions = jobDescription ? countSkillMentions(jobDescription) : null;
+
+  const skillGaps: SkillGap[] = missingSkills
+    .map((skill) => {
+      if (weakSkills.has(skill)) {
+        return {
+          skill,
+          priority: "high" as const,
+          evidence: "Weak in a mock interview. Practise it before the next interview.",
+        };
+      }
+      const count = mentions?.get(skill) ?? 0;
+      const priority: GapPriority = mentions ? priorityFromMentions(count) : "medium";
+      const evidence =
+        count > 0
+          ? `Named ${count} ${count === 1 ? "time" : "times"} in the job description`
+          : "Listed in the job requirements";
+      return { skill, priority, evidence };
+    })
+    .sort(
+      (a, b) =>
+        PRIORITY_ORDER[a.priority] - PRIORITY_ORDER[b.priority] ||
+        a.skill.localeCompare(b.skill),
+    );
+
+  return {
+    status: "OK",
+    score: Math.round((matchedSkills.length / requiredSkills.length) * 100),
+    matchedSkills,
+    missingSkills,
+    skillGaps,
+  };
+};
+
+==> server/src/services/matching/skillDictionary.ts <==
+// Canonical skills and the aliases that point to them.
+// Aliases are matched as whole words, so "javascript" never counts as "java"
+// and "digital" never counts as "git".
+export interface SkillEntry {
+  canonical: string;
+  aliases: string[];
+}
+
+export const SKILL_DICTIONARY: SkillEntry[] = [
+  { canonical: "javascript", aliases: ["javascript", "js", "ecmascript", "es6"] },
+  { canonical: "typescript", aliases: ["typescript", "ts"] },
+  { canonical: "java", aliases: ["java"] },
+  { canonical: "python", aliases: ["python"] },
+  { canonical: "c++", aliases: ["c++", "cpp"] },
+  { canonical: "c#", aliases: ["c#", "csharp", "c sharp"] },
+  { canonical: "go", aliases: ["golang"] },
+  { canonical: "react", aliases: ["react", "reactjs", "react.js"] },
+  { canonical: "angular", aliases: ["angular", "angularjs"] },
+  { canonical: "vue", aliases: ["vue", "vuejs", "vue.js"] },
+  { canonical: "next.js", aliases: ["next.js", "nextjs", "next js"] },
+  { canonical: "node.js", aliases: ["node.js", "nodejs", "node"] },
+  { canonical: "express.js", aliases: ["express.js", "expressjs"] },
+  { canonical: "html", aliases: ["html", "html5"] },
+  { canonical: "css", aliases: ["css", "css3"] },
+  { canonical: "tailwind css", aliases: ["tailwind css", "tailwindcss", "tailwind"] },
+  { canonical: "bootstrap", aliases: ["bootstrap"] },
+  { canonical: "sql", aliases: ["sql"] },
+  { canonical: "postgresql", aliases: ["postgresql", "postgres", "postgre sql"] },
+  { canonical: "mysql", aliases: ["mysql"] },
+  { canonical: "mongodb", aliases: ["mongodb", "mongo"] },
+  { canonical: "prisma", aliases: ["prisma", "prisma orm"] },
+  { canonical: "docker", aliases: ["docker"] },
+  { canonical: "kubernetes", aliases: ["kubernetes", "k8s"] },
+  { canonical: "git", aliases: ["git"] },
+  { canonical: "github", aliases: ["github"] },
+  { canonical: "aws", aliases: ["aws", "amazon web services"] },
+  { canonical: "azure", aliases: ["azure"] },
+  { canonical: "gcp", aliases: ["gcp", "google cloud"] },
+  { canonical: "linux", aliases: ["linux"] },
+  { canonical: "rest api", aliases: ["rest api", "rest apis", "restful api", "restful apis"] },
+  { canonical: "graphql", aliases: ["graphql"] },
+  { canonical: "redis", aliases: ["redis"] },
+  { canonical: "spring boot", aliases: ["spring boot"] },
+  { canonical: "django", aliases: ["django"] },
+  { canonical: "fastapi", aliases: ["fastapi"] },
+  { canonical: "jest", aliases: ["jest"] },
+  { canonical: "vitest", aliases: ["vitest"] },
+  { canonical: "machine learning", aliases: ["machine learning"] },
+  { canonical: "data structures", aliases: ["data structures", "data structure"] },
+  { canonical: "algorithms", aliases: ["algorithms", "algorithm"] },
+  { canonical: "system design", aliases: ["system design"] },
+  { canonical: "agile", aliases: ["agile", "scrum"] },
+  { canonical: "ci/cd", aliases: ["ci/cd", "ci cd"] },
+];
+
+// Alias (lowercase) -> canonical name, including each canonical name itself.
+export const ALIAS_TO_CANONICAL: ReadonlyMap<string, string> = new Map(
+  SKILL_DICTIONARY.flatMap((entry) => [
+    [entry.canonical, entry.canonical] as const,
+    ...entry.aliases.map((alias) => [alias, entry.canonical] as const),
+  ]),
+);
+
+const escapeRegex = (text: string): string => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+// One pattern per skill: all its names as a single alternation, longest first,
+// so "Node.js" counts once as node.js and not again as "node".
+const SEARCH_PATTERNS: ReadonlyArray<{ canonical: string; pattern: RegExp }> =
+  SKILL_DICTIONARY.map((entry) => {
+    const names = [...new Set([entry.canonical, ...entry.aliases])].sort(
+      (a, b) => b.length - a.length,
+    );
+    const alternation = names.map(escapeRegex).join("|");
+    return {
+      canonical: entry.canonical,
+      // Whole-word boundaries that still work for names ending in symbols, such as "c++".
+      pattern: new RegExp(`(?<![a-z0-9])(?:${alternation})(?![a-z0-9])`, "g"),
+    };
+  });
+
+// Counts how many times each canonical skill is named in free text.
+export const countSkillMentions = (text: string): Map<string, number> => {
+  const lower = text.toLowerCase().replace(/[\u2018\u2019]/g, "'");
+  const counts = new Map<string, number>();
+
+  for (const { canonical, pattern } of SEARCH_PATTERNS) {
+    const hits = lower.match(pattern)?.length ?? 0;
+    if (hits > 0) {
+      counts.set(canonical, (counts.get(canonical) ?? 0) + hits);
+    }
+  }
+  return counts;
+};
+
+==> server/src/services/matching/skillNormalizer.ts <==
+// Turns any skill string into its canonical form, e.g. "  ReactJS " -> "react".
+// Skills outside the dictionary keep their cleaned lowercase form, so exact matches still work.
+import { ALIAS_TO_CANONICAL } from "./skillDictionary";
+
+export const normalizeSkill = (skill: string): string => {
+  const cleaned = skill
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .replace(/[\s,;:]+$/g, "")
+    .trim();
+
+  return ALIAS_TO_CANONICAL.get(cleaned) ?? cleaned;
+};
+
+export const normalizeSkills = (skills: string[]): string[] => {
+  const unique = new Set<string>();
+  for (const skill of skills) {
+    const normalized = normalizeSkill(skill);
+    if (normalized) unique.add(normalized);
+  }
+  return [...unique];
+};
+
+==> server/src/repositories/applicationRepository.ts <==
+//server/src/repositories/applicationRepository.ts
+
+import { prisma } from "../config/db";
+import { ApplicationStatus } from "@prisma/client";
+
+//POST  /api/jobs/:id/apply
+export const createApplication = async (userId: string, jobId: string) => {
+  return await prisma.application.upsert({
+    where: {
+      userId_jobId: {
+        userId,
+        jobId,
+      },
+    },
+    update: {},
+    create: {
+      userId,
+      jobId,
+    },
+    include: {
+      job: true,
+    },
+  });
+};
+
+// GET   /api/applications
+export const getApplication = async (userId: string) => {
+  return await prisma.application.findMany({
+    where: {
+      userId,
+    },
+    include: {
+      job: true,
+    },
+    orderBy: {
+      updatedAt: "desc",
+    },
+  });
+};
+
+//GET   /api/applications/:id
+export const getApplicationById = async (
+  userId: string,
+  applicationId: string,
+) => {
+  return await prisma.application.findFirst({
+    where: {
+      id: applicationId,
+      userId,
+    },
+    include: {
+      job: true,
+    },
+  });
+};
+
+//PATCH /api/applications/:id/status
+export const updatedApplicationStatus = async (
+  userId: string,
+  applicationId: string,
+  status: ApplicationStatus,
+) => {
+  return await prisma.application.updateMany({
+    where: {
+      id: applicationId,
+      userId,
+    },
+    data: {
+      status,
+    },
+  });
+};
+
+==> server/src/repositories/interviewRepository.ts <==
+// server/src/modules/interview/interview.repository.ts
+
+import { prisma } from "../config/db";
+import { InterviewQuestion } from "../modules/interview/interviewSchema";
+import { FinalEvaluation } from "../modules/evaluation/finalEvaluationSchema";
+
+//POST /api/interviews
+export const createInterview = async (data: {
+  userId: string;
+  applicationId: string;
+  title: string;
+  plan: object;
+}) => {
+  return await prisma.interview.create({
+    data,
+  });
+};
+
+//POST /api/interviews
+export const createInterviewQuestions = async (
+  interviewId: string,
+  questions: InterviewQuestion[],
+) => {
+  return await prisma.interviewQuestion.createMany({
+    data: questions.map((q) => ({
+      interviewId,
+      round: q.round,
+      question: q.question,
+      order: q.order,
+    })),
+  });
+};
+
+// GET /api/interviews/:interviewId
+export const getInterviewSessionById = async (
+  interviewId: string,
+  userId: string,
+) => {
+  return await prisma.interview.findUnique({
+    where: {
+      id: interviewId,
+      userId: userId,
+    },
+    include: {
+      questions: {
+        orderBy: {
+          order: "asc",
+        },
+      },
+      evaluation: true,
+      application: {
+        include: {
+          job: true,
+        },
+      },
+    },
+  });
+};
+
+//POST /api/interviews/:interviewId/start
+export const updateInterviewStatus = async (
+  interviewId: string,
+  userId: string,
+  status: "SCHEDULED" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED",
+) => {
+  return await prisma.interview.updateMany({
+    where: {
+      id: interviewId,
+      userId: userId,
+    },
+    data: {
+      status: status,
+    },
+  });
+};
+
+//localhost:5000/api/interviews/id
+export const getQuestionById = async (
+  questionId: string,
+  interviewId: string,
+) => {
+  return await prisma.interviewQuestion.findFirst({
+    where: {
+      id: questionId,
+      interviewId: interviewId,
+    },
+  });
+};
+
+//update and save answer , feedback and score
+//localhost:5000/api/interviews/InterviewID/questions/questionId/answer
+export const saveQuestionAnswerAndFeedback = async (
+  questionId: string,
+  answer: string,
+  feedback: string,
+  score: number,
+) => {
+  return await prisma.interviewQuestion.update({
+    where: { id: questionId },
+    data: {
+      answer,
+      feedback,
+      score,
+    },
+  });
+};
+
+//retrieve the next question
+// Interview and questions are written together, so a failure never leaves an empty interview.
+export const createInterviewWithQuestions = async (
+  data: { userId: string; applicationId: string; title: string; plan: object },
+  questions: InterviewQuestion[],
+) => {
+  return await prisma.$transaction(async (tx) => {
+    const interview = await tx.interview.create({ data });
+    await tx.interviewQuestion.createMany({
+      data: questions.map((q) => ({
+        interviewId: interview.id,
+        round: q.round,
+        question: q.question,
+        order: q.order,
+      })),
+    });
+    return interview;
+  });
+};
+
+// Stores the candidate's answer before any AI call, so an evaluation failure cannot lose it.
+export const saveAnswer = async (questionId: string, answer: string) => {
+  return await prisma.interviewQuestion.update({
+    where: { id: questionId },
+    data: { answer, feedback: null, score: null },
+  });
+};
+
+// A question is unfinished until it has feedback, meaning it was answered AND evaluated.
+export const countUnfinishedQuestions = async (interviewId: string) => {
+  return await prisma.interviewQuestion.count({
+    where: { interviewId, feedback: null },
+  });
+};
+
+export const getFirstUnfinishedQuestion = async (interviewId: string) => {
+  return await prisma.interviewQuestion.findFirst({
+    where: { interviewId, feedback: null },
+    orderBy: { order: "asc" },
+  });
+};
+
+export const saveFinalEvaluation = async (
+  interviewId: string,
+  evaluation: FinalEvaluation,
+) => {
+  return await prisma.evaluation.create({
+    data: {
+      interviewId,
+      score: evaluation.score,
+      feedback: evaluation.feedback,
+      breakdown: {
+        ...evaluation.breakdown,
+        strengths: evaluation.strengths,
+        improvements: evaluation.improvements,
+        recommendation: evaluation.recommendation,
+      },
+    },
+  });
+};
+
+//it will verify whether an evaluation already exists before calling Ai
+export const getEvaluationByInterviewId = async (interviewId: string) => {
+  return await prisma.evaluation.findUnique({
+    where: {
+      interviewId,
+    },
+  });
+};
+
+==> server/src/repositories/jobRepository.ts <==
+import type { JobQuery } from "../utils/jobQuery";
+import { Prisma } from "@prisma/client";
+//src\repositories\jobRepository.ts
+
+import { prisma } from "../config/db";
+import type { CanonicalJob } from "../integrations/jobs/greenhouse/greenhouseAdapter";
+
+export const upsertJob = async (job: CanonicalJob) => {
+  //Upsert : cobination of  update and insert
+  return await prisma.job.upsert({
+    where: {
+      //if has same id means: to prevent duplicates
+      externalId: job.externalId,
+    },
+    //ypdate with the latest details
+    update: {
+      source: job.source,
+      title: job.title,
+      company: job.company,
+      location: job.location,
+      description: job.description,
+      requirements: job.requirements,
+      salaryRange: job.salaryRange,
+      url: job.url,
+      isActive: true,
+      lastSyncedAt: new Date(),
+    },
+    //found new , create a new job record
+    create: {
+      externalId: job.externalId,
+      source: job.source,
+      title: job.title,
+      company: job.company,
+      location: job.location,
+      description: job.description,
+      requirements: job.requirements,
+      salaryRange: job.salaryRange,
+      url: job.url,
+      isActive: true,
+      lastSyncedAt: new Date(),
+    },
+  });
+};
+//Creating , updating and Storing the jobs
+export const upsertJobs = async (jobs: CanonicalJob[]) => {
+  const results = [];
+
+  for (const job of jobs) {
+    //select a job from jobs and store as array
+    const result = await upsertJob(job);
+    results.push(result);
+  }
+  return results;
+};
+
+//find the jobs that are active
+export const getJobs = async (filters: JobQuery) => {
+  const where: Prisma.JobWhereInput = { isActive: true };
+
+  if (filters.q) {
+    where.OR = [
+      { title: { contains: filters.q, mode: "insensitive" } },
+      { company: { contains: filters.q, mode: "insensitive" } },
+    ];
+  }
+  if (filters.location) {
+    where.location = { contains: filters.location, mode: "insensitive" };
+  }
+  if (filters.source) {
+    where.source = filters.source;
+  }
+
+  const [jobs, total] = await prisma.$transaction([
+    prisma.job.findMany({
+      where,
+      orderBy: { lastSyncedAt: "desc" },
+      skip: (filters.page - 1) * filters.pageSize,
+      take: filters.pageSize,
+    }),
+    prisma.job.count({ where }),
+  ]);
+
+  return { jobs, total };
+};
+
+
+//find a active job
+export const getJobById = async (id: string) => {
+  return await prisma.job.findFirst({
+    where: {
+      id,
+      isActive: true,
+    },
+  });
+};
+
+==> server/src/repositories/matchRepository.ts <==
+import { prisma } from "../config/db";
+
+// Stores the latest match on the user's application for this job.
+// Creates the application as SAVED if the user has not tracked the job yet.
+export const upsertApplicationMatch = async (
+  userId: string,
+  jobId: string,
+  data: { matchScore: number | null; skillGaps: string[] },
+) => {
+  return await prisma.application.upsert({
+    where: { userId_jobId: { userId, jobId } },
+    create: { userId, jobId, ...data },
+    update: data,
+    select: { id: true },
+  });
+};
+
+==> server/src/repositories/resumeRepository.ts <==
+// src/repositories/resumeRepository.ts
+import { prisma } from "../config/db";
+
+// Create a resume
+export const createResume = async (data: {
+  userId: string;
+  title: string;
+  fileName: string;
+  mimeType: string;
+  fileSize: number;
+  rawText: string;
+  parsedData?: object;
+  skills?: string[];
+  experienceYrs?: number;
+}) => {
+  return await prisma.resume.create({
+    data,
+  });
+};
+
+// GET /api/resumes: newest first. rawText is left out of list responses.
+export const getResumeByUserId = async (userId: string) => {
+  return await prisma.resume.findMany({
+    where: { userId },
+    orderBy: { createdAt: "desc" },
+    select: {
+      id: true,
+      title: true,
+      fileName: true,
+      mimeType: true,
+      fileSize: true,
+      parsedData: true,
+      skills: true,
+      experienceYrs: true,
+      createdAt: true,
+      updatedAt: true,
+    },
+  });
+};
+
+// GET /api/resumes/:id
+export const getResumeById = async (resumeId: string, userId: string) => {
+  return await prisma.resume.findFirst({
+    where: {
+      id: resumeId,
+      userId,
+    },
+  });
+};
+
+// DELETE /api/resumes/:id. The userId filter makes this owner-only.
+export const deleteResumeForUser = async (resumeId: string, userId: string) => {
+  return await prisma.resume.deleteMany({
+    where: { id: resumeId, userId },
+  });
+};
+
+==> server/src/repositories/savedJobRepository.ts <==
+import { prisma } from "../config/db";
+
+//insert and update saved job: prevents duplication
+//POST   /api/jobs/:id/save
+export const saveJob = async (userId: string, jobId: string) => {
+  return await prisma.savedJob.upsert({
+    where: {
+      userId_jobId: {
+        userId,
+        jobId,
+      },
+    },
+    update: {},
+    create: {
+      userId,
+      jobId,
+    },
+    include: {
+      job: true,
+    },
+  });
+};
+
+//delete endpoint for saved job
+//DELETE /api/jobs/:id/save
+export const unsaveJob = async (userId: string, jobId: string) => {
+  return await prisma.savedJob.deleteMany({
+    where: {
+      userId,
+      jobId,
+    },
+  });
+};
+
+//get the saved jobs in the order of created
+// GET / api / jobs / saved
+export const getSavedJobs = async (userId: string) => {
+  const savedJobs = await prisma.savedJob.findMany({
+    where: {
+      userId,
+    },
+    include: {
+      job: true,
+    },
+    orderBy: {
+      createdAt: "desc",
+    },
+  });
+
+  return savedJobs.map((savedJob) => savedJob.job);
+};
+
+==> server/src/repositories/skillRepository.ts <==
+import { prisma } from "../config/db";
+import { FinalEvaluation } from "../modules/evaluation/finalEvaluationSchema";
+import { SkillEvidence } from "../services/skills/skillEvidence";
+
+export const listUserSkills = async (userId: string) => {
+  return await prisma.userSkill.findMany({
+    where: { userId },
+    orderBy: { updatedAt: "desc" },
+  });
+};
+
+export const countUserResumes = async (userId: string) => {
+  return await prisma.resume.count({ where: { userId } });
+};
+
+export const hasScoredApplication = async (userId: string) => {
+  const count = await prisma.application.count({
+    where: { userId, matchScore: { not: null } },
+  });
+  return count > 0;
+};
+
+// The report and its skill updates are written in one transaction.
+// A report never exists without the skill updates it produced.
+export const saveEvaluationWithSkillEvidence = async (
+  interviewId: string,
+  userId: string,
+  evaluation: FinalEvaluation,
+  evidence: SkillEvidence[],
+) => {
+  return await prisma.$transaction(async (tx) => {
+    const saved = await tx.evaluation.create({
+      data: {
+        interviewId,
+        score: evaluation.score,
+        feedback: evaluation.feedback,
+        breakdown: {
+          ...evaluation.breakdown,
+          strengths: evaluation.strengths,
+          improvements: evaluation.improvements,
+          recommendation: evaluation.recommendation,
+        },
+      },
+    });
+
+    for (const item of evidence) {
+      await tx.userSkill.upsert({
+        where: { userId_skill: { userId, skill: item.skill } },
+        create: { userId, skill: item.skill, status: item.status, evidence: item.evidence },
+        update: { status: item.status, evidence: item.evidence },
+      });
+    }
+    return saved;
+  });
+};
+
+==> server/src/repositories/userRepository.ts <==
+import { prisma } from "../config/db.js";
+import { User, Role } from "@prisma/client";
+
+export interface CreateUserData {
+  email: string;
+  passwordHash: string;
+  name: string;
+  role?: Role;
+}
+
+export interface UpdateUserData {
+  name?: string;
+  email?: string;
+  passwordHash?: string;
+  targetRole?: string;
+  preferredLocations?: string[];
+  experienceLevel?: string;
+}
+
+export class UserRepository {
+  async findByEmail(email: string): Promise<User | null> {
+    return prisma.user.findUnique({
+      where: { email },
+    });
+  }
+
+  async findById(id: string): Promise<User | null> {
+    return prisma.user.findUnique({
+      where: { id },
+    });
+  }
+
+  async create(data: CreateUserData): Promise<User> {
+    return prisma.user.create({
+      data: {
+        email: data.email,
+        passwordHash: data.passwordHash,
+        name: data.name,
+        role: data.role || Role.USER,
+      },
+    });
+  }
+
+  async update(id: string, data: UpdateUserData): Promise<User> {
+    return prisma.user.update({
+      where: { id },
+      data,
+    });
+  }
+}
+
+export const userRepository = new UserRepository();
+
+==> server/src/modules/interview/interview.ai.ts <==
+// server/src/modules/interview/interview.ai.ts
+import {
+  QuestionEvaluationSchema,
+  QuestionEvaluation,
+} from "./interviewSchema";
+import { analyzeResume } from "../../integrations/ai/aiClient";
+
+export const evaluateQuestionAnswer = async (
+  questionText: string,
+  candidateAnswer: string,
+  roleTitle: string,
+): Promise<QuestionEvaluation> => {
+  const prompt = `
+You are an expert technical interviewer evaluating a candidate's answer for the position of "${roleTitle}".
+
+Question Asked:
+"${questionText}"
+
+Candidate's Answer:
+"${candidateAnswer}"
+
+Evaluate the candidate's answer and return a JSON object with:
+1. "score": An integer from 0 to 100 based on clarity, accuracy, and depth.
+2. "feedback": A detailed 2-3 sentence assessment.
+3. "strengths": Array of string key strengths demonstrated.
+4. "improvements": Array of string suggestions for improvement.
+
+Return ONLY raw JSON conforming to this format without markdown code blocks.
+`;
+
+  // Call your LLM service (e.g., Nemotron / OpenAI API wrapper)
+  const rawResponse = await analyzeResume(prompt);
+
+  const dataToValidate =
+    typeof rawResponse === "string" ? JSON.parse(rawResponse) : rawResponse;
+
+  return QuestionEvaluationSchema.parse(dataToValidate);
+};
+
+==> server/src/modules/interview/interview.prompt.ts <==
+// server/src/modules/interview/interview.prompt.ts
+
+// Job details
+// +
+// Resume data
+// +
+// Stage 5 match score
+// +
+// Top skill gaps
+
+export interface InterviewPromptInput {
+  job: {
+    title: string;
+    company: string;
+    location?: string | null;
+    description: string;
+    requirements: string[];
+  };
+  resume: {
+    rawText: string;
+    skills: string[];
+    experienceYrs: number;
+  };
+  matchScore: number | null;
+  topSkillGaps: string[];
+}
+
+export const buildInterviewPlanPrompt = ({
+  job,
+  resume,
+  matchScore,
+  topSkillGaps,
+}: InterviewPromptInput): string => {
+  return `
+You are an expert technical interviewer creating a mock interview plan for a candidate.
+
+JOB DETAILS:
+Company: ${job.company}
+Role: ${job.title}
+Location: ${job.location ?? "Not specified"}
+Description:
+${job.description}
+
+Requirements:
+${job.requirements.join(", ")}
+
+CANDIDATE RESUME:
+Experience: ${resume.experienceYrs} years
+Skills: ${resume.skills.join(", ")}
+Resume:
+${resume.rawText}
+
+STAGE 5 MATCH RESULT:
+Match Score: ${matchScore === null ? "not available (no skills could be compared)" : `${matchScore}/100`}
+
+Top Skill Gaps:
+${topSkillGaps.length > 0 ? topSkillGaps.join(", ") : "None identified"}
+
+TASK:
+Create a realistic mock interview plan based on the job, candidate resume,
+match score, and identified skill gaps.
+
+The interview should include these rounds:
+- Introduction
+- Project Deep Dive
+- Technical
+- Behavioral / HR
+
+Set the difficulty appropriately based on the candidate's experience and
+the job requirements. Target skills should prioritize the most relevant
+job skills and the candidate's skill gaps.
+
+OUTPUT REQUIREMENTS:
+Return ONLY valid JSON.
+Do not include markdown, code fences, explanations, or additional text.
+
+The JSON must match this exact structure:
+
+{
+  "company": "string",
+  "role": "string",
+  "matchScore": 0,
+  "topSkillGaps": ["string"],
+  "estimatedDuration": 30,
+  "difficulty": "EASY",
+  "targetSkills": ["string"],
+  "rounds": [
+    {
+      "name": "Introduction",
+      "duration": 5
+    }
+  ]
+}
+
+Rules:
+- matchScore must be between 0 and 100.
+- estimatedDuration must be a positive number in minutes.
+- Every round duration must be positive.
+- difficulty must be exactly "EASY", "MEDIUM", or "HARD".
+- Include all four required interview rounds.
+- Do not invent candidate skills that are not supported by the resume.
+`;
+};
+
+==> server/src/modules/interview/interview.question.prompt.ts <==
+//server/src/modules/interview/interview.question.prompt.ts
+
+import { InterviewPlan } from "./interviewSchema";
+
+export interface InterviewQuestionPromptInput {
+  plan: InterviewPlan;
+  job: {
+    title: string;
+    company: string;
+    description?: string | null;
+    requirements?: string[] | string | null;
+  };
+  resume: {
+    rawText: string;
+    skills?: string[] | null;
+    experienceYrs?: number | null;
+  };
+  matchScore: number | null;
+  topSkillGaps: string[];
+}
+
+export const buildInterviewQuestionsPrompt = (
+  input: InterviewQuestionPromptInput,
+): string => {
+  const { plan, job, resume, matchScore, topSkillGaps } = input;
+
+  return `
+You are an expert technical interviewer conducting an interview for the position of **${job.title}** at **${job.company}**.
+
+### CANDIDATE & JOB CONTEXT
+- **Target Role:** ${job.title} at ${job.company}
+- **Interview Difficulty:** ${plan.difficulty}
+- **Match Score:** ${matchScore === null ? "not available" : `${matchScore}%`}
+- **Target Skills:** ${plan.targetSkills.join(", ")}
+- **Identified Skill Gaps:** ${topSkillGaps.length > 0 ? topSkillGaps.join(", ") : "None specified"}
+- **Job Requirements:** ${
+    Array.isArray(job.requirements)
+      ? job.requirements.join(", ")
+      : job.requirements || "Not provided"
+  }
+
+### RESUME CONTEXT
+- **Years of Experience:** ${resume.experienceYrs ?? "Not specified"}
+- **Resume Skills:** ${resume.skills?.join(", ") ?? "Not specified"}
+- **Resume Content Summary:**
+${resume.rawText.slice(0, 2000)}
+
+### REQUIRED INTERVIEW ROUNDS
+Generate customized, relevant interview questions for each of the following rounds defined in the interview plan:
+${plan.rounds.map((r) => `- **${r.name}** (${r.duration} mins)`).join("\n")}
+
+### RULES FOR QUESTION GENERATION
+1. **Relevance:** Tailor questions directly to the candidate's experience level, the job specifications, and target company.
+2. **Project Deep Dive:** Create questions based explicitly on projects, experience, or achievements mentioned in the resume.
+3. **Technical Round:** Probe target skills and explicitly test areas marked as skill gaps to evaluate depth.
+4. **Behavioral / HR Round:** Focus on leadership, cross-functional collaboration, problem-solving, and adaptability suitable for the difficulty level (${plan.difficulty}).
+5. **Ordering:** Assign sequential 1-based integer values for the \`order\` property across all generated questions.
+
+### OUTPUT FORMAT
+Return strictly valid JSON with no markdown formatting around it, matching this schema:
+{
+  "questions": [
+    {
+      "round": "Introduction",
+      "question": "Question text here...",
+      "order": 1
+    },
+    {
+      "round": "Project Deep Dive",
+      "question": "Question text here...",
+      "order": 2
+    }
+  ]
+}
+`.trim();
+};
+
+==> server/src/modules/interview/interviewSchema.ts <==
+//server/src/modules/interview/interviewSchema.ts
+
+import { z } from "zod";
+
+export const InterviewRoundSchema = z.object({
+  name: z.string().min(1, "Round name is required"),
+  duration: z.number().positive("Duration must be a positive number"),
+});
+
+export const InterviewPlanSchema = z.object({
+  company: z.string().min(1, "Company name is required"),
+  role: z.string().min(1, "Role is required"),
+  matchScore: z.number().min(0).max(100).nullable(),
+  topSkillGaps: z.array(z.string()),
+  estimatedDuration: z.number().positive(),
+  difficulty: z.enum(["EASY", "MEDIUM", "HARD"]),
+  targetSkills: z.array(z.string()),
+  rounds: z
+    .array(InterviewRoundSchema)
+    .min(1, "At least one round is required"),
+});
+
+export type InterviewRound = z.infer<typeof InterviewRoundSchema>;
+export type InterviewPlan = z.infer<typeof InterviewPlanSchema>;
+
+export const InterviewQuestionSchema = z.object({
+  round: z.string().min(1, "Round name cannot be empty"),
+  question: z.string().min(1, "Question text cannot be empty"),
+  order: z.number().int().positive("Order must be a positive integer"),
+});
+
+export const InterviewQuestionsSchema = z.object({
+  questions: z
+    .array(InterviewQuestionSchema)
+    .min(1, "At least one question is required"),
+});
+
+export type InterviewQuestion = z.infer<typeof InterviewQuestionSchema>;
+export type InterviewQuestions = z.infer<typeof InterviewQuestionsSchema>;
+
+export const QuestionEvaluationSchema = z.object({
+  score: z.number().min(0).max(100),
+  feedback: z.string().min(1),
+  strengths: z.array(z.string()),
+  improvements: z.array(z.string()),
+});
+
+export type QuestionEvaluation = z.infer<typeof QuestionEvaluationSchema>;
+
+==> server/src/modules/evaluation/finalEvaluationSchema.ts <==
+import { z } from "zod";
+
+//===================== Final Evaluation schema for summary ============================
+export const FinalEvaluationSchema = z.object({
+  score: z.number().min(0).max(100),
+  feedback: z.string().min(1),
+  breakdown: z.object({
+    communication: z.number().min(0).max(100),
+    technicalKnowledge: z.number().min(0).max(100),
+    problemSolving: z.number().min(0).max(100),
+    relevance: z.number().min(0).max(100),
+    confidence: z.number().min(0).max(100).default(80),
+  }),
+  strengths: z.array(z.string()),
+  improvements: z.array(z.string()),
+  recommendation: z.string().min(1),
+});
+export type FinalEvaluation = z.infer<typeof FinalEvaluationSchema>;
+
+==> server/src/modules/evaluation/interview.evaluation.prompt.ts <==
+//server/src/modules/interview/interview.evaluation.prompt.ts
+
+export interface FinalEvaluationPromptInput {
+  jobTitle: string;
+  companyName: string;
+  roleDescription?: string;
+  matchScore: number | null;
+  skillGaps: string[];
+  interviewPlan?: {
+    focusArea?: string;
+    totalQuestions?: number;
+  };
+  questions: Array<{
+    order: number;
+    round: string;
+    question: string;
+    answer: string | null;
+    score: number | null;
+    feedback: string | null;
+  }>;
+}
+
+export const buildFinalEvaluationPrompt = (
+  data: FinalEvaluationPromptInput,
+): string => {
+  const formattedQuestions = data.questions
+    .map(
+      (q) => `
+- Question ${q.order} [Round: ${q.round}]:
+  * Prompt: "${q.question}"
+  * Candidate Answer: "${q.answer || "No answer provided"}"
+  * Per-Question Score: ${q.score ?? "N/A"}/100
+  * Per-Question Feedback: ${q.feedback || "None"}`,
+    )
+    .join("\n");
+
+  return `
+You are an expert technical interviewer and hiring manager. Perform a holistic, comprehensive final evaluation of the candidate's full interview session.
+
+### Position & Application Context:
+- Target Role: ${data.jobTitle}
+- Company: ${data.companyName}
+${data.roleDescription ? `- Role Description: ${data.roleDescription}` : ""}
+- Candidate Resume Match Score: ${data.matchScore === null ? "not available" : `${data.matchScore}%`}
+- Identified Skill Gaps: ${
+    data.skillGaps.length > 0 ? data.skillGaps.join(", ") : "None"
+  }
+
+### Interview Plan Details:
+${
+  data.interviewPlan?.focusArea
+    ? `- Focus Area: ${data.interviewPlan.focusArea}`
+    : ""
+}
+- Total Questions Planned: ${
+    data.interviewPlan?.totalQuestions ?? data.questions.length
+  }
+
+### Complete Interview Transcript & Scores:
+${formattedQuestions}
+
+### Task Instructions:
+1. Conduct an overall evaluation of the candidate's performance across technical capabilities, communication, problem-solving, and role alignment.
+2. Do NOT simply calculate a mathematical average of the individual question scores. Evaluate performance holistically.
+3. Construct detailed feedback highlighting overarching strengths and clear actionable areas for improvement.
+
+### Required Output Format:
+Return ONLY a valid, raw JSON object matching this structure (no Markdown backticks, no explanatory prose):
+
+{
+  "score": <overall_score_0_to_100>,
+  "feedback": "<detailed_overall_performance_summary>",
+  "breakdown": {
+    "communication": <score_0_to_100>,
+    "technicalKnowledge": <score_0_to_100>,
+    "problemSolving": <score_0_to_100>,
+    "relevance": <score_0_to_100>,
+    "confidence": <score_0_to_100>
+  },
+  "strengths": ["<strength_1>", "<strength_2>"],
+  "improvements": ["<improvement_1>", "<improvement_2>"],
+  "recommendation": "<Strong Hire | Hire | Weak Hire | Do Not Hire with brief justification>"
+}
+`.trim();
+};

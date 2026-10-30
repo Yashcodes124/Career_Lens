@@ -4,7 +4,6 @@ const API_BASE_URL =
 
 const AUTH_TOKEN_KEY = "truehire_auth_token";
 
-// Thrown for every failed request. `message` is safe to show to the user.
 export class ApiError extends Error {
   readonly status: number;
   readonly code?: string;
@@ -29,9 +28,12 @@ export async function apiClient<T>(
 ): Promise<T> {
   const headers = new Headers(options.headers);
 
-  // A browser must set the multipart boundary itself, so only JSON bodies get a type.
   const isFormData = options.body instanceof FormData;
-  if (!isFormData && options.body !== undefined && !headers.has("Content-Type")) {
+  if (
+    !isFormData &&
+    options.body !== undefined &&
+    !headers.has("Content-Type")
+  ) {
     headers.set("Content-Type", "application/json");
   }
 
@@ -42,7 +44,10 @@ export async function apiClient<T>(
 
   let response: Response;
   try {
-    response = await fetch(`${API_BASE_URL}${endpoint}`, { ...options, headers });
+    response = await fetch(`${API_BASE_URL}${endpoint}`, {
+      ...options,
+      headers,
+    });
   } catch {
     throw new ApiError(
       "Cannot reach the server. Check your connection and try again.",
@@ -51,7 +56,6 @@ export async function apiClient<T>(
     );
   }
 
-  // An expired or revoked token signs the user out everywhere. Login and register are exempt.
   const isLoginOrRegister =
     endpoint === "/auth/login" || endpoint === "/auth/register";
   if (response.status === 401 && token && !isLoginOrRegister) {
@@ -62,7 +66,9 @@ export async function apiClient<T>(
   if (!response.ok) {
     const body = (await response.json().catch(() => null)) as ErrorBody | null;
     throw new ApiError(
-      body?.message || body?.error || `Request failed (HTTP ${response.status})`,
+      body?.message ||
+        body?.error ||
+        `Request failed (HTTP ${response.status})`,
       response.status,
       body?.code,
     );
@@ -70,6 +76,36 @@ export async function apiClient<T>(
 
   return response.json() as Promise<T>;
 }
+
+// Convenience helper methods for clean API layers
+apiClient.get = <T>(endpoint: string, options?: RequestInit) =>
+  apiClient<T>(endpoint, { ...options, method: "GET" });
+
+apiClient.post = <T>(endpoint: string, body?: unknown, options?: RequestInit) =>
+  apiClient<T>(endpoint, {
+    ...options,
+    method: "POST",
+    body:
+      body instanceof FormData
+        ? body
+        : body !== undefined
+          ? JSON.stringify(body)
+          : undefined,
+  });
+
+apiClient.patch = <T>(
+  endpoint: string,
+  body?: unknown,
+  options?: RequestInit,
+) =>
+  apiClient<T>(endpoint, {
+    ...options,
+    method: "PATCH",
+    body: body !== undefined ? JSON.stringify(body) : undefined,
+  });
+
+apiClient.delete = <T>(endpoint: string, options?: RequestInit) =>
+  apiClient<T>(endpoint, { ...options, method: "DELETE" });
 
 export function setAuthToken(token: string): void {
   localStorage.setItem(AUTH_TOKEN_KEY, token);

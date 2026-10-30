@@ -1,4 +1,15 @@
+import React, { useState } from "react";
+import {
+  BookOpen,
+  ExternalLink,
+  ChevronDown,
+  ChevronUp,
+  Code2,
+  Compass,
+  PlayCircle,
+} from "lucide-react";
 import type { GapPriority, MatchResult as MatchResultType } from "./types";
+import { getResourcesForSkill, type SkillResourceLink } from "./skillResources";
 
 interface MatchResultProps {
   result: MatchResultType;
@@ -17,7 +28,37 @@ const PRIORITY_CLASSES: Record<GapPriority, string> = {
   low: "border-sky-500/30 bg-sky-500/10 text-sky-300",
 };
 
+const TYPE_ICON: Record<SkillResourceLink["type"], React.ReactNode> = {
+  DOCS: <BookOpen className="h-3.5 w-3.5 text-teal-400" />,
+  ROADMAP: <Compass className="h-3.5 w-3.5 text-sky-400" />,
+  PRACTICE: <Code2 className="h-3.5 w-3.5 text-emerald-400" />,
+  COURSE: <PlayCircle className="h-3.5 w-3.5 text-amber-400" />,
+};
+
 export default function MatchResult({ result }: MatchResultProps) {
+  const [expandedSkills, setExpandedSkills] = useState<Set<string>>(() => {
+    // Auto-expand the first priority gap so the user immediately sees learning resources
+    const first = result.skillGaps?.[0]?.skill;
+    return first ? new Set([first]) : new Set();
+  });
+
+  const toggleSkillResources = (skill: string) => {
+    setExpandedSkills((prev) => {
+      const next = new Set(prev);
+      if (next.has(skill)) next.delete(skill);
+      else next.add(skill);
+      return next;
+    });
+  };
+
+  const expandAllResources = () => {
+    if (expandedSkills.size === result.skillGaps.length) {
+      setExpandedSkills(new Set());
+    } else {
+      setExpandedSkills(new Set(result.skillGaps.map((g) => g.skill)));
+    }
+  };
+
   if (result.status === "INSUFFICIENT_DATA" || result.score === null) {
     return (
       <section className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-6">
@@ -28,8 +69,8 @@ export default function MatchResult({ result }: MatchResultProps) {
           Not enough job data to score
         </h2>
         <p className="mt-1.5 text-sm leading-relaxed text-zinc-400">
-          This posting does not list canonical skills we can deterministically
-          compare with your resume. No score is shown rather than a guessed one.
+          This posting does not list skills we can compare with your resume. No
+          score is shown rather than a guessed one.
         </p>
       </section>
     );
@@ -89,50 +130,119 @@ export default function MatchResult({ result }: MatchResultProps) {
         </div>
       </div>
 
-      {/* Priority Skill Gaps */}
+      {/* Priority Skill Gaps + Integrated Study & Practice Hub */}
       <div className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-6">
-        <div className="flex items-center justify-between border-b border-zinc-800/80 pb-4">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-zinc-800/80 pb-4">
           <div>
             <h2 className="text-base font-semibold text-white">
-              Priority Skill Gaps
+              Priority Skill Gaps & Study Resources
             </h2>
             <p className="mt-0.5 text-xs text-zinc-400">
-              Ranked by job requirement prominence and prior mock interview
-              evidence
+              Ranked by job requirement frequency. Expand any skill to access
+              curated documentation, roadmaps, and practice labs.
             </p>
           </div>
-          <span className="font-mono text-xs text-zinc-500 tabular-nums">
-            {result.skillGaps.length} GAPS
-          </span>
+
+          {result.skillGaps.length > 0 && (
+            <button
+              type="button"
+              onClick={expandAllResources}
+              className="rounded-lg border border-zinc-800 bg-[#09090b] px-3 py-1.5 font-mono text-[11px] text-teal-400 transition hover:border-zinc-700 hover:text-teal-300"
+            >
+              {expandedSkills.size === result.skillGaps.length
+                ? "Collapse all study links"
+                : "Show all study resources"}
+            </button>
+          )}
         </div>
 
         {result.skillGaps.length === 0 ? (
           <p className="mt-4 text-sm text-emerald-400">
-            No skill gaps found for this job. Your resume covers every extracted
-            requirement.
+            No skill gaps found for this job.
           </p>
         ) : (
-          <ul className="mt-4 divide-y divide-zinc-800/70">
-            {result.skillGaps.map((gap) => (
-              <li
-                key={gap.skill}
-                className="flex items-start justify-between gap-4 py-3.5 first:pt-0 last:pb-0"
-              >
-                <div>
-                  <span className="text-sm font-medium text-zinc-100">
-                    {gap.skill}
-                  </span>
-                  <p className="mt-1 text-xs leading-relaxed text-zinc-400">
-                    {gap.evidence}
-                  </p>
-                </div>
-                <span
-                  className={`shrink-0 rounded border px-2.5 py-0.5 font-mono text-[10px] font-semibold uppercase ${PRIORITY_CLASSES[gap.priority]}`}
+          <ul className="mt-4 space-y-3">
+            {result.skillGaps.map((gap) => {
+              const isOpen = expandedSkills.has(gap.skill);
+              const resources = getResourcesForSkill(gap.skill);
+
+              return (
+                <li
+                  key={gap.skill}
+                  className="overflow-hidden rounded-xl border border-zinc-800/90 bg-[#09090b] transition hover:border-zinc-700"
                 >
-                  {gap.priority} priority
-                </span>
-              </li>
-            ))}
+                  <div className="flex flex-wrap items-start justify-between gap-4 p-4">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2.5">
+                        <span className="font-mono text-sm font-semibold text-white">
+                          {gap.skill}
+                        </span>
+                        <span
+                          className={`rounded border px-2 py-0.5 font-mono text-[10px] font-semibold uppercase ${PRIORITY_CLASSES[gap.priority]}`}
+                        >
+                          {gap.priority} priority
+                        </span>
+                      </div>
+                      <p className="mt-1 text-xs leading-relaxed text-zinc-400">
+                        {gap.evidence}
+                      </p>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => toggleSkillResources(gap.skill)}
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-zinc-800 bg-zinc-900/80 px-3 py-1.5 text-xs font-medium text-teal-300 transition hover:border-teal-500/40 hover:text-white"
+                    >
+                      <BookOpen className="h-3.5 w-3.5 text-teal-400" />
+                      <span>Learn & Practice</span>
+                      {isOpen ? (
+                        <ChevronUp className="h-3.5 w-3.5" />
+                      ) : (
+                        <ChevronDown className="h-3.5 w-3.5" />
+                      )}
+                    </button>
+                  </div>
+
+                  {isOpen && (
+                    <div className="border-t border-zinc-800/80 bg-zinc-900/30 p-4">
+                      <p className="mb-2.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">
+                        Curated Free Learning Path for {gap.skill}
+                      </p>
+                      <div className="grid gap-2.5 sm:grid-cols-3">
+                        {resources.map((res) => (
+                          <a
+                            key={res.url}
+                            href={res.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="group flex flex-col justify-between rounded-lg border border-zinc-800 bg-[#09090b] p-3 transition hover:border-teal-500/50"
+                          >
+                            <div>
+                              <div className="flex items-center justify-between gap-2">
+                                <span className="inline-flex items-center gap-1.5 font-mono text-[10px] font-semibold uppercase text-zinc-400">
+                                  {TYPE_ICON[res.type]}
+                                  {res.type}
+                                </span>
+                                <ExternalLink className="h-3 w-3 text-zinc-500 transition group-hover:text-teal-400" />
+                              </div>
+                              <p className="mt-2 text-xs font-semibold leading-snug text-zinc-100 group-hover:text-teal-300">
+                                {res.title}
+                              </p>
+                            </div>
+                            <div className="mt-3 flex items-center justify-between border-t border-zinc-800/70 pt-2 font-mono text-[10px] text-zinc-500">
+                              <span>{res.provider}</span>
+                              <span className="text-zinc-400">
+                                {res.durationOrLevel}
+                              </span>
+                            </div>
+                          </a>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </li>
+              );
+            })}
           </ul>
         )}
       </div>

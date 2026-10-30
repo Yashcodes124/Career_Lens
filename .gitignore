@@ -10,6 +10,8 @@ node_modules/
 pnpm-lock.yaml
 yarn.lock
 
+codebase_bundle.txt/
+
 # Build outputs
 dist/
 build/

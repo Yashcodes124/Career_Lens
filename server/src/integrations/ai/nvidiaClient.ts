@@ -3,10 +3,9 @@ import OpenAI from "openai";
 import { AppError } from "../../utils/appError";
 import { parseModelJson } from "../../utils/parseModelJson";
 
-const DEFAULT_MODEL = "meta/llama-3.1-70b-instruct";
-const FALLBACK_FAST_MODEL = "meta/llama-3.1-70b-instruct";
+const DEFAULT_MODEL = "nvidia/nemotron-3.5-super-vl-120b-a12b";
 const DEFAULT_BASE_URL = "https://integrate.api.nvidia.com/v1";
-const REQUEST_TIMEOUT_MS = Number(process.env.AI_TIMEOUT_MS) || 45_000;
+const REQUEST_TIMEOUT_MS = 90_000;
 
 let cachedClient: OpenAI | null = null;
 let cachedKey = "";
@@ -38,71 +37,33 @@ const getClient = (): OpenAI => {
   return cachedClient;
 };
 
-const callCompletion = async (model: string, prompt: string) => {
-  return await getClient().chat.completions.create({
-    model,
-    messages: [
-      {
-        role: "system",
-        content:
-          "You are a fast, deterministic JSON API. Return ONLY raw valid JSON with no markdown blocks, no <think> tags, and no prose.",
-      },
-      { role: "user", content: prompt },
-    ],
-    temperature: 0.1,
-    max_tokens: 2500,
-  });
-};
-
 export const analyzeResumeWithNvidia = async (
   prompt: string,
 ): Promise<unknown> => {
-  const primaryModel =
+  const model =
     process.env.NVIDIA_MODEL || process.env.AI_MODEL || DEFAULT_MODEL;
 
   let content: string | null | undefined;
   try {
-    const response = await callCompletion(primaryModel, prompt);
+    const response = await getClient().chat.completions.create({
+      model,
+      messages: [{ role: "user", content: prompt }],
+      temperature: 0,
+      max_tokens: 8192,
+    });
     content = response.choices[0]?.message?.content;
-  } catch (primaryError) {
-    if (primaryError instanceof AppError) throw primaryError;
+  } catch (error) {
+    if (error instanceof AppError) throw error;
 
-    // If a heavy reasoning model timed out in dev/prod, fallback once to fast Llama 70B
-    const isTestEnv = process.env.NODE_ENV === "test";
-    if (!isTestEnv && primaryModel !== FALLBACK_FAST_MODEL) {
-      try {
-        console.warn(
-          `[AI Client] Model "${primaryModel}" timed out or failed. Retrying with fast model "${FALLBACK_FAST_MODEL}"...`,
-        );
-        const fallbackResponse = await callCompletion(
-          FALLBACK_FAST_MODEL,
-          prompt,
-        );
-        content = fallbackResponse.choices[0]?.message?.content;
-      } catch (fallbackError) {
-        console.error(
-          "NVIDIA fallback request failed:",
-          fallbackError instanceof Error
-            ? fallbackError.message
-            : "unknown error",
-        );
-        throw new AppError(
-          503,
-          "AI service is temporarily unavailable. Please try again.",
-          "AI_UNAVAILABLE",
-        );
-      }
-    } else {
-      console.error(
-        "NVIDIA request failed:",
-        primaryError instanceof Error ? primaryError.message : "unknown error",
-      );
-      throw new AppError(
-        503,
-        "Resume analysis is temporarily unavailable. Please try again.",
-        "AI_UNAVAILABLE",
-      );
-    }
+    console.error(
+      "NVIDIA request failed:",
+      error instanceof Error ? error.message : "unknown error",
+    );
+    throw new AppError(
+      503,
+      "Resume analysis is temporarily unavailable. Please try again.",
+      "AI_UNAVAILABLE",
+    );
   }
 
   if (!content) {
