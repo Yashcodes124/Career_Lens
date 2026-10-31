@@ -7,6 +7,7 @@ import {
   useLocation,
   useNavigate,
 } from "react-router-dom";
+import { PageTransition } from "./components/ui/AceternityPrimitives";
 import { AuthProvider } from "./features/auth/AuthContext";
 import { ProtectedRoute } from "./features/auth/ProtectedRoute";
 import { LoginForm } from "./features/auth/LoginForm";
@@ -31,136 +32,138 @@ export const App: React.FC = () => {
   return (
     <AuthProvider>
       <Router>
-        <Routes>
-          {/* Public Landing & Auth Routes */}
-          <Route path="/" element={<LandingPage />} />
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/register" element={<RegisterPage />} />
+        <PageTransition>
+          <Routes>
+            {/* Public Landing & Auth Routes */}
+            <Route path="/" element={<LandingPage />} />
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/register" element={<RegisterPage />} />
 
-          {/* Protected Routes */}
-          <Route
-            path="/onboarding"
-            element={
-              <ProtectedRoute>
-                <OnboardingWizard />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/dashboard"
-            element={
-              <ProtectedRoute>
-                <DashboardPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/tailor/:jobId"
-            element={
-              <ProtectedRoute>
-                <TailoringPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/skill-gaps/:jobId"
-            element={
-              <ProtectedRoute>
-                <SkillGapPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/skill-gap/:jobId"
-            element={
-              <ProtectedRoute>
-                <SkillGapPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/profile"
-            element={
-              <ProtectedRoute>
-                <UserProfileCard />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/profile-setup"
-            element={
-              <ProtectedRoute>
-                <ProfileSetupForm />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/resume"
-            element={
-              <ProtectedRoute>
-                <ResumePage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/jobs"
-            element={
-              <ProtectedRoute>
-                <JobsPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/applications"
-            element={
-              <ProtectedRoute>
-                <TrackerPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/saved-jobs"
-            element={
-              <ProtectedRoute>
-                <SavedJobsPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/matches/:jobId"
-            element={
-              <ProtectedRoute>
-                <MatchPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/interviews/:interviewId/prep"
-            element={
-              <ProtectedRoute>
-                <InterviewPreparationPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/interviews/:interviewId/live"
-            element={
-              <ProtectedRoute>
-                <LiveInterviewPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/interviews/:interviewId/evaluation"
-            element={
-              <ProtectedRoute>
-                <InterviewEvaluationPage />
-              </ProtectedRoute>
-            }
-          />
+            {/* Protected Routes */}
+            <Route
+              path="/onboarding"
+              element={
+                <ProtectedRoute>
+                  <OnboardingWizard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/dashboard"
+              element={
+                <ProtectedRoute>
+                  <DashboardPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/tailor/:jobId"
+              element={
+                <ProtectedRoute>
+                  <TailoringPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/skill-gaps/:jobId"
+              element={
+                <ProtectedRoute>
+                  <SkillGapPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/skill-gap/:jobId"
+              element={
+                <ProtectedRoute>
+                  <SkillGapPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/profile"
+              element={
+                <ProtectedRoute>
+                  <UserProfileCard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/profile-setup"
+              element={
+                <ProtectedRoute>
+                  <ProfileSetupForm />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/resume"
+              element={
+                <ProtectedRoute>
+                  <ResumePage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/jobs"
+              element={
+                <ProtectedRoute>
+                  <JobsPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/applications"
+              element={
+                <ProtectedRoute>
+                  <TrackerPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/saved-jobs"
+              element={
+                <ProtectedRoute>
+                  <SavedJobsPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/matches/:jobId"
+              element={
+                <ProtectedRoute>
+                  <MatchPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/interviews/:interviewId/prep"
+              element={
+                <ProtectedRoute>
+                  <InterviewPreparationPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/interviews/:interviewId/live"
+              element={
+                <ProtectedRoute>
+                  <LiveInterviewPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/interviews/:interviewId/evaluation"
+              element={
+                <ProtectedRoute>
+                  <InterviewEvaluationPage />
+                </ProtectedRoute>
+              }
+            />
 
-          <Route path="*" element={<NotFound />} />
-        </Routes>
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </PageTransition>
       </Router>
     </AuthProvider>
   );

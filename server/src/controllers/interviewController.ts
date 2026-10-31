@@ -1,5 +1,3 @@
-//server/src/modules/interview/interviewController.ts
-
 import { Request, Response, NextFunction } from "express";
 import {
   createInterviewService,
@@ -9,8 +7,6 @@ import {
   generateFinalEvaluationService,
 } from "../services/interviewService";
 
-//POST /api/interviews
-
 export const createInterviewController = async (
   req: Request,
   res: Response,
@@ -18,7 +14,8 @@ export const createInterviewController = async (
 ) => {
   try {
     const userId = req.user!.userId;
-    const { applicationId } = req.body;
+    const { applicationId, durationMinutes, difficulty, focusTopics } =
+      req.body ?? {};
 
     if (!userId) {
       return res.status(401).json({
@@ -33,7 +30,26 @@ export const createInterviewController = async (
       });
     }
 
-    const interview = await createInterviewService(userId, applicationId);
+    const hasCustomOptions =
+      durationMinutes !== undefined ||
+      difficulty !== undefined ||
+      (Array.isArray(focusTopics) && focusTopics.length > 0);
+
+    const interview = hasCustomOptions
+      ? await createInterviewService(userId, applicationId, {
+          durationMinutes:
+            typeof durationMinutes === "number" ? durationMinutes : undefined,
+          difficulty:
+            difficulty === "EASY" ||
+            difficulty === "MEDIUM" ||
+            difficulty === "HARD"
+              ? difficulty
+              : undefined,
+          focusTopics: Array.isArray(focusTopics)
+            ? focusTopics.map(String)
+            : undefined,
+        })
+      : await createInterviewService(userId, applicationId);
 
     return res.status(201).json({
       success: true,

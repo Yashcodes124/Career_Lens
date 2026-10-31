@@ -21,11 +21,15 @@ export const LiveInterviewPage: React.FC = () => {
   const location = useLocation();
 
   const navState = (location.state as LocationState) || {};
-  const durationMinutes = navState.durationMinutes ?? 30;
-  const difficulty = navState.difficulty ?? "MEDIUM";
-  const roleTitle = navState.roleTitle ?? "Software Engineer";
-
   const [interview, setInterview] = useState<Interview | null>(null);
+
+  const durationMinutes =
+    interview?.plan?.estimatedDuration ?? navState.durationMinutes ?? 30;
+  const difficulty =
+    interview?.plan?.difficulty ?? navState.difficulty ?? "MEDIUM";
+  const roleTitle =
+    interview?.plan?.role ?? navState.roleTitle ?? "Software Engineer";
+
   const [currentQuestion, setCurrentQuestion] =
     useState<InterviewQuestion | null>(null);
   const [answer, setAnswer] = useState<string>("");

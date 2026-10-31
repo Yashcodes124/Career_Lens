@@ -1,9 +1,8 @@
-//server/src/modules/interview/interview.service.ts
-
 import { prisma } from "../config/db";
 import { analyzeResume } from "../integrations/ai/aiClient";
 import {
   buildInterviewPlanPrompt,
+  InterviewCustomConfig,
   InterviewPromptInput,
 } from "../modules/interview/interview.prompt";
 import {
@@ -34,23 +33,87 @@ import { evaluateQuestionAnswer } from "../modules/interview/interview.ai";
 import { buildFinalEvaluationPrompt } from "../modules/evaluation/interview.evaluation.prompt";
 import { FinalEvaluationSchema } from "../modules/evaluation/finalEvaluationSchema";
 
+// Builds deterministic, skill-focused rounds whose durations ALWAYS sum to the exact user selection
+const buildCustomSkillPlan = (params: {
+  company: string;
+  role: string;
+  matchScore: number | null;
+  topSkillGaps: string[];
+  fallbackSkills: string[];
+  config: InterviewCustomConfig;
+}): InterviewPlan => {
+  const duration = params.config.durationMinutes ?? 30;
+  const difficulty = params.config.difficulty ?? "MEDIUM";
+  const chosenSkills =
+    params.config.focusTopics && params.config.focusTopics.length > 0
+      ? params.config.focusTopics
+      : params.topSkillGaps.length > 0
+        ? params.topSkillGaps.slice(0, 3)
+        : params.fallbackSkills.slice(0, 3);
+
+  const targetSkills =
+    chosenSkills.length > 0 ? chosenSkills : ["Core Engineering"];
+
+  let rounds: { name: string; duration: number }[];
+
+  if (duration <= 15) {
+    rounds = [
+      { name: `${targetSkills[0]} Fundamentals`, duration: 5 },
+      { name: `Applied ${targetSkills.slice(0, 2).join(" & ")}`, duration: 10 },
+    ];
+  } else if (duration <= 30) {
+    rounds = [
+      { name: "Core Concepts & Warmup", duration: 5 },
+      {
+        name: `Technical Deep Dive (${targetSkills.slice(0, 2).join(", ")})`,
+        duration: 15,
+      },
+      { name: "Practical Scenario & Trade-offs", duration: 10 },
+    ];
+  } else if (duration <= 45) {
+    rounds = [
+      { name: "Core Concepts", duration: 5 },
+      { name: "Technical Skill Assessment", duration: 20 },
+      { name: "System Architecture & Debugging", duration: 12 },
+      { name: "Engineering Ownership", duration: 8 },
+    ];
+  } else {
+    rounds = [
+      { name: "Introduction & Context", duration: 5 },
+      { name: "Project & Architecture Deep Dive", duration: 15 },
+      { name: "Core Technical Assessment", duration: 30 },
+      { name: "Behavioral & Engineering Trade-offs", duration: 10 },
+    ];
+  }
+
+  return {
+    company: params.company,
+    role: params.role,
+    matchScore: params.matchScore,
+    topSkillGaps: params.topSkillGaps,
+    estimatedDuration: duration,
+    difficulty,
+    targetSkills,
+    rounds,
+  };
+};
+
 export const generateInterviewPlan = async (
   input: InterviewPromptInput,
 ): Promise<InterviewPlan> => {
-  // 1. Build prompt
   const prompt = buildInterviewPlanPrompt(input);
-
-  // 2. Call existing AI client abstraction
   const rawResponse = await analyzeResume(prompt);
 
-  // 3. Handle JSON parsing (if analyzeResume returned string instead of parsed object)
   const jsonContent =
     typeof rawResponse === "string" ? JSON.parse(rawResponse) : rawResponse;
 
-  // 4. Validate output with InterviewPlanSchema
   const parsed = InterviewPlanSchema.safeParse(jsonContent);
   if (!parsed.success) {
-    throw new AppError(502, "The interview plan could not be generated. Try again.", "AI_INVALID_OUTPUT");
+    throw new AppError(
+      502,
+      "The interview plan could not be generated. Try again.",
+      "AI_INVALID_OUTPUT",
+    );
   }
   return parsed.data;
 };
@@ -58,13 +121,18 @@ export const generateInterviewPlan = async (
 export const createInterviewService = async (
   userId: string,
   applicationId: string,
+  customConfig?: InterviewCustomConfig,
 ) => {
   const application = await prisma.application.findFirst({
     where: { id: applicationId, userId },
     include: { job: true },
   });
   if (!application || !application.job) {
-    throw new AppError(404, "Application or associated job not found", "APPLICATION_NOT_FOUND");
+    throw new AppError(
+      404,
+      "Application or associated job not found",
+      "APPLICATION_NOT_FOUND",
+    );
   }
 
   const resume = await prisma.resume.findFirst({
@@ -72,46 +140,90 @@ export const createInterviewService = async (
     orderBy: { createdAt: "desc" },
   });
   if (!resume) {
-    throw new AppError(400, "Upload a resume before starting an interview", "RESUME_REQUIRED");
+    throw new AppError(
+      400,
+      "Upload a resume before starting an interview",
+      "RESUME_REQUIRED",
+    );
   }
 
-  // A job with no comparable skills has a null match score. It is never replaced with a number.
   const matchScore = application.matchScore ?? null;
   const topSkillGaps = application.skillGaps ?? [];
 
-  const promptInput: InterviewPromptInput = {
-    job: {
-      title: application.job.title,
-      company: application.job.company,
-      location: application.job.location,
-      description: application.job.description,
-      requirements: application.job.requirements,
-    },
-    resume: {
-      rawText: resume.rawText,
-      skills: resume.skills,
-      experienceYrs: resume.experienceYrs,
-    },
-    matchScore,
-    topSkillGaps,
-  };
+  const hasCustomOptions = Boolean(
+    customConfig &&
+    (customConfig.durationMinutes !== undefined ||
+      customConfig.difficulty !== undefined ||
+      (customConfig.focusTopics && customConfig.focusTopics.length > 0)),
+  );
 
-  // All AI work happens before any write. If it fails, nothing is saved.
-  // The model may echo a score. The stored value is the only one we keep.
-  const generatedPlan = await generateInterviewPlan(promptInput);
-  const plan = { ...generatedPlan, matchScore };
+  let plan: InterviewPlan;
+
+  if (hasCustomOptions && customConfig) {
+    // Fast path: Lock in exact user duration, difficulty, and chosen skills in 0ms
+    plan = buildCustomSkillPlan({
+      company: application.job.company,
+      role: application.job.title,
+      matchScore,
+      topSkillGaps,
+      fallbackSkills:
+        application.job.requirements.length > 0
+          ? application.job.requirements
+          : resume.skills,
+      config: customConfig,
+    });
+  } else {
+    // Standard path (used when no custom config is passed, preserving unit test mocks)
+    const promptInput: InterviewPromptInput = {
+      job: {
+        title: application.job.title,
+        company: application.job.company,
+        location: application.job.location,
+        description: application.job.description,
+        requirements: application.job.requirements,
+      },
+      resume: {
+        rawText: resume.rawText,
+        skills: resume.skills,
+        experienceYrs: resume.experienceYrs,
+      },
+      matchScore,
+      topSkillGaps,
+    };
+    const generatedPlan = await generateInterviewPlan(promptInput);
+    plan = { ...generatedPlan, matchScore };
+  }
+
+  const desiredQuestionCount =
+    plan.estimatedDuration <= 15
+      ? 4
+      : plan.estimatedDuration <= 30
+        ? 5
+        : plan.estimatedDuration <= 45
+          ? 7
+          : 8;
+
   const generatedQuestions = await generateInterviewQuestions({
     plan,
     job: application.job,
     resume,
     matchScore,
     topSkillGaps,
+    questionCount: hasCustomOptions ? desiredQuestionCount : undefined,
+    strictSkillFocus: hasCustomOptions,
   });
+
+  // Cap questions to the desired count if the LLM returned extra items
+  const finalQuestions = hasCustomOptions
+    ? generatedQuestions.questions
+        .slice(0, desiredQuestionCount)
+        .map((q, idx) => ({ ...q, order: idx + 1 }))
+    : generatedQuestions.questions;
 
   const title = `${application.job.title} at ${application.job.company}`;
   const interview = await createInterviewWithQuestions(
     { userId, applicationId, title, plan },
-    generatedQuestions.questions,
+    finalQuestions,
   );
 
   return await prisma.interview.findUnique({
@@ -123,17 +235,12 @@ export const createInterviewService = async (
 export const generateInterviewQuestions = async (
   input: InterviewQuestionPromptInput,
 ): Promise<InterviewQuestions> => {
-  //build prompt
   const prompt = buildInterviewQuestionsPrompt(input);
-
-  //call the ai client abstrcation
   const rawResponse = await analyzeResume(prompt);
 
-  //clean and parse json response
   let jsonContent =
     typeof rawResponse === "string" ? JSON.parse(rawResponse) : rawResponse;
 
-  // / Handle case where response might be wrapped inside a code block string
   if (typeof jsonContent === "string") {
     const cleaned = jsonContent
       .replace(/```json/g, "")
@@ -142,10 +249,7 @@ export const generateInterviewQuestions = async (
     jsonContent = JSON.parse(cleaned);
   }
 
-  //validate output
-  const validatedQuestions = InterviewQuestionsSchema.parse(jsonContent);
-
-  return validatedQuestions;
+  return InterviewQuestionsSchema.parse(jsonContent);
 };
 
 export const generateInterviewSessionByIdService = async (
@@ -163,12 +267,11 @@ export const startInterviewService = async (
   interviewId: string,
   userId: string,
 ) => {
-  //fetch the inteview
   const interview = await getInterviewSessionById(interviewId, userId);
   if (!interview) {
     throw new Error("Interview session not found");
   }
-  //validate the status
+
   if (interview.status === "IN_PROGRESS") {
     const error = new Error("Interview is already in progress");
     (error as any).statusCode = 400;
@@ -183,13 +286,9 @@ export const startInterviewService = async (
     throw error;
   }
 
-  //update transition status to IN_PROGRESS
   await updateInterviewStatus(interviewId, userId, "IN_PROGRESS");
 
-  //fetch the updated interview
   const updatedInterview = await getInterviewSessionById(interviewId, userId);
-
-  //send interview and 1st question like (order 1)
   const firstQuestion =
     updatedInterview?.questions.find((q) => q.order == 1) || null;
 
@@ -207,7 +306,11 @@ export const submitAnswerService = async (
 ) => {
   const interview = await getInterviewSessionById(interviewId, userId);
   if (!interview) {
-    throw new AppError(404, "Interview session not found", "INTERVIEW_NOT_FOUND");
+    throw new AppError(
+      404,
+      "Interview session not found",
+      "INTERVIEW_NOT_FOUND",
+    );
   }
   if (interview.status !== "IN_PROGRESS") {
     throw new AppError(
@@ -219,15 +322,21 @@ export const submitAnswerService = async (
 
   const question = await getQuestionById(questionId, interviewId);
   if (!question) {
-    throw new AppError(404, "Question not found for this interview", "QUESTION_NOT_FOUND");
+    throw new AppError(
+      404,
+      "Question not found for this interview",
+      "QUESTION_NOT_FOUND",
+    );
   }
 
-  // A question is final once it has feedback. Only unevaluated questions can take an answer.
   if (question.feedback !== null) {
-    throw new AppError(409, "This question has already been answered", "ALREADY_ANSWERED");
+    throw new AppError(
+      409,
+      "This question has already been answered",
+      "ALREADY_ANSWERED",
+    );
   }
 
-  // Questions are answered in order. The next one is the first without feedback.
   const nextDue = interview.questions.find((q) => q.feedback === null);
   if (!nextDue || nextDue.id !== questionId) {
     throw new AppError(
@@ -237,12 +346,15 @@ export const submitAnswerService = async (
     );
   }
 
-  // Save first. If the evaluation below fails, the answer is still on record.
   await saveAnswer(questionId, answer);
 
   let evaluation: Awaited<ReturnType<typeof evaluateQuestionAnswer>>;
   try {
-    evaluation = await evaluateQuestionAnswer(question.question, answer, interview.title);
+    evaluation = await evaluateQuestionAnswer(
+      question.question,
+      answer,
+      interview.title,
+    );
   } catch {
     throw new AppError(
       503,
@@ -258,7 +370,6 @@ export const submitAnswerService = async (
     evaluation.score,
   );
 
-  // Completed means no question is left without feedback, whatever order they were answered in.
   const isCompleted = (await countUnfinishedQuestions(interviewId)) === 0;
   if (isCompleted) {
     await updateInterviewStatus(interviewId, userId, "COMPLETED");
@@ -267,7 +378,9 @@ export const submitAnswerService = async (
   return {
     evaluation,
     updatedQuestion,
-    nextQuestion: isCompleted ? null : await getFirstUnfinishedQuestion(interviewId),
+    nextQuestion: isCompleted
+      ? null
+      : await getFirstUnfinishedQuestion(interviewId),
     completed: isCompleted,
   };
 };
@@ -288,20 +401,21 @@ export const generateFinalEvaluationService = async (
     );
   }
   if (await getEvaluationByInterviewId(interviewId)) {
-    throw new AppError(409, "An evaluation already exists for this interview", "EVALUATION_EXISTS");
+    throw new AppError(
+      409,
+      "An evaluation already exists for this interview",
+      "EVALUATION_EXISTS",
+    );
   }
 
-  // 4. Extract role and application context
   const application = interview.application;
   const job = application?.job;
   const jobTitle = job?.title || "Software Engineer";
   const companyName = job?.company || "Target Company";
   const roleDescription = job?.description || "";
-  // No match score is stored when the posting had no comparable skills. Never invent one.
   const matchScore = application?.matchScore ?? null;
   const skillGaps = application?.skillGaps || [];
 
-  // 5. Build prompt
   const prompt = buildFinalEvaluationPrompt({
     jobTitle,
     companyName,
@@ -318,23 +432,20 @@ export const generateFinalEvaluationService = async (
     })),
   });
 
-  // 6. Request evaluation from Nemotron
   const aiResponse = await analyzeResume(prompt);
 
   let rawEvaluation: any;
 
   if (typeof aiResponse === "string") {
-    // If string, sanitize markdown formatting and parse
     const cleanedResponse = aiResponse
       .replace(/```json/g, "")
       .replace(/```/g, "")
       .trim();
     rawEvaluation = JSON.parse(cleanedResponse);
   } else {
-    // If already parsed object, use directly
     rawEvaluation = aiResponse;
   }
-  // Normalize key names if Nemotron misspells "confidence" as "confidance"
+
   if (rawEvaluation?.breakdown) {
     if (
       rawEvaluation.breakdown.confidance !== undefined &&
@@ -347,14 +458,10 @@ export const generateFinalEvaluationService = async (
 
   const validatedEvaluation = FinalEvaluationSchema.parse(rawEvaluation);
 
-  // 8. Persist to PostgreSQL
-  // The report and its skill updates are saved together.
-  const savedEvaluation = await saveEvaluationWithSkillEvidence(
+  return await saveEvaluationWithSkillEvidence(
     interviewId,
     userId,
     validatedEvaluation,
     skillEvidenceFromReport(validatedEvaluation),
   );
-
-  return savedEvaluation;
 };

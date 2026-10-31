@@ -1,12 +1,8 @@
-// server/src/modules/interview/interview.prompt.ts
-
-// Job details
-// +
-// Resume data
-// +
-// Stage 5 match score
-// +
-// Top skill gaps
+export interface InterviewCustomConfig {
+  durationMinutes?: number;
+  difficulty?: "EASY" | "MEDIUM" | "HARD";
+  focusTopics?: string[];
+}
 
 export interface InterviewPromptInput {
   job: {
@@ -23,6 +19,7 @@ export interface InterviewPromptInput {
   };
   matchScore: number | null;
   topSkillGaps: string[];
+  customConfig?: InterviewCustomConfig;
 }
 
 export const buildInterviewPlanPrompt = ({
@@ -30,7 +27,15 @@ export const buildInterviewPlanPrompt = ({
   resume,
   matchScore,
   topSkillGaps,
+  customConfig,
 }: InterviewPromptInput): string => {
+  const requestedDuration = customConfig?.durationMinutes ?? 30;
+  const requestedDifficulty = customConfig?.difficulty;
+  const requestedTopics =
+    customConfig?.focusTopics && customConfig.focusTopics.length > 0
+      ? customConfig.focusTopics
+      : null;
+
   return `
 You are an expert technical interviewer creating a mock interview plan for a candidate.
 
@@ -56,6 +61,13 @@ Match Score: ${matchScore === null ? "not available (no skills could be compared
 Top Skill Gaps:
 ${topSkillGaps.length > 0 ? topSkillGaps.join(", ") : "None identified"}
 
+${
+  requestedTopics
+    ? `CANDIDATE SELECTED FOCUS SKILLS (STRICTLY PRIORITIZE THESE):
+${requestedTopics.join(", ")}`
+    : ""
+}
+
 TASK:
 Create a realistic mock interview plan based on the job, candidate resume,
 match score, and identified skill gaps.
@@ -66,9 +78,12 @@ The interview should include these rounds:
 - Technical
 - Behavioral / HR
 
-Set the difficulty appropriately based on the candidate's experience and
-the job requirements. Target skills should prioritize the most relevant
-job skills and the candidate's skill gaps.
+${
+  requestedDifficulty
+    ? `Set the difficulty to "${requestedDifficulty}".`
+    : `Set the difficulty appropriately based on the candidate's experience and the job requirements.`
+}
+Set estimatedDuration to ${requestedDuration} minutes, and make sure the sum of all round durations equals ${requestedDuration} minutes.
 
 OUTPUT REQUIREMENTS:
 Return ONLY valid JSON.
@@ -81,8 +96,8 @@ The JSON must match this exact structure:
   "role": "string",
   "matchScore": 0,
   "topSkillGaps": ["string"],
-  "estimatedDuration": 30,
-  "difficulty": "EASY",
+  "estimatedDuration": ${requestedDuration},
+  "difficulty": "${requestedDifficulty || "MEDIUM"}",
   "targetSkills": ["string"],
   "rounds": [
     {
@@ -94,10 +109,9 @@ The JSON must match this exact structure:
 
 Rules:
 - matchScore must be between 0 and 100.
-- estimatedDuration must be a positive number in minutes.
-- Every round duration must be positive.
+- estimatedDuration must equal ${requestedDuration}.
+- Every round duration must be positive and sum to ${requestedDuration}.
 - difficulty must be exactly "EASY", "MEDIUM", or "HARD".
-- Include all four required interview rounds.
 - Do not invent candidate skills that are not supported by the resume.
 `;
 };

@@ -1,8 +1,10 @@
-//server/src/controllers/jobController.ts
-
 import type { NextFunction, Request, Response } from "express";
 import { parseJobQuery } from "../utils/jobQuery";
-import { getJobByIdService, getJobsService } from "../services/jobService";
+import {
+  getJobByIdService,
+  getJobsService,
+  importExternalJobService,
+} from "../services/jobService";
 import { syncGreenhouseJobs } from "../services/greenhouseSyncService";
 import {
   getSavedJobsService,
@@ -10,8 +12,11 @@ import {
   saveJobService,
 } from "../services/savedJobService";
 
-// get the jobs '/'
-export const getJobsController = async (req: Request, res: Response, next: NextFunction) => {
+export const getJobsController = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
   try {
     const filters = parseJobQuery(req.query as Record<string, unknown>);
     const { jobs, total } = await getJobsService(filters);
@@ -41,7 +46,6 @@ export const getJobByIdController = async (req: Request, res: Response) => {
         success: false,
         message: "Job not found",
       });
-
       return;
     }
 
@@ -54,21 +58,16 @@ export const getJobByIdController = async (req: Request, res: Response) => {
   }
 };
 
-//sync greenhouse  '/sync/generate'
 export const syncGreenhouseController = async (req: Request, res: Response) => {
   try {
-    const boardToken = process.env.GREENHOUSE_BOARD_TOKEN;
-
-    const company = process.env.GREENHOUSE_COMPANY;
-
-    if (!boardToken || !company) {
-      res.status(500).json({
-        success: false,
-        message: "Greenhouse configuration is missing",
-      });
-
-      return;
-    }
+    const boardToken =
+      (req.body?.boardToken as string | undefined) ||
+      process.env.GREENHOUSE_BOARD_TOKEN ||
+      "stripe";
+    const company =
+      (req.body?.company as string | undefined) ||
+      process.env.GREENHOUSE_COMPANY ||
+      boardToken;
 
     const result = await syncGreenhouseJobs(boardToken, company);
 
@@ -87,9 +86,28 @@ export const syncGreenhouseController = async (req: Request, res: Response) => {
   }
 };
 
-//======================== Saved Jobs ======================
+export const importExternalJobController = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const job = await importExternalJobService(req.body ?? {});
+    res.status(201).json({
+      success: true,
+      job,
+      data: job,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
 
-export const saveJobController = async (req: Request, res: Response, next: NextFunction) => {
+export const saveJobController = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
   try {
     const userId = req.user!.userId;
     const { id } = req.params;
@@ -106,7 +124,11 @@ export const saveJobController = async (req: Request, res: Response, next: NextF
   }
 };
 
-export const unsaveJobController = async (req: Request, res: Response, next: NextFunction) => {
+export const unsaveJobController = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
   try {
     const userId = req.user!.userId;
     const { id } = req.params;
