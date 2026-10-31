@@ -1,5 +1,3 @@
-//server/src/modules/interview/interview.question.prompt.ts
-
 import { InterviewPlan } from "./interviewSchema";
 
 export interface InterviewQuestionPromptInput {
@@ -17,58 +15,75 @@ export interface InterviewQuestionPromptInput {
   };
   matchScore: number | null;
   topSkillGaps: string[];
+  questionCount?: number;
+  strictSkillFocus?: boolean;
 }
 
 export const buildInterviewQuestionsPrompt = (
   input: InterviewQuestionPromptInput,
 ): string => {
-  const { plan, job, resume, matchScore, topSkillGaps } = input;
+  const {
+    plan,
+    job,
+    resume,
+    matchScore,
+    topSkillGaps,
+    questionCount,
+    strictSkillFocus,
+  } = input;
+
+  const targetTotalQuestions =
+    questionCount ??
+    (plan.estimatedDuration <= 15
+      ? 4
+      : plan.estimatedDuration <= 30
+        ? 5
+        : plan.estimatedDuration <= 45
+          ? 7
+          : 8);
 
   return `
-You are an expert technical interviewer conducting an interview for the position of **${job.title}** at **${job.company}**.
+You are an expert technical interviewer conducting a ${plan.difficulty} level interview for **${job.title}** at **${job.company}**.
 
-### CANDIDATE & JOB CONTEXT
+### CANDIDATE & SESSION CONFIGURATION
 - **Target Role:** ${job.title} at ${job.company}
-- **Interview Difficulty:** ${plan.difficulty}
+- **Difficulty Level:** ${plan.difficulty}
+- **Total Duration:** ${plan.estimatedDuration} minutes
+- **Exact Number of Questions to Generate:** ${targetTotalQuestions} questions total
+- **Selected Skills to Test:** ${plan.targetSkills.join(", ")}
+- **Skill Gaps:** ${topSkillGaps.length > 0 ? topSkillGaps.join(", ") : "None specified"}
 - **Match Score:** ${matchScore === null ? "not available" : `${matchScore}%`}
-- **Target Skills:** ${plan.targetSkills.join(", ")}
-- **Identified Skill Gaps:** ${topSkillGaps.length > 0 ? topSkillGaps.join(", ") : "None specified"}
-- **Job Requirements:** ${
-    Array.isArray(job.requirements)
-      ? job.requirements.join(", ")
-      : job.requirements || "Not provided"
-  }
 
-### RESUME CONTEXT
-- **Years of Experience:** ${resume.experienceYrs ?? "Not specified"}
-- **Resume Skills:** ${resume.skills?.join(", ") ?? "Not specified"}
-- **Resume Content Summary:**
-${resume.rawText.slice(0, 2000)}
+### RESUME SUMMARY
+- **Experience:** ${resume.experienceYrs ?? 0} years
+- **Candidate Skills:** ${resume.skills?.join(", ") ?? "Not specified"}
+- **Excerpt:**
+${resume.rawText.slice(0, 1400)}
 
-### REQUIRED INTERVIEW ROUNDS
-Generate customized, relevant interview questions for each of the following rounds defined in the interview plan:
+### INTERVIEW ROUNDS TO COVER
 ${plan.rounds.map((r) => `- **${r.name}** (${r.duration} mins)`).join("\n")}
 
-### RULES FOR QUESTION GENERATION
-1. **Relevance:** Tailor questions directly to the candidate's experience level, the job specifications, and target company.
-2. **Project Deep Dive:** Create questions based explicitly on projects, experience, or achievements mentioned in the resume.
-3. **Technical Round:** Probe target skills and explicitly test areas marked as skill gaps to evaluate depth.
-4. **Behavioral / HR Round:** Focus on leadership, cross-functional collaboration, problem-solving, and adaptability suitable for the difficulty level (${plan.difficulty}).
-5. **Ordering:** Assign sequential 1-based integer values for the \`order\` property across all generated questions.
+### STRICT QUESTION GENERATION RULES
+1. **Exact Count:** Generate EXACTLY ${targetTotalQuestions} questions in total across the listed rounds. Do NOT generate more than ${targetTotalQuestions} questions.
+2. **Skill Focus:** ${
+    strictSkillFocus
+      ? `The candidate specifically chose to practice [${plan.targetSkills.join(", ")}]. Every technical/practical question MUST directly test [${plan.targetSkills.join(", ")}] at an ${plan.difficulty} difficulty level. Do NOT ask generic "walk me through your computer science journey" questions.`
+      : `Tailor questions to the target skills (${plan.targetSkills.join(", ")}) and candidate resume.`
+  }
+3. **Difficulty Calibration (${plan.difficulty}):**
+   - If EASY: Focus on core definitions, fundamental usage, and basic scenarios.
+   - If MEDIUM: Focus on real-world implementation, debugging, and API/query design.
+   - If HARD: Focus on edge cases, performance bottlenecks, concurrency, and architecture trade-offs.
+4. **Sequential Order:** Number \`order\` sequentially from 1 to ${targetTotalQuestions}.
 
 ### OUTPUT FORMAT
-Return strictly valid JSON with no markdown formatting around it, matching this schema:
+Return strictly valid raw JSON with no markdown fences:
 {
   "questions": [
     {
-      "round": "Introduction",
-      "question": "Question text here...",
+      "round": "${plan.rounds[0]?.name || "Skill Assessment"}",
+      "question": "Direct, specific question text...",
       "order": 1
-    },
-    {
-      "round": "Project Deep Dive",
-      "question": "Question text here...",
-      "order": 2
     }
   ]
 }

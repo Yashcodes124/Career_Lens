@@ -1,5 +1,6 @@
 import React from "react";
 import { Link } from "react-router-dom";
+import { SpotlightCard } from "../../components/ui/AceternityPrimitives";
 import { ArrowUpRight, RotateCw } from "lucide-react";
 import { Navbar } from "../../components/NavBar";
 import { useAuth } from "../auth/useAuth";
@@ -23,7 +24,7 @@ const ApplicationsCard: React.FC<{ resumeId?: string }> = ({ resumeId }) => {
   const recent = (data ?? []).slice(0, 5);
 
   return (
-    <section className={CARD} aria-labelledby="applications-heading">
+    <SpotlightCard className={CARD} aria-labelledby="applications-heading">
       <div className="flex items-center justify-between gap-4 border-b border-zinc-800/80 pb-4">
         <div>
           <h2
@@ -92,7 +93,7 @@ const ApplicationsCard: React.FC<{ resumeId?: string }> = ({ resumeId }) => {
           ))}
         </ul>
       )}
-    </section>
+    </SpotlightCard>
   );
 };
 
@@ -135,7 +136,7 @@ const ResumeCard: React.FC = () => {
   const latest = data?.[0];
 
   return (
-    <section className={CARD} aria-labelledby="resume-heading">
+    <SpotlightCard className={CARD} aria-labelledby="resume-heading">
       <div className="flex items-center justify-between border-b border-zinc-800/80 pb-4">
         <h2 id="resume-heading" className="text-base font-semibold text-white">
           Resume
@@ -219,7 +220,7 @@ const ResumeCard: React.FC = () => {
           </Link>
         </div>
       )}
-    </section>
+    </SpotlightCard>
   );
 };
 

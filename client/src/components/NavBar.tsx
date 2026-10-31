@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { ThemeSwitcher } from "./ui/AceternityPrimitives";
 import { Link, useLocation } from "react-router-dom";
 import { Menu, X } from "lucide-react";
 import { useAuth } from "../features/auth/useAuth";
@@ -56,6 +57,7 @@ export const Navbar: React.FC = () => {
         </div>
 
         <div className="hidden items-center gap-4 md:flex">
+          <ThemeSwitcher />
           {user?.targetRole && (
             <span className="font-mono text-[11px] text-zinc-500">
               ROLE //{" "}

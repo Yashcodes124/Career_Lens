@@ -1,12 +1,9 @@
-//server/src/routes/jobRoutes.ts
-
 import { Router } from "express";
 import {
   getJobByIdController,
   getJobsController,
   syncGreenhouseController,
-} from "../controllers/jobController";
-import {
+  importExternalJobController,
   getSavedJobsController,
   unsaveJobController,
   saveJobController,
@@ -18,11 +15,18 @@ const router = Router();
 
 router.get("/", authMiddleware, getJobsController);
 router.get("/saved", authMiddleware, getSavedJobsController);
-router.get("/:id", authMiddleware, getJobByIdController);
 
+router.post("/sync", authMiddleware, syncGreenhouseController);
+router.post(
+  "/sync/greenhouse",
+  authMiddleware,
+  requireRole("ADMIN"),
+  syncGreenhouseController,
+);
+router.post("/external", authMiddleware, importExternalJobController);
+
+router.get("/:id", authMiddleware, getJobByIdController);
 router.post("/:id/save", authMiddleware, saveJobController);
 router.delete("/:id/save", authMiddleware, unsaveJobController);
-
-router.post("/sync/greenhouse", authMiddleware, requireRole("ADMIN"), syncGreenhouseController);
 
 export default router;
