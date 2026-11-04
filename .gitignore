@@ -2,6 +2,8 @@
 .env
 .env.local
 .env.*
+
+#keep templates
 !.env.example
 .env.*.local
 
@@ -10,9 +12,12 @@ node_modules/
 pnpm-lock.yaml
 yarn.lock
 
+# Generated bundle
 codebase_bundle.txt/
 
 # Build outputs
+client/dist/
+server/dist/
 dist/
 build/
 .next/
@@ -45,6 +50,9 @@ coverage/
 *.db
 *.sqlite
 *.sqlite3
+
+# Local data
+local_data.sql
 
 # Uploads
 uploads/*
