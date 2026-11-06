@@ -1,8 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
-import { fetchReadinessApi } from "./readinessApi";
+import { fetchReadiness } from "./readinessApi";
 
 export const useReadiness = () =>
   useQuery({
     queryKey: ["readiness"],
-    queryFn: fetchReadinessApi,
+    queryFn: fetchReadiness,
   });

@@ -1,268 +1,135 @@
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import {
-  ArrowUpRight,
-  ShieldCheck,
-  Terminal,
-  Layers,
+  ArrowRight,
   CheckCircle2,
   FileText,
-  Sliders,
-  Activity,
-  Lock,
-  Cpu,
-  ChevronRight,
+  Briefcase,
+  Target,
+  MessageSquare,
+  Award,
+  Layers,
+  ShieldCheck,
+  Database,
+  Code2,
 } from "lucide-react";
 import { useAuth } from "../auth/useAuth";
 
-interface ShowcaseTab {
+interface PreviewStage {
   id: string;
-  tag: string;
+  step: string;
   title: string;
-  route: string;
-  description: string;
+  summary: string;
   image: string;
-  metrics: { label: string; value: string }[];
+  highlights: string[];
 }
 
-const SHOWCASE_TABS: ShowcaseTab[] = [
-  {
-    id: "dashboard",
-    tag: "01 // COMMAND CENTER",
-    title: "Action-Driven Readiness Workspace",
-    route: "truehire.app/dashboard",
-    description:
-      "Your next highest-impact action, skills flagged in recent mock interviews, and active application pipeline in one view.",
-    image: "/landing/dashboard-preview.png",
-    metrics: [
-      { label: "Next Action Engine", value: "Deterministic" },
-      { label: "Skill State Sync", value: "Real-time" },
-    ],
-  },
+const PREVIEW_STAGES: PreviewStage[] = [
   {
     id: "match",
-    tag: "02 // DETERMINISTIC MATCHER",
-    title: "Traceable Skill-by-Skill Scoring",
-    route: "truehire.app/matches/stripe-backend",
-    description:
-      "Every match percentage is computed from canonical skill intersection—never an unexplained LLM guess.",
+    step: "Step 1 · Requirement Coverage",
+    title: "See which job requirements you already meet",
+    summary:
+      "Compare your extracted resume skills against real engineering job requirements with clear, explainable coverage.",
     image: "/landing/match-preview.png",
-    metrics: [
-      { label: "Scoring Formula", value: "|R ∩ J| / |J|" },
-      { label: "Hallucinated Scores", value: "0%" },
+    highlights: [
+      "You meet 8 of 12 requirements for this role",
+      "Every matched and missing skill is listed explicitly",
+      "Priority ranking based on how often skills appear in the posting",
     ],
   },
   {
     id: "gaps",
-    tag: "03 // SKILL GAP REPORT",
-    title: "Priority Gaps Backed by Evidence",
-    route: "truehire.app/skill-gaps/cloudflare-sre",
-    description:
-      "Missing skills are ranked by how frequently the job posting names them and whether prior interviews flagged them weak.",
+    step: "Step 2 · Skill Gap Plan",
+    title: "Focus on the skills that appear across your target roles",
+    summary:
+      "Turn missing requirements into a structured preparation plan with documentation, roadmaps, and practice tasks.",
     image: "/landing/skill-gap-preview.png",
-    metrics: [
-      { label: "Gap Ranking", value: "High / Med / Low" },
-      { label: "Interview Trigger", value: "1-Click" },
+    highlights: [
+      "High, medium, and low priority gap classification",
+      "Curated documentation and hands-on practice links",
+      "Direct one-click transition into a targeted mock interview",
     ],
   },
   {
-    id: "resume",
-    tag: "04 // STRUCTURED PARSER",
-    title: "Resume Parsed into Verifiable Tokens",
-    route: "truehire.app/resume",
-    description:
-      "Upload PDF or DOCX files. TrueHire extracts normalized skills, experience duration, projects, and education.",
-    image: "/landing/resume-preview.png",
-    metrics: [
-      { label: "Supported Formats", value: "PDF & DOCX" },
-      { label: "Alias Normalization", value: "Canonical" },
+    id: "dashboard",
+    step: "Step 3 · Evidence-Based Readiness",
+    title: "Build a verified skill profile over time",
+    summary:
+      "Completed interview evaluations update your skill profile with concrete evidence so you know what to practice next.",
+    image: "/landing/dashboard-preview.png",
+    highlights: [
+      "Clear next best action on your dashboard",
+      "Tracks verified skills vs. skills needing practice",
+      "Connects resume, job tracker, and interview history",
     ],
-  },
-  {
-    id: "tailoring",
-    tag: "05 // EVIDENCE-BOUNDED TAILORING",
-    title: "Suggestions Strictly Bounded by Your Resume",
-    route: "truehire.app/tailor/vercel-frontend",
-    description:
-      " surfaces skills supported by your existing project descriptions that were omitted from your skills list—never inventing experience.",
-    image: "/landing/tailoring-preview.png",
-    metrics: [
-      { label: "Fabricated Claims", value: "Blocked" },
-      { label: "Candidate Control", value: "Opt-in Diff" },
-    ],
-  },
-];
-
-const STEPS = [
-  {
-    step: "01",
-    title: "Match",
-    body: "Upload a resume and see how it compares with a verified job, skill by skill.",
-    detail:
-      "Canonical alias normalization (ReactJS → react, Postgres → postgresql)",
-  },
-  {
-    step: "02",
-    title: "Prepare",
-    body: "Each gap is ranked by how often the posting names it, so you know what matters most.",
-    detail: "Prioritized into High, Medium, and Low urgency tiers",
-  },
-  {
-    step: "03",
-    title: "Interview",
-    body: "Answer questions written for that role and your chosen skills. Each answer is scored against a rubric.",
-    detail: "Customizable 15m, 30m, 45m, or 60m sessions across Easy/Med/Hard",
-  },
-  {
-    step: "04",
-    title: "Improve",
-    body: "Skills your interview flagged carry into your next match and your next interview.",
-    detail:
-      "Closed-loop write-back updates UserSkill proficiency automatically",
-  },
-];
-
-const COMPARISON_ROWS = [
-  {
-    feature: "Job Listing Provenance",
-    generic: "Scraped aggregators, reposted ghost jobs, unknown age",
-    truehire:
-      "Direct official ATS sync (Greenhouse) with last-synced timestamps",
-  },
-  {
-    feature: "Match Score Calculation",
-    generic: "Opaque LLM-guessed percentage that changes on every run",
-    truehire: "100% deterministic skill-set intersection you can inspect",
-  },
-  {
-    feature: "Mock Interview Structure",
-    generic: "Generic static behavioral prompts unrelated to the posting",
-    truehire: "Role-specific rounds targeting your exact job skill gaps",
-  },
-  {
-    feature: "Resume Tailoring",
-    generic: "Rewrites bullets with fabricated metrics and buzzwords",
-    truehire:
-      "Evidence-bounded suggestions strictly backed by your resume text",
-  },
-  {
-    feature: "Post-Interview Feedback Loop",
-    generic: "Isolated chat transcript that is forgotten immediately",
-    truehire: "Weaknesses update your persistent skill profile for future jobs",
   },
 ];
 
 export const LandingPage: React.FC = () => {
-  const { isAuthenticated, user } = useAuth();
-  const [activeTabIndex, setActiveTabIndex] = useState(0);
-  const [isPaused, setIsPaused] = useState(false);
-
-  // Auto-cycle interactive showcase tabs unless user hovers/interacts
-  useEffect(() => {
-    if (isPaused) return;
-    const timer = setInterval(() => {
-      setActiveTabIndex((prev) => (prev + 1) % SHOWCASE_TABS.length);
-    }, 5500);
-    return () => clearInterval(timer);
-  }, [isPaused]);
-
-  const activeShowcase = SHOWCASE_TABS[activeTabIndex];
+  const { user } = useAuth();
+  const [activeStage, setActiveStage] = useState<string>("match");
+  const currentStage =
+    PREVIEW_STAGES.find((s) => s.id === activeStage) ?? PREVIEW_STAGES[0];
 
   return (
-    <div className="min-h-screen bg-[#09090b] text-zinc-100 selection:bg-teal-500/20 selection:text-teal-200">
-      {/* Top Telemetry Strip */}
-      <div className="border-b border-zinc-800/80 bg-zinc-950 px-4 py-2 text-center font-mono text-[11px] text-zinc-400">
-        <span className="inline-flex items-center gap-2">
-          <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-          <span className="text-zinc-200">TRUEHIRE V1 PRODUCTION</span>
-          <span className="hidden text-zinc-600 sm:inline">//</span>
-          <span className="hidden sm:inline">
-            Official ATS Job Ingestion · Deterministic Matching · Closed-Loop AI
-            Mock Interviews
-          </span>
-        </span>
-      </div>
-
-      {/* Sticky Navigation Header */}
-      <header className="sticky top-0 z-40 border-b border-zinc-800/80 bg-[#09090b]/85 backdrop-blur-md">
-        <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
+    <div className="min-h-screen bg-[#f8fafc] text-slate-900">
+      {/* 1. Navbar */}
+      <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/95 backdrop-blur">
+        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
           <div className="flex items-center gap-8">
             <Link
               to="/"
-              className="flex items-center gap-2.5 text-base font-semibold tracking-tight text-white"
+              className="flex items-center gap-2.5 text-base font-semibold tracking-tight text-slate-900"
             >
-              <span className="flex h-6 w-6 items-center justify-center rounded-md border border-teal-500/40 bg-teal-500/10">
-                <span className="h-2 w-2 rounded-full bg-teal-400" />
+              <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-600 text-xs font-bold text-white">
+                TH
               </span>
               <span>TrueHire</span>
             </Link>
 
-            <nav
-              aria-label="Main"
-              className="hidden items-center gap-1 text-xs font-medium text-zinc-400 md:flex"
-            >
-              <a
-                href="#product-tour"
-                className="rounded-md px-3 py-1.5 transition hover:bg-zinc-900 hover:text-white"
-              >
-                Interactive Tour
+            <nav className="hidden items-center gap-6 text-sm font-medium text-slate-600 md:flex">
+              <a href="#features" className="transition hover:text-slate-900">
+                Features
               </a>
               <a
                 href="#how-it-works"
-                className="rounded-md px-3 py-1.5 transition hover:bg-zinc-900 hover:text-white"
+                className="transition hover:text-slate-900"
               >
                 How it works
               </a>
               <a
-                href="#architecture"
-                className="rounded-md px-3 py-1.5 transition hover:bg-zinc-900 hover:text-white"
+                href="#closed-loop"
+                className="transition hover:text-slate-900"
               >
-                Architecture
-              </a>
-              <a
-                href="#comparison"
-                className="rounded-md px-3 py-1.5 transition hover:bg-zinc-900 hover:text-white"
-              >
-                Why TrueHire
+                Early Access
               </a>
             </nav>
           </div>
 
-          <div className="flex items-center gap-2.5">
-            {isAuthenticated ? (
-              <>
-                <Link
-                  to="/jobs"
-                  className="hidden rounded-lg border border-zinc-800 bg-zinc-900/60 px-3.5 py-2 text-xs font-medium text-zinc-200 transition hover:border-zinc-700 hover:text-white sm:inline-flex"
-                >
-                  Browse Jobs
-                </Link>
-                <Link
-                  to="/dashboard"
-                  className="inline-flex items-center gap-1.5 rounded-lg bg-teal-500 px-4 py-2 text-xs font-semibold text-zinc-950 transition hover:bg-teal-400 active:scale-[0.98]"
-                >
-                  <span>
-                    {user?.name
-                      ? `${user.name.split(" ")[0]}'s Workspace`
-                      : "Open Dashboard"}
-                  </span>
-                  <ArrowUpRight className="h-3.5 w-3.5" />
-                </Link>
-              </>
+          <div className="flex items-center gap-3">
+            {user ? (
+              <Link
+                to="/dashboard"
+                className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-blue-700"
+              >
+                <span>Go to Dashboard</span>
+                <ArrowRight className="h-4 w-4" />
+              </Link>
             ) : (
               <>
                 <Link
                   to="/login"
-                  className="rounded-lg px-3.5 py-2 text-xs font-medium text-zinc-300 transition hover:bg-zinc-900 hover:text-white"
+                  className="rounded-lg px-3.5 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100 hover:text-slate-900"
                 >
-                  Sign in
+                  Login
                 </Link>
                 <Link
                   to="/register"
-                  className="inline-flex items-center gap-1.5 rounded-lg bg-zinc-100 px-4 py-2 text-xs font-semibold text-zinc-950 transition hover:bg-teal-400 active:scale-[0.98]"
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-blue-700"
                 >
-                  <span>Get started</span>
-                  <ArrowUpRight className="h-3.5 w-3.5" />
+                  <span>Get Started</span>
+                  <ArrowRight className="h-4 w-4" />
                 </Link>
               </>
             )}
@@ -271,721 +138,438 @@ export const LandingPage: React.FC = () => {
       </header>
 
       <main>
-        {/* Hero Section with Architectural Grid & Spotlight */}
-        <section className="relative overflow-hidden border-b border-zinc-800/80 pb-20 pt-16 sm:pt-24">
-          {/* Background Grid & Ambient Glow */}
-          <div
-            aria-hidden="true"
-            className="bg-architectural-grid pointer-events-none absolute inset-0 [mask-image:radial-gradient(ellipse_80%_60%_at_50%_20%,#000_60%,transparent_100%)]"
-          />
-          <div
-            aria-hidden="true"
-            className="animate-pulse-glow pointer-events-none absolute left-1/2 top-0 h-[340px] w-[680px] -translate-x-1/2 rounded-full bg-teal-500/10 blur-[120px]"
-          />
-
-          <div className="relative mx-auto max-w-6xl px-4 sm:px-6">
+        {/* 2. Hero Section */}
+        <section className="border-b border-slate-200 bg-white py-16 sm:py-24">
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             <div className="mx-auto max-w-3xl text-center">
-              <div className="landing-rise inline-flex items-center gap-2 rounded-full border border-zinc-800 bg-zinc-900/80 px-3.5 py-1.5 font-mono text-[11px] text-zinc-300 shadow-sm">
-                <ShieldCheck className="h-3.5 w-3.5 text-teal-400" />
-                <span>VERIFIED ATS LISTINGS · RUBRIC-GRADED INTERVIEWS</span>
-              </div>
-
-              <h1
-                className="landing-rise mt-6 text-4xl font-semibold tracking-[-0.04em] text-white sm:text-6xl lg:text-[68px] lg:leading-[1.04]"
-                style={{ animationDelay: "80ms" }}
-              >
-                From job description to{" "}
-                <span className="bg-gradient-to-r from-white via-zinc-200 to-teal-400 bg-clip-text text-transparent">
-                  interview-ready.
-                </span>
+              <span className="inline-flex items-center gap-2 rounded-full border border-blue-200 bg-blue-50 px-3.5 py-1 text-xs font-medium text-blue-700">
+                Evidence-Based Interview Readiness Platform
+              </span>
+              <h1 className="mt-6 text-4xl font-semibold tracking-tight text-slate-900 sm:text-5xl">
+                Know what you’re ready for before you apply.
               </h1>
-
-              <p
-                className="landing-rise mx-auto mt-6 max-w-2xl text-pretty text-base leading-relaxed text-zinc-400 sm:text-lg"
-                style={{ animationDelay: "140ms" }}
-              >
-                TrueHire compares your resume with verified jobs, shows your
-                gaps in plain terms, and runs mock interviews whose results feed
-                back into your preparation.
+              <p className="mt-4 text-base leading-relaxed text-slate-600 sm:text-lg">
+                TrueHire analyzes your resume against real engineering roles,
+                identifies skill gaps, and helps you practice the interviews
+                that matter.
               </p>
-
-              <div
-                className="landing-rise mt-9 flex flex-wrap items-center justify-center gap-3"
-                style={{ animationDelay: "200ms" }}
-              >
-                {isAuthenticated ? (
-                  <>
-                    <Link
-                      to="/dashboard"
-                      className="inline-flex items-center gap-2 rounded-xl bg-teal-500 px-6 py-3 text-sm font-semibold text-zinc-950 shadow-lg shadow-teal-500/10 transition hover:bg-teal-400 active:scale-[0.98]"
-                    >
-                      <span>Open Readiness Dashboard</span>
-                      <ArrowUpRight className="h-4 w-4" />
-                    </Link>
-                    <Link
-                      to="/jobs"
-                      className="inline-flex items-center gap-2 rounded-xl border border-zinc-800 bg-zinc-900/70 px-6 py-3 text-sm font-medium text-zinc-200 transition hover:border-zinc-700 hover:bg-zinc-900 hover:text-white"
-                    >
-                      <span>Explore Verified Jobs</span>
-                    </Link>
-                  </>
-                ) : (
-                  <>
-                    <Link
-                      to="/register"
-                      className="inline-flex items-center gap-2 rounded-xl bg-teal-500 px-6 py-3 text-sm font-semibold text-zinc-950 shadow-lg shadow-teal-500/10 transition hover:bg-teal-400 active:scale-[0.98]"
-                    >
-                      <span>Get started free</span>
-                      <ArrowUpRight className="h-4 w-4" />
-                    </Link>
-                    <a
-                      href="#how-it-works"
-                      className="inline-flex items-center gap-2 rounded-xl border border-zinc-800 bg-zinc-900/70 px-6 py-3 text-sm font-medium text-zinc-200 transition hover:border-zinc-700 hover:bg-zinc-900 hover:text-white"
-                    >
-                      <span>See how it works</span>
-                    </a>
-                  </>
-                )}
-              </div>
-            </div>
-
-            {/* Telemetry Strip under Hero */}
-            <div
-              className="landing-rise mt-14 grid grid-cols-2 divide-x divide-y divide-zinc-800/80 overflow-hidden rounded-xl border border-zinc-800/90 bg-zinc-900/40 backdrop-blur-sm sm:grid-cols-4 sm:divide-y-0"
-              style={{ animationDelay: "260ms" }}
-            >
-              {[
-                [
-                  "PROVENANCE",
-                  "Official Company ATS",
-                  "Direct Greenhouse sync",
-                ],
-                [
-                  "MATCH ENGINE",
-                  "100% Deterministic",
-                  "Zero black-box guessing",
-                ],
-                [
-                  "MOCK SESSIONS",
-                  "15m – 60m Custom",
-                  "Driven by job skill gaps",
-                ],
-                [
-                  "CLOSED LOOP",
-                  "Auto-Synced Profile",
-                  "Weaknesses guide next prep",
-                ],
-              ].map(([tag, stat, sub]) => (
-                <div key={tag} className="p-4 sm:p-5">
-                  <p className="font-mono text-[10px] uppercase tracking-widest text-teal-400">
-                    {tag}
-                  </p>
-                  <p className="mt-1.5 text-sm font-semibold text-white sm:text-base">
-                    {stat}
-                  </p>
-                  <p className="mt-0.5 text-xs text-zinc-500">{sub}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* Interactive Product Workspace Switcher */}
-        <section
-          id="product-tour"
-          className="mx-auto max-w-6xl px-4 py-20 sm:px-6"
-          onMouseEnter={() => setIsPaused(true)}
-          onMouseLeave={() => setIsPaused(false)}
-        >
-          <div className="mb-10 flex flex-col justify-between gap-4 md:flex-row md:items-end">
-            <div>
-              <p className="font-mono text-xs uppercase tracking-[0.18em] text-teal-400">
-                Interactive System Walkthrough
-              </p>
-              <h2 className="mt-2 text-2xl font-semibold tracking-tight text-white sm:text-3xl">
-                Five connected workspaces. One continuous loop.
-              </h2>
-            </div>
-            <p className="max-w-md text-xs leading-relaxed text-zinc-400">
-              Select any module below to inspect how candidate data flows from
-              resume parsing to interview rubric evaluation.
-            </p>
-          </div>
-
-          {/* Interactive Module Selector Tabs */}
-          <div className="grid gap-2 sm:grid-cols-5">
-            {SHOWCASE_TABS.map((tab, idx) => {
-              const active = idx === activeTabIndex;
-              return (
-                <button
-                  key={tab.id}
-                  type="button"
-                  onClick={() => setActiveTabIndex(idx)}
-                  className={`group flex flex-col justify-between rounded-xl border p-3.5 text-left transition-all duration-200 ${
-                    active
-                      ? "border-teal-500/60 bg-zinc-900/90 shadow-lg"
-                      : "border-zinc-800/80 bg-zinc-900/25 hover:border-zinc-700 hover:bg-zinc-900/50"
-                  }`}
+              <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
+                <Link
+                  to={user ? "/dashboard" : "/register"}
+                  className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-6 py-3 text-sm font-medium text-white shadow-sm transition hover:bg-blue-700"
                 >
-                  <span
-                    className={`font-mono text-[10px] uppercase tracking-wider ${
-                      active ? "text-teal-400" : "text-zinc-500"
-                    }`}
-                  >
-                    {tab.tag}
-                  </span>
-                  <span
-                    className={`mt-2 text-xs font-semibold leading-snug ${
-                      active
-                        ? "text-white"
-                        : "text-zinc-300 group-hover:text-white"
-                    }`}
-                  >
-                    {tab.title}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Framed Browser Preview with Animated Content */}
-          <div
-            key={activeShowcase.id}
-            className="animate-tab-in mt-6 overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900/40 shadow-2xl"
-          >
-            {/* Window Chrome Bar */}
-            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-zinc-800 bg-zinc-950/90 px-4 py-3">
-              <div className="flex items-center gap-2">
-                <span className="h-2.5 w-2.5 rounded-full bg-zinc-700" />
-                <span className="h-2.5 w-2.5 rounded-full bg-zinc-700" />
-                <span className="h-2.5 w-2.5 rounded-full bg-zinc-700" />
-                <span className="ml-2 rounded-md border border-zinc-800 bg-zinc-900 px-3 py-1 font-mono text-[11px] text-zinc-400">
-                  https://{activeShowcase.route}
-                </span>
-              </div>
-
-              <div className="flex items-center gap-4">
-                {activeShowcase.metrics.map((m) => (
-                  <div
-                    key={m.label}
-                    className="hidden items-center gap-1.5 font-mono text-[11px] sm:flex"
-                  >
-                    <span className="text-zinc-500">{m.label}:</span>
-                    <span className="rounded bg-teal-500/10 px-2 py-0.5 font-semibold text-teal-300">
-                      {m.value}
-                    </span>
-                  </div>
-                ))}
+                  <span>Start free</span>
+                  <ArrowRight className="h-4 w-4" />
+                </Link>
+                <a
+                  href="#how-it-works"
+                  className="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-6 py-3 text-sm font-medium text-slate-700 transition hover:bg-slate-50 hover:text-slate-900"
+                >
+                  <span>See how it works</span>
+                </a>
               </div>
             </div>
 
-            <div className="grid gap-6 p-5 lg:grid-cols-12 lg:items-center lg:p-8">
-              <div className="space-y-4 lg:col-span-4">
-                <span className="font-mono text-xs uppercase tracking-widest text-teal-400">
-                  {activeShowcase.tag}
-                </span>
-                <h3 className="text-xl font-semibold tracking-tight text-white sm:text-2xl">
-                  {activeShowcase.title}
-                </h3>
-                <p className="text-sm leading-relaxed text-zinc-400">
-                  {activeShowcase.description}
-                </p>
-
-                <div className="space-y-2 border-t border-zinc-800/80 pt-4">
-                  {activeShowcase.metrics.map((m) => (
-                    <div
-                      key={m.label}
-                      className="flex items-center justify-between rounded-lg border border-zinc-800/80 bg-[#09090b] px-3 py-2 font-mono text-xs"
+            {/* Interactive Product Preview */}
+            <div className="mt-14 rounded-2xl border border-slate-200 bg-slate-50 p-4 sm:p-6 shadow-sm">
+              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 pb-4">
+                <div className="flex flex-wrap gap-2">
+                  {PREVIEW_STAGES.map((stage) => (
+                    <button
+                      key={stage.id}
+                      type="button"
+                      onClick={() => setActiveStage(stage.id)}
+                      className={`rounded-lg px-3.5 py-2 text-xs font-medium transition ${
+                        activeStage === stage.id
+                          ? "bg-blue-600 text-white shadow-sm"
+                          : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-100 hover:text-slate-900"
+                      }`}
                     >
-                      <span className="text-zinc-400">{m.label}</span>
-                      <span className="font-semibold text-teal-300">
-                        {m.value}
-                      </span>
-                    </div>
+                      {stage.step}
+                    </button>
                   ))}
                 </div>
-
-                <div className="pt-2">
-                  <Link
-                    to={isAuthenticated ? "/dashboard" : "/register"}
-                    className="inline-flex items-center gap-1.5 text-xs font-semibold text-teal-400 hover:text-teal-300"
-                  >
-                    <span>
-                      {isAuthenticated
-                        ? "Open this module in your workspace"
-                        : "Try this workflow with your resume"}
-                    </span>
-                    <ChevronRight className="h-4 w-4" />
-                  </Link>
-                </div>
+                <span className="text-xs font-medium text-slate-500">
+                  Interactive workflow preview
+                </span>
               </div>
 
-              <div className="lg:col-span-8">
-                <img
-                  src={activeShowcase.image}
-                  alt={`${activeShowcase.title}. Sample data.`}
-                  width={1280}
-                  height={720}
-                  className="w-full rounded-xl border border-zinc-800 bg-zinc-950 shadow-xl"
-                />
+              <div className="mt-6 grid items-center gap-8 lg:grid-cols-12">
+                <div className="space-y-4 lg:col-span-5">
+                  <p className="text-xs font-semibold uppercase tracking-wider text-blue-600">
+                    {currentStage.step}
+                  </p>
+                  <h2 className="text-xl font-semibold text-slate-900 sm:text-2xl">
+                    {currentStage.title}
+                  </h2>
+                  <p className="text-sm leading-relaxed text-slate-600">
+                    {currentStage.summary}
+                  </p>
+                  <ul className="space-y-2.5 pt-2">
+                    {currentStage.highlights.map((item) => (
+                      <li
+                        key={item}
+                        className="flex items-start gap-2.5 text-sm text-slate-700"
+                      >
+                        <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
+                        <span>{item}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+
+                <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm lg:col-span-7">
+                  <img
+                    src={currentStage.image}
+                    alt={currentStage.title}
+                    className="h-auto w-full object-cover"
+                  />
+                </div>
               </div>
             </div>
           </div>
         </section>
 
-        {/* 4-Step Closed Loop Section (#how-it-works) */}
+        {/* 3. Problem Section */}
+        <section className="border-b border-slate-200 py-16 sm:py-20">
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <div className="max-w-2xl">
+              <p className="text-xs font-semibold uppercase tracking-wider text-blue-600">
+                The Problem
+              </p>
+              <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl">
+                Job preparation is scattered.
+              </h2>
+              <p className="mt-3 text-sm leading-relaxed text-slate-600 sm:text-base">
+                Candidates use separate tools for resume analysis, job tracking,
+                tailoring, and interview practice—leaving no connection between
+                what a role requires and what you practice.
+              </p>
+            </div>
+
+            <div className="mt-10 grid gap-6 md:grid-cols-3">
+              <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+                <span className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-amber-50 text-amber-700">
+                  <Target className="h-5 w-5" />
+                </span>
+                <h3 className="mt-4 text-base font-semibold text-slate-900">
+                  Unknown skill gaps
+                </h3>
+                <p className="mt-2 text-sm leading-relaxed text-slate-600">
+                  Applying without knowing which missing requirements appear
+                  most frequently across your target engineering roles.
+                </p>
+              </div>
+
+              <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+                <span className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-blue-50 text-blue-700">
+                  <MessageSquare className="h-5 w-5" />
+                </span>
+                <h3 className="mt-4 text-base font-semibold text-slate-900">
+                  Generic interview practice
+                </h3>
+                <p className="mt-2 text-sm leading-relaxed text-slate-600">
+                  Practicing random questions that do not test the specific gap
+                  skills or technical depth required by your saved jobs.
+                </p>
+              </div>
+
+              <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+                <span className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-50 text-emerald-700">
+                  <Award className="h-5 w-5" />
+                </span>
+                <h3 className="mt-4 text-base font-semibold text-slate-900">
+                  No measurable progress
+                </h3>
+                <p className="mt-2 text-sm leading-relaxed text-slate-600">
+                  Completing mock interviews without a persistent skill profile
+                  that tracks which competencies are verified or still need
+                  work.
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* 4. How It Works Section */}
         <section
           id="how-it-works"
-          className="border-y border-zinc-800/80 bg-zinc-950/60 py-20"
+          className="border-b border-slate-200 bg-white py-16 sm:py-20"
         >
-          <div className="mx-auto max-w-6xl px-4 sm:px-6">
-            <div className="mb-12 flex flex-col justify-between gap-4 md:flex-row md:items-end">
-              <div>
-                <p className="font-mono text-xs uppercase tracking-[0.18em] text-teal-400">
-                  Closed-Loop Readiness Workflow
-                </p>
-                <h2 className="mt-2 text-2xl font-semibold tracking-tight text-white sm:text-3xl">
-                  How TrueHire turns gaps into offers
-                </h2>
-              </div>
-              <p className="max-w-md text-xs leading-relaxed text-zinc-400">
-                Most platforms stop after showing a job listing. TrueHire
-                connects discovery, gap analysis, mock interviewing, and resume
-                tailoring into a continuous feedback cycle.
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <div className="max-w-2xl">
+              <p className="text-xs font-semibold uppercase tracking-wider text-blue-600">
+                How It Works
               </p>
+              <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl">
+                Four steps from resume upload to verified readiness
+              </h2>
             </div>
 
-            <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-              {STEPS.map((step) => (
+            <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+              {[
+                {
+                  step: "01",
+                  title: "Upload resume",
+                  desc: "Upload a PDF or DOCX resume to extract your skills, experience, and project background.",
+                },
+                {
+                  step: "02",
+                  title: "Match with real roles",
+                  desc: "Compare your profile against verified engineering roles from public company job boards.",
+                },
+                {
+                  step: "03",
+                  title: "Identify skill gaps",
+                  desc: "See exactly which requirements you meet, which are missing, and how often each gap appears.",
+                },
+                {
+                  step: "04",
+                  title: "Practice and improve",
+                  desc: "Take targeted mock interviews focused on your gaps and update your verified skill profile.",
+                },
+              ].map((item) => (
                 <div
-                  key={step.title}
-                  className="group relative flex flex-col justify-between rounded-xl border border-zinc-800/90 bg-[#09090b] p-6 transition-all duration-200 hover:-translate-y-1 hover:border-teal-500/40"
+                  key={item.step}
+                  className="rounded-xl border border-slate-200 bg-slate-50/70 p-6"
                 >
-                  <div>
-                    <div className="flex items-center justify-between">
-                      <span className="font-mono text-xs font-semibold text-teal-400">
-                        Step {step.step}
-                      </span>
-                      <span className="h-2 w-2 rounded-full bg-zinc-800 transition group-hover:bg-teal-400" />
-                    </div>
-                    <h3 className="mt-4 text-lg font-semibold text-white">
-                      {step.title}
-                    </h3>
-                    <p className="mt-2 text-sm leading-relaxed text-zinc-400">
-                      {step.body}
-                    </p>
-                  </div>
-
-                  <div className="mt-6 border-t border-zinc-800/80 pt-3 font-mono text-[11px] text-zinc-500">
-                    {step.detail}
-                  </div>
+                  <span className="text-xs font-bold uppercase tracking-wider text-blue-600 tabular-nums">
+                    Step {item.step}
+                  </span>
+                  <h3 className="mt-2 text-base font-semibold text-slate-900">
+                    {item.title}
+                  </h3>
+                  <p className="mt-2 text-sm leading-relaxed text-slate-600">
+                    {item.desc}
+                  </p>
                 </div>
               ))}
             </div>
           </div>
         </section>
 
-        {/* Architectural Pillars Bento Grid (#architecture) */}
+        {/* 5. Core Features Section */}
         <section
-          id="architecture"
-          className="mx-auto max-w-6xl px-4 py-20 sm:px-6"
+          id="features"
+          className="border-b border-slate-200 py-16 sm:py-20"
         >
-          <div className="mb-12">
-            <p className="font-mono text-xs uppercase tracking-[0.18em] text-teal-400">
-              Engineering Standards
-            </p>
-            <h2 className="mt-2 text-2xl font-semibold tracking-tight text-white sm:text-3xl">
-              Every job has a source. Every score has a trace.
-            </h2>
-          </div>
-
-          <div className="grid gap-6 md:grid-cols-12">
-            {/* Bento 1: Provenance */}
-            <div className="flex flex-col justify-between rounded-xl border border-zinc-800 bg-zinc-900/30 p-6 md:col-span-7">
-              <div>
-                <div className="inline-flex items-center gap-2 font-mono text-xs text-teal-400">
-                  <ShieldCheck className="h-4 w-4" />
-                  <span>OFFICIAL ATS PROVENANCE</span>
-                </div>
-                <h3 className="mt-3 text-xl font-semibold text-white">
-                  Every job has a source you can check
-                </h3>
-                <p className="mt-2 text-sm leading-relaxed text-zinc-400">
-                  Listings come from the company's own job board through its
-                  official applicant tracking system. Each job shows where it
-                  came from and when it was last synced.
-                </p>
-              </div>
-
-              <div className="mt-6 rounded-lg border border-zinc-800 bg-[#09090b] p-4 font-mono text-xs">
-                <div className="flex items-center justify-between text-zinc-500">
-                  <span>ATS_ADAPTER // GREENHOUSE_NORMALIZER</span>
-                  <span className="text-emerald-400">STATUS: ACTIVE</span>
-                </div>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {[
-                    "Stripe",
-                    "Cloudflare",
-                    "Vercel",
-                    "Datadog",
-                    "Discord",
-                    "Bengaluru Tech Hubs",
-                    "Remote Global",
-                  ].map((src) => (
-                    <span
-                      key={src}
-                      className="rounded border border-zinc-800 bg-zinc-900 px-2.5 py-1 text-[11px] text-zinc-300"
-                    >
-                      {src}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            {/* Bento 2: Deterministic Scoring */}
-            <div className="flex flex-col justify-between rounded-xl border border-zinc-800 bg-zinc-900/30 p-6 md:col-span-5">
-              <div>
-                <div className="inline-flex items-center gap-2 font-mono text-xs text-teal-400">
-                  <Terminal className="h-4 w-4" />
-                  <span>DETERMINISTIC SCORING</span>
-                </div>
-                <h3 className="mt-3 text-xl font-semibold text-white">
-                  Scores you can trace
-                </h3>
-                <p className="mt-2 text-sm leading-relaxed text-zinc-400">
-                  A match score comes from named skills. Every gap says why it
-                  matters. When a posting lists no skills we can compare,
-                  TrueHire says so instead of guessing a number.
-                </p>
-              </div>
-
-              <div className="mt-6 space-y-2 rounded-lg border border-zinc-800 bg-[#09090b] p-4 font-mono text-xs">
-                <div className="flex justify-between text-zinc-400">
-                  <span>Matched (Resume ∩ Job)</span>
-                  <span className="text-emerald-400">
-                    [java, typescript, postgresql, docker]
-                  </span>
-                </div>
-                <div className="flex justify-between text-zinc-400">
-                  <span>Priority Gap Flagged</span>
-                  <span className="text-amber-400">[redis, system design]</span>
-                </div>
-                <div className="border-t border-zinc-800 pt-2 flex justify-between font-semibold text-white">
-                  <span>Explainable Match Score</span>
-                  <span className="text-teal-400">67% (4 of 6 verified)</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Bento 3: Skill-Driven Interview Customizer */}
-            <div className="flex flex-col justify-between rounded-xl border border-zinc-800 bg-zinc-900/30 p-6 md:col-span-5">
-              <div>
-                <div className="inline-flex items-center gap-2 font-mono text-xs text-teal-400">
-                  <Sliders className="h-4 w-4" />
-                  <span>SKILL-DRIVEN MOCK INTERVIEWS</span>
-                </div>
-                <h3 className="mt-3 text-xl font-semibold text-white">
-                  Practice the exact skills the job demands
-                </h3>
-                <p className="mt-2 text-sm leading-relaxed text-zinc-400">
-                  Pick specific missing or matched skills from the job, choose
-                  your duration (15m to 60m) and difficulty level, and receive
-                  rubric-scored feedback on every answer.
-                </p>
-              </div>
-
-              <div className="mt-6 flex flex-wrap gap-1.5">
-                {[
-                  "15m / 30m / 45m / 60m",
-                  "Easy · Medium · Hard",
-                  "Job Skill Gaps",
-                  "Custom Skill Input",
-                  "Rubric Breakdown",
-                ].map((pill) => (
-                  <span
-                    key={pill}
-                    className="rounded-md border border-zinc-800 bg-[#09090b] px-2.5 py-1 font-mono text-[11px] text-zinc-300"
-                  >
-                    {pill}
-                  </span>
-                ))}
-              </div>
-            </div>
-
-            {/* Bento 4: Non-Fabricated Resume Tailoring */}
-            <div className="flex flex-col justify-between rounded-xl border border-zinc-800 bg-zinc-900/30 p-6 md:col-span-7">
-              <div>
-                <div className="inline-flex items-center gap-2 font-mono text-xs text-teal-400">
-                  <Lock className="h-4 w-4" />
-                  <span>ZERO-FABRICATION GUARDRAIL</span>
-                </div>
-                <h3 className="mt-3 text-xl font-semibold text-white">
-                  Tailoring bounded strictly by your real experience
-                </h3>
-                <p className="mt-2 text-sm leading-relaxed text-zinc-400">
-                  TrueHire never invents projects, companies, or skills you
-                  don't have. It scans your existing experience descriptions for
-                  evidence of required job skills and lets you accept or reject
-                  every addition.
-                </p>
-              </div>
-
-              <div className="mt-6 grid gap-3 sm:grid-cols-2">
-                <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-3">
-                  <p className="font-mono text-[10px] uppercase text-emerald-400">
-                    Suggested to Add (Evidence Found)
-                  </p>
-                  <p className="mt-1 text-xs font-medium text-zinc-200">
-                    REST APIs — Found in your backend project description
-                  </p>
-                </div>
-                <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-3">
-                  <p className="font-mono text-[10px] uppercase text-amber-400">
-                    Not on Resume (Held Back)
-                  </p>
-                  <p className="mt-1 text-xs font-medium text-zinc-200">
-                    Kubernetes — Not in resume text; flagged as a skill gap
-                    instead
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* Comparison Table (#comparison) */}
-        <section
-          id="comparison"
-          className="border-t border-zinc-800/80 bg-zinc-950/40 py-20"
-        >
-          <div className="mx-auto max-w-6xl px-4 sm:px-6">
-            <div className="mb-10">
-              <p className="font-mono text-xs uppercase tracking-[0.18em] text-teal-400">
-                Architectural Comparison
-              </p>
-              <h2 className="mt-2 text-2xl font-semibold tracking-tight text-white sm:text-3xl">
-                Why generic job boards and AI wrappers fall short
-              </h2>
-            </div>
-
-            <div className="overflow-x-auto rounded-xl border border-zinc-800 bg-[#09090b]">
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="border-b border-zinc-800 bg-zinc-900/60 font-mono text-xs uppercase tracking-wider text-zinc-400">
-                    <th className="py-4 px-5">Capability</th>
-                    <th className="py-4 px-5">Generic Boards & AI Wrappers</th>
-                    <th className="py-4 px-5 text-teal-400">
-                      TrueHire Standard
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-zinc-800/80 text-xs sm:text-sm">
-                  {COMPARISON_ROWS.map((row) => (
-                    <tr key={row.feature} className="hover:bg-zinc-900/30">
-                      <td className="py-4 px-5 font-medium text-zinc-200">
-                        {row.feature}
-                      </td>
-                      <td className="py-4 px-5 text-zinc-500">{row.generic}</td>
-                      <td className="py-4 px-5 font-medium text-zinc-100">
-                        <span className="inline-flex items-center gap-2">
-                          <CheckCircle2 className="h-4 w-4 shrink-0 text-teal-400" />
-                          <span>{row.truehire}</span>
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </section>
-
-        {/* Bottom CTA Banner */}
-        <section className="mx-auto max-w-6xl px-4 py-20 sm:px-6">
-          <div className="relative overflow-hidden rounded-2xl border border-zinc-800 bg-gradient-to-br from-zinc-900 via-[#09090b] to-teal-950/30 p-8 sm:p-12">
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             <div className="max-w-2xl">
-              <p className="font-mono text-xs uppercase tracking-widest text-teal-400">
-                Ready to Benchmark Your Readiness?
+              <p className="text-xs font-semibold uppercase tracking-wider text-blue-600">
+                Core Features
               </p>
-              <h2 className="mt-3 text-2xl font-semibold tracking-tight text-white sm:text-4xl">
-                Upload your resume once. Test yourself against verified
-                engineering roles.
+              <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl">
+                Everything needed to prepare with evidence
               </h2>
-              <p className="mt-3 text-sm leading-relaxed text-zinc-400">
-                Inspect your exact skill overlap, practice targeted mock
-                interviews for your weak spots, and track every application in
-                one workspace.
+            </div>
+
+            <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+              {[
+                {
+                  icon: <FileText className="h-5 w-5 text-blue-600" />,
+                  title: "Resume intelligence",
+                  desc: "Structured PDF and DOCX parsing with user confirmation so you control which extracted skills are used.",
+                },
+                {
+                  icon: <Briefcase className="h-5 w-5 text-blue-600" />,
+                  title: "Verified job discovery",
+                  desc: "Synchronized engineering listings directly from public Greenhouse job boards with source links.",
+                },
+                {
+                  icon: <Target className="h-5 w-5 text-blue-600" />,
+                  title: "Skill-gap analysis",
+                  desc: "Transparent requirement coverage showing matched skills, missing skills, and mention frequency.",
+                },
+                {
+                  icon: <MessageSquare className="h-5 w-5 text-blue-600" />,
+                  title: "Targeted mock interviews",
+                  desc: "Configurable 15 to 60-minute sessions calibrated to your target role, difficulty, and priority skill gaps.",
+                },
+                {
+                  icon: <Award className="h-5 w-5 text-blue-600" />,
+                  title: "Evidence-based skill profile",
+                  desc: "Every completed interview updates your readiness profile with demonstrated strengths and practice areas.",
+                },
+                {
+                  icon: <Layers className="h-5 w-5 text-blue-600" />,
+                  title: "Application tracking",
+                  desc: "Organize opportunities from Saved to Offer with match coverage and interview readiness attached.",
+                },
+              ].map((feat) => (
+                <div
+                  key={feat.title}
+                  className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm"
+                >
+                  <div className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-slate-200 bg-slate-50">
+                    {feat.icon}
+                  </div>
+                  <h3 className="mt-4 text-base font-semibold text-slate-900">
+                    {feat.title}
+                  </h3>
+                  <p className="mt-2 text-sm leading-relaxed text-slate-600">
+                    {feat.desc}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* 6. Differentiator Section: Closed-Loop Readiness */}
+        <section
+          id="closed-loop"
+          className="border-b border-slate-200 bg-white py-16 sm:py-20"
+        >
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <div className="mx-auto max-w-3xl text-center">
+              <p className="text-xs font-semibold uppercase tracking-wider text-blue-600">
+                Closed-Loop System
               </p>
-              <div className="mt-7 flex flex-wrap gap-3">
-                {isAuthenticated ? (
-                  <>
-                    <Link
-                      to="/dashboard"
-                      className="inline-flex items-center gap-2 rounded-xl bg-teal-500 px-6 py-3 text-xs font-semibold text-zinc-950 transition hover:bg-teal-400"
-                    >
-                      <span>Return to Dashboard</span>
-                      <ArrowUpRight className="h-4 w-4" />
-                    </Link>
-                    <Link
-                      to="/jobs"
-                      className="inline-flex items-center gap-2 rounded-xl border border-zinc-700 bg-zinc-900 px-6 py-3 text-xs font-semibold text-white transition hover:bg-zinc-800"
-                    >
-                      <span>Browse Verified Jobs</span>
-                    </Link>
-                  </>
-                ) : (
-                  <>
-                    <Link
-                      to="/register"
-                      className="inline-flex items-center gap-2 rounded-xl bg-teal-500 px-6 py-3 text-xs font-semibold text-zinc-950 transition hover:bg-teal-400"
-                    >
-                      <span>Create Free Account</span>
-                      <ArrowUpRight className="h-4 w-4" />
-                    </Link>
-                    <Link
-                      to="/login"
-                      className="inline-flex items-center gap-2 rounded-xl border border-zinc-700 bg-zinc-900 px-6 py-3 text-xs font-semibold text-white transition hover:bg-zinc-800"
-                    >
-                      <span>Sign in to Existing Account</span>
-                    </Link>
-                  </>
-                )}
+              <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl">
+                More than a resume score.
+              </h2>
+              <p className="mt-3 text-sm leading-relaxed text-slate-600 sm:text-base">
+                Instead of stopping at a static match percentage, TrueHire
+                connects your interview performance directly back into your
+                skill profile and future job matches.
+              </p>
+            </div>
+
+            <div className="mt-10 grid gap-4 sm:grid-cols-5">
+              {[
+                {
+                  step: "1. Resume",
+                  detail: "Extract baseline skills from your PDF or DOCX",
+                },
+                {
+                  step: "2. Gaps",
+                  detail: "Compare against target role requirements",
+                },
+                {
+                  step: "3. Interview",
+                  detail: "Practice questions focused on missing skills",
+                },
+                {
+                  step: "4. Evidence",
+                  detail: "Rubric evaluation records strengths & weak areas",
+                },
+                {
+                  step: "5. Readiness",
+                  detail: "Updated skill profile improves future preparation",
+                },
+              ].map((node, index) => (
+                <div
+                  key={node.step}
+                  className="relative rounded-xl border border-slate-200 bg-slate-50 p-5"
+                >
+                  <p className="text-sm font-semibold text-slate-900">
+                    {node.step}
+                  </p>
+                  <p className="mt-1.5 text-xs leading-relaxed text-slate-600">
+                    {node.detail}
+                  </p>
+                  {index < 4 && (
+                    <span className="hidden lg:block absolute -right-3 top-1/2 -translate-y-1/2 z-10 rounded-full border border-slate-200 bg-white p-1 text-slate-400">
+                      <ArrowRight className="h-3.5 w-3.5" />
+                    </span>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* 7. Technical Credibility */}
+        <section className="border-b border-slate-200 py-14">
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="flex items-start gap-3 rounded-xl border border-slate-200 bg-white p-4">
+                <Code2 className="mt-0.5 h-5 w-5 shrink-0 text-blue-600" />
+                <div>
+                  <p className="text-sm font-semibold text-slate-900">
+                    Full-Stack TypeScript
+                  </p>
+                  <p className="mt-0.5 text-xs text-slate-600">
+                    Built with React, TypeScript, Node.js, Express, and Zod
+                    validation.
+                  </p>
+                </div>
               </div>
+
+              <div className="flex items-start gap-3 rounded-xl border border-slate-200 bg-white p-4">
+                <Database className="mt-0.5 h-5 w-5 shrink-0 text-blue-600" />
+                <div>
+                  <p className="text-sm font-semibold text-slate-900">
+                    PostgreSQL & Prisma
+                  </p>
+                  <p className="mt-0.5 text-xs text-slate-600">
+                    Relational persistence for resumes, matches, interviews, and
+                    skill evidence.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3 rounded-xl border border-slate-200 bg-white p-4">
+                <Briefcase className="mt-0.5 h-5 w-5 shrink-0 text-blue-600" />
+                <div>
+                  <p className="text-sm font-semibold text-slate-900">
+                    Greenhouse Integration
+                  </p>
+                  <p className="mt-0.5 text-xs text-slate-600">
+                    Direct job synchronization from public company ATS boards.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3 rounded-xl border border-slate-200 bg-white p-4">
+                <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-blue-600" />
+                <div>
+                  <p className="text-sm font-semibold text-slate-900">
+                    Tested & Verified
+                  </p>
+                  <p className="mt-0.5 text-xs text-slate-600">
+                    77 automated Vitest & Supertest checks with JWT
+                    authentication.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* 8. Final CTA */}
+        <section className="bg-white py-16 sm:py-20">
+          <div className="mx-auto max-w-4xl px-4 text-center sm:px-6 lg:px-8">
+            <h2 className="text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl">
+              Build your readiness profile.
+            </h2>
+            <p className="mt-3 text-sm text-slate-600 sm:text-base">
+              Upload your resume, see your requirement coverage on real
+              engineering roles, and practice targeted interviews.
+            </p>
+            <div className="mt-7 flex justify-center gap-3">
+              <Link
+                to={user ? "/dashboard" : "/register"}
+                className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-6 py-3 text-sm font-medium text-white shadow-sm transition hover:bg-blue-700"
+              >
+                <span>Create free account</span>
+                <ArrowRight className="h-4 w-4" />
+              </Link>
             </div>
           </div>
         </section>
       </main>
 
-      {/* Complete Multi-Column SaaS Footer */}
-      <footer className="border-t border-zinc-800/80 bg-[#070709] pt-14 pb-10 text-xs text-zinc-400">
-        <div className="mx-auto max-w-6xl px-4 sm:px-6">
-          <div className="grid gap-10 pb-12 sm:grid-cols-2 lg:grid-cols-5">
-            {/* Col 1-2: Brand & System Status */}
-            <div className="space-y-4 lg:col-span-2">
-              <Link
-                to="/"
-                className="flex items-center gap-2 text-sm font-semibold text-white"
-              >
-                <span className="h-2 w-2 rounded-full bg-teal-400" />
-                <span>TrueHire</span>
-              </Link>
-              <p className="max-w-xs text-xs leading-relaxed text-zinc-400">
-                Verified job discovery, deterministic resume-to-job matching,
-                and closed-loop AI interview readiness platform.
-              </p>
-              <div className="inline-flex items-center gap-2 rounded-md border border-zinc-800 bg-zinc-900/60 px-3 py-1.5 font-mono text-[11px] text-zinc-300">
-                <span className="h-2 w-2 rounded-full bg-emerald-400" />
-                <span>All systems operational · ATS & AI Ready</span>
-              </div>
-            </div>
-
-            {/* Col 3: Workspace */}
-            <div className="space-y-3">
-              <p className="font-mono text-[11px] font-semibold uppercase tracking-wider text-zinc-200">
-                Workspace
-              </p>
-              <ul className="space-y-2">
-                <li>
-                  <Link to="/dashboard" className="hover:text-white">
-                    Readiness Dashboard
-                  </Link>
-                </li>
-                <li>
-                  <Link to="/jobs" className="hover:text-white">
-                    Verified Job Board
-                  </Link>
-                </li>
-                <li>
-                  <Link to="/saved-jobs" className="hover:text-white">
-                    Saved Roles
-                  </Link>
-                </li>
-                <li>
-                  <Link to="/applications" className="hover:text-white">
-                    Application Tracker
-                  </Link>
-                </li>
-                <li>
-                  <Link to="/resume" className="hover:text-white">
-                    Resume Manager
-                  </Link>
-                </li>
-              </ul>
-            </div>
-
-            {/* Col 4: Platform Architecture */}
-            <div className="space-y-3">
-              <p className="font-mono text-[11px] font-semibold uppercase tracking-wider text-zinc-200">
-                Architecture
-              </p>
-              <ul className="space-y-2">
-                <li>
-                  <a href="#product-tour" className="hover:text-white">
-                    Interactive Tour
-                  </a>
-                </li>
-                <li>
-                  <a href="#how-it-works" className="hover:text-white">
-                    4-Stage Closed Loop
-                  </a>
-                </li>
-                <li>
-                  <a href="#architecture" className="hover:text-white">
-                    Deterministic Matcher
-                  </a>
-                </li>
-                <li>
-                  <a href="#comparison" className="hover:text-white">
-                    Zero-Fabrication Guardrails
-                  </a>
-                </li>
-              </ul>
-            </div>
-
-            {/* Col 5: Account */}
-            <div className="space-y-3">
-              <p className="font-mono text-[11px] font-semibold uppercase tracking-wider text-zinc-200">
-                Candidate Access
-              </p>
-              <ul className="space-y-2">
-                {isAuthenticated ? (
-                  <>
-                    <li>
-                      <Link to="/profile" className="hover:text-white">
-                        Candidate Profile
-                      </Link>
-                    </li>
-                    <li>
-                      <Link to="/onboarding" className="hover:text-white">
-                        Preferences Wizard
-                      </Link>
-                    </li>
-                  </>
-                ) : (
-                  <>
-                    <li>
-                      <Link to="/login" className="hover:text-white">
-                        Sign In
-                      </Link>
-                    </li>
-                    <li>
-                      <Link to="/register" className="hover:text-white">
-                        Create Account
-                      </Link>
-                    </li>
-                  </>
-                )}
-              </ul>
-            </div>
-          </div>
-
-          <div className="flex flex-col items-center justify-between gap-4 border-t border-zinc-800/80 pt-6 font-mono text-[11px] text-zinc-500 sm:flex-row">
-            <p>
-              © {new Date().getFullYear()} TrueHire. Built for verifiable career
-              readiness.
-            </p>
-            <p>REACT · TYPESCRIPT · EXPRESS · PRISMA · POSTGRESQL</p>
+      <footer className="border-t border-slate-200 bg-slate-50 py-8">
+        <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-4 px-4 text-xs text-slate-500 sm:px-6 lg:px-8">
+          <span>TrueHire · Evidence-Based Interview Readiness</span>
+          <div className="flex gap-4">
+            <Link to="/login" className="hover:text-slate-800">
+              Login
+            </Link>
+            <Link to="/register" className="hover:text-slate-800">
+              Create account
+            </Link>
           </div>
         </div>
       </footer>

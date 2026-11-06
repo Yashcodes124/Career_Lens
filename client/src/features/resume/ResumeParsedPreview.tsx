@@ -5,8 +5,8 @@ const Section: React.FC<{ title: string; children: React.ReactNode }> = ({
   title,
   children,
 }) => (
-  <section className="space-y-2.5 border-t border-zinc-800/80 pt-5 first:border-t-0 first:pt-0">
-    <h3 className="font-mono text-xs font-semibold uppercase tracking-wider text-zinc-400">
+  <section className="space-y-2.5 border-t border-slate-200 pt-5 first:border-t-0 first:pt-0">
+    <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500">
       {title}
     </h3>
     {children}
@@ -30,9 +30,9 @@ export const ResumeParsedPreview: React.FC<{ resume: ResumeSummary }> = ({
 
   if (!parsed) {
     return (
-      <p className="text-sm text-zinc-400">
-        This resume was saved without parsed details. Upload it again to read
-        it.
+      <p className="text-sm text-slate-600">
+        This resume was saved without structured details. Upload it again to
+        extract your skills and experience.
       </p>
     );
   }
@@ -40,16 +40,16 @@ export const ResumeParsedPreview: React.FC<{ resume: ResumeSummary }> = ({
   return (
     <div className="space-y-5">
       {parsed.summary && (
-        <Section title="Summary">
-          <p className="text-sm leading-relaxed text-zinc-300">
+        <Section title="Parsed Summary">
+          <p className="text-sm leading-relaxed text-slate-700">
             {parsed.summary}
           </p>
         </Section>
       )}
 
-      <Section title={`Skills (${resume.skills.length})`}>
+      <Section title={`Extracted Skills (${resume.skills.length})`}>
         {resume.skills.length === 0 ? (
-          <p className="text-sm text-zinc-400">
+          <p className="text-sm text-slate-500">
             No skills were found in this resume.
           </p>
         ) : (
@@ -57,7 +57,7 @@ export const ResumeParsedPreview: React.FC<{ resume: ResumeSummary }> = ({
             {resume.skills.map((skill) => (
               <li
                 key={skill}
-                className="rounded border border-zinc-800 bg-[#09090b] px-2.5 py-1 font-mono text-xs text-zinc-200"
+                className="rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-800"
               >
                 {skill}
               </li>
@@ -72,23 +72,26 @@ export const ResumeParsedPreview: React.FC<{ resume: ResumeSummary }> = ({
             {parsed.experience.map((item, index) => (
               <li
                 key={`${item.company}-${index}`}
-                className="rounded-lg border border-zinc-800/70 bg-[#09090b]/60 p-3.5 text-sm"
+                className="rounded-lg border border-slate-200 bg-slate-50/70 p-3.5 text-sm"
               >
                 <div className="flex flex-wrap items-baseline justify-between gap-2">
-                  <p className="font-medium text-zinc-100">
+                  <p className="font-semibold text-slate-900">
                     {item.role || "Role not listed"}
                     {item.company && (
-                      <span className="text-zinc-400"> · {item.company}</span>
+                      <span className="font-normal text-slate-600">
+                        {" "}
+                        · {item.company}
+                      </span>
                     )}
                   </p>
                   {formatDuration(item.durationMonths) && (
-                    <span className="font-mono text-xs text-zinc-500">
+                    <span className="text-xs font-medium text-slate-500 tabular-nums">
                       {formatDuration(item.durationMonths)}
                     </span>
                   )}
                 </div>
                 {item.description && (
-                  <p className="mt-1.5 text-xs leading-relaxed text-zinc-400">
+                  <p className="mt-1.5 text-xs leading-relaxed text-slate-600">
                     {item.description}
                   </p>
                 )}
@@ -104,12 +107,12 @@ export const ResumeParsedPreview: React.FC<{ resume: ResumeSummary }> = ({
             {parsed.education.map((item, index) => (
               <li
                 key={`${item.institution}-${index}`}
-                className="rounded-lg border border-zinc-800/70 bg-[#09090b]/60 p-3"
+                className="rounded-lg border border-slate-200 bg-slate-50/70 p-3"
               >
-                <p className="font-medium text-zinc-100">
+                <p className="font-semibold text-slate-900">
                   {item.institution || "Institution not listed"}
                 </p>
-                <p className="mt-0.5 text-xs text-zinc-400">
+                <p className="mt-0.5 text-xs text-slate-600">
                   {[item.degree, item.field].filter(Boolean).join(", ")}
                 </p>
               </li>
@@ -124,13 +127,13 @@ export const ResumeParsedPreview: React.FC<{ resume: ResumeSummary }> = ({
             {parsed.projects.map((item, index) => (
               <li
                 key={`${item.name}-${index}`}
-                className="rounded-lg border border-zinc-800/70 bg-[#09090b]/60 p-3.5"
+                className="rounded-lg border border-slate-200 bg-slate-50/70 p-3.5"
               >
-                <p className="font-medium text-zinc-100">
+                <p className="font-semibold text-slate-900">
                   {item.name || "Untitled project"}
                 </p>
                 {item.description && (
-                  <p className="mt-1 text-xs leading-relaxed text-zinc-400">
+                  <p className="mt-1 text-xs leading-relaxed text-slate-600">
                     {item.description}
                   </p>
                 )}

@@ -49,7 +49,6 @@ export const JobsPage: React.FC = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [isTracking, setIsTracking] = useState(false);
 
-  // Sync & External Import states
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncBanner, setSyncBanner] = useState<string | null>(null);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
@@ -99,7 +98,7 @@ export const JobsPage: React.FC = () => {
       const refreshed = await fetchJobs();
       setJobs(refreshed);
       setSyncBanner(
-        `Synced latest verified ATS roles (${refreshed.length} active listings across India & Global hubs).`,
+        `Synchronized ${refreshed.length} active engineering roles from public job boards.`,
       );
       setTimeout(() => setSyncBanner(null), 6000);
     } catch (err) {
@@ -118,11 +117,12 @@ export const JobsPage: React.FC = () => {
 
     try {
       setIsImporting(true);
-      const res = await apiClient.post<{ success: boolean; data: Job }>(
-        "/jobs/external",
-        importForm,
-      );
-      const created = res.data.data;
+      const res = await apiClient.post<{
+        success: boolean;
+        data: Job;
+        job?: Job;
+      }>("/jobs/external", importForm);
+      const created = res.data ?? res.job!;
       setJobs((prev) => [created, ...prev]);
       setIsImportModalOpen(false);
       setImportForm({
@@ -135,7 +135,6 @@ export const JobsPage: React.FC = () => {
         description: "",
       });
 
-      // Open match page directly if user has a resume, otherwise open the job drawer
       if (resumeId) {
         navigate(`/matches/${created.id}?resumeId=${resumeId}`);
       } else {
@@ -152,7 +151,6 @@ export const JobsPage: React.FC = () => {
     }
   };
 
-  // Dynamic cross-platform search URLs (LinkedIn, Naukri, Indeed India, Glassdoor, Wellfound, Instahyre)
   const crossPlatformLinks = useMemo(() => {
     const roleQuery = search.trim() || user?.targetRole || "Software Engineer";
     const locQuery = locationFilter.trim() || "India";
@@ -171,7 +169,7 @@ export const JobsPage: React.FC = () => {
       },
       {
         name: "Naukri.com",
-        badge: "India #1",
+        badge: "India",
         url: `https://www.naukri.com/${slugRole}-jobs?k=${q}&l=${l}`,
       },
       {
@@ -186,12 +184,12 @@ export const JobsPage: React.FC = () => {
       },
       {
         name: "Wellfound",
-        badge: "Top Startups",
+        badge: "Startups",
         url: `https://wellfound.com/jobs`,
       },
       {
         name: "Instahyre",
-        badge: "Tech Product",
+        badge: "Product Tech",
         url: `https://www.instahyre.com/search-jobs/`,
       },
     ];
@@ -343,23 +341,21 @@ export const JobsPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#09090b] text-zinc-100">
+    <div className="min-h-screen bg-[#f8fafc] text-slate-900">
       <Navbar />
 
-      <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
-        {/* Header with Live Sync & External Platform Importer */}
-        <header className="mb-6 flex flex-wrap items-end justify-between gap-4 border-b border-zinc-800/80 pb-6">
+      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+        {/* 1. Page Header */}
+        <header className="mb-6 flex flex-wrap items-end justify-between gap-4 border-b border-slate-200 pb-6">
           <div>
-            <p className="font-mono text-xs uppercase tracking-wider text-teal-400">
-              Verified ATS & Multi-Platform Discovery
+            <p className="text-xs font-semibold uppercase tracking-wider text-blue-600">
+              Verified Job Discovery
             </p>
-            <h1 className="mt-2 text-2xl font-semibold tracking-tight text-white sm:text-3xl">
-              Job Board
+            <h1 className="mt-1 text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl">
+              Explore Jobs
             </h1>
-            <p className="mt-1 text-sm text-zinc-400">
-              Sync verified ATS listings (India & Global) or import any job from
-              LinkedIn, Naukri, Indeed, or Glassdoor to run skill-gap & mock
-              interview prep.
+            <p className="mt-1 text-sm text-slate-600">
+              Browse verified engineering roles from public company job boards.
             </p>
           </div>
 
@@ -368,96 +364,96 @@ export const JobsPage: React.FC = () => {
               type="button"
               onClick={() => void handleSyncVerifiedJobs()}
               disabled={isSyncing}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-teal-500/40 bg-teal-500/10 px-3.5 py-2 text-xs font-semibold text-teal-300 transition hover:bg-teal-500/20 disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3.5 py-2 text-xs font-medium text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
             >
               <RefreshCw
-                className={`h-3.5 w-3.5 ${isSyncing ? "animate-spin" : ""}`}
+                className={`h-3.5 w-3.5 text-blue-600 ${
+                  isSyncing ? "animate-spin" : ""
+                }`}
               />
-              <span>{isSyncing ? "Syncing ATS..." : "Sync Latest Jobs"}</span>
+              <span>{isSyncing ? "Syncing..." : "Refresh jobs"}</span>
             </button>
 
             <button
               type="button"
               onClick={() => setIsImportModalOpen(true)}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-teal-500 px-3.5 py-2 text-xs font-semibold text-zinc-950 transition hover:bg-teal-400 active:scale-[0.98]"
+              className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3.5 py-2 text-xs font-medium text-white shadow-sm transition hover:bg-blue-700"
             >
               <PlusCircle className="h-3.5 w-3.5" />
-              <span>Analyze LinkedIn / Naukri Job</span>
+              <span>Analyze external job</span>
             </button>
 
             <Link
               to="/saved-jobs"
-              className="inline-flex items-center gap-1.5 rounded-lg border border-zinc-800 bg-zinc-900/60 px-3.5 py-2 text-xs font-medium text-zinc-200 transition hover:border-zinc-700 hover:text-white"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3.5 py-2 text-xs font-medium text-slate-700 transition hover:bg-slate-50"
             >
-              <BookmarkCheck className="h-3.5 w-3.5 text-teal-400" />
+              <BookmarkCheck className="h-3.5 w-3.5 text-blue-600" />
               <span>Saved ({savedJobIds.size})</span>
             </Link>
           </div>
         </header>
 
         {syncBanner && (
-          <div className="mb-5 flex items-center justify-between gap-3 rounded-xl border border-emerald-500/30 bg-emerald-950/20 px-4 py-3 text-xs text-emerald-300">
+          <div className="mb-5 flex items-center justify-between gap-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-xs font-medium text-emerald-800">
             <div className="flex items-center gap-2">
-              <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-400" />
+              <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />
               <span>{syncBanner}</span>
             </div>
             <button
               type="button"
               onClick={() => setSyncBanner(null)}
-              className="text-emerald-400 hover:text-white"
+              className="text-emerald-700 hover:text-emerald-900"
             >
               <X className="h-3.5 w-3.5" />
             </button>
           </div>
         )}
 
-        {/* Cross-Platform External Search Hub (LinkedIn, Naukri, Indeed, Glassdoor, Wellfound, Instahyre) */}
-        <div className="mb-5 rounded-xl border border-zinc-800/80 bg-zinc-900/30 p-3.5">
+        {/* External Job Boards Shortcut */}
+        <div className="mb-5 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="flex items-center gap-2">
-              <Globe className="h-3.5 w-3.5 text-teal-400" />
-              <span className="font-mono text-[11px] uppercase tracking-wider text-zinc-300">
-                Cross-Platform Job Discovery (Synced to "
-                {search.trim() || user?.targetRole || "Software Engineer"}" · "
+              <Globe className="h-4 w-4 text-blue-600" />
+              <span className="text-xs font-semibold text-slate-800">
+                External Job Boards (filtered for "
+                {search.trim() || user?.targetRole || "Software Engineer"}" in "
                 {locationFilter.trim() || "India"}")
               </span>
             </div>
             <button
               type="button"
               onClick={() => setIsImportModalOpen(true)}
-              className="font-mono text-[11px] text-teal-400 hover:text-teal-300"
+              className="text-xs font-medium text-blue-600 hover:text-blue-700"
             >
-              Found a role on these boards? Paste JD to match & interview →
+              Paste a job description to analyze requirements →
             </button>
           </div>
 
-          <div className="mt-2.5 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
+          <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
             {crossPlatformLinks.map((platform) => (
               <a
                 key={platform.name}
                 href={platform.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="group flex items-center justify-between rounded-lg border border-zinc-800 bg-[#09090b] px-3 py-2 transition hover:border-teal-500/50"
+                className="group flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50/70 px-3 py-2 transition hover:border-blue-300 hover:bg-blue-50/40"
               >
                 <div className="min-w-0">
-                  <p className="truncate text-xs font-semibold text-zinc-200 group-hover:text-teal-300">
+                  <p className="truncate text-xs font-semibold text-slate-800 group-hover:text-blue-700">
                     {platform.name}
                   </p>
-                  <p className="font-mono text-[10px] text-zinc-500">
-                    {platform.badge}
-                  </p>
+                  <p className="text-[11px] text-slate-500">{platform.badge}</p>
                 </div>
-                <ExternalLink className="h-3 w-3 shrink-0 text-zinc-500 group-hover:text-teal-400" />
+                <ExternalLink className="h-3 w-3 shrink-0 text-slate-400 group-hover:text-blue-600" />
               </a>
             ))}
           </div>
         </div>
 
-        {/* Search & Location Filter Bar */}
-        <div className="mb-4 grid gap-3 rounded-xl border border-zinc-800/90 bg-zinc-900/40 p-3.5 md:grid-cols-[1.5fr_1fr_auto_auto]">
+        {/* 2. Search & Filter Bar */}
+        <div className="mb-4 grid gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm md:grid-cols-[1.5fr_1fr_auto_auto]">
           <div className="relative">
-            <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500" />
+            <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
             <input
               type="text"
               value={search}
@@ -465,13 +461,13 @@ export const JobsPage: React.FC = () => {
                 setSearch(event.target.value);
                 setCurrentPage(1);
               }}
-              placeholder="Search role title, company, or skill (e.g. Razorpay, Java, React)..."
-              className="w-full rounded-lg border border-zinc-800 bg-[#09090b] pl-10 pr-4 py-2 text-xs text-zinc-100 outline-none placeholder:text-zinc-500 focus:border-teal-500"
+              placeholder="Search by job title, company, or skill (e.g. React, Node.js, Stripe)..."
+              className="w-full rounded-lg border border-slate-300 bg-white pl-10 pr-4 py-2 text-xs text-slate-900 outline-none placeholder:text-slate-400 focus:border-blue-600"
             />
           </div>
 
           <div className="relative">
-            <MapPin className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500" />
+            <MapPin className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
             <input
               type="text"
               value={locationFilter}
@@ -479,24 +475,24 @@ export const JobsPage: React.FC = () => {
                 setLocationFilter(event.target.value);
                 setCurrentPage(1);
               }}
-              placeholder="Filter location (e.g., India, Bengaluru, Pune, Remote)..."
-              className="w-full rounded-lg border border-zinc-800 bg-[#09090b] pl-10 pr-4 py-2 text-xs text-zinc-100 outline-none placeholder:text-zinc-500 focus:border-teal-500"
+              placeholder="Location (e.g. Bengaluru, Remote, India)..."
+              className="w-full rounded-lg border border-slate-300 bg-white pl-10 pr-4 py-2 text-xs text-slate-900 outline-none placeholder:text-slate-400 focus:border-blue-600"
             />
           </div>
 
-          {sources.length > 2 && (
+          {sources.length > 1 && (
             <select
               value={sourceFilter}
               onChange={(e) => {
                 setSourceFilter(e.target.value);
                 setCurrentPage(1);
               }}
-              aria-label="Filter by ATS source"
-              className="rounded-lg border border-zinc-800 bg-[#09090b] px-3 py-2 font-mono text-xs text-zinc-300 outline-none focus:border-teal-500"
+              aria-label="Filter by source"
+              className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-medium text-slate-700 outline-none focus:border-blue-600"
             >
               {sources.map((src) => (
                 <option key={src} value={src}>
-                  {src === "ALL" ? "All Sources" : src}
+                  {src === "ALL" ? "All sources" : src}
                 </option>
               ))}
             </select>
@@ -510,24 +506,24 @@ export const JobsPage: React.FC = () => {
               setSourceFilter("ALL");
               setCurrentPage(1);
             }}
-            className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-zinc-800 bg-[#09090b] px-3.5 py-2 text-xs font-medium text-zinc-300 transition hover:border-zinc-700 hover:text-white"
+            className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3.5 py-2 text-xs font-medium text-slate-700 transition hover:bg-slate-50"
           >
             <RotateCcw className="h-3.5 w-3.5" />
             <span>Reset</span>
           </button>
         </div>
 
-        {/* Quick Region & Most Common Job Titles Bar */}
+        {/* Quick Region & Role Pills */}
         {commonRoleTitles.length > 0 && (
-          <div className="mb-6 space-y-2.5 rounded-xl border border-zinc-800/70 bg-zinc-900/20 p-3.5">
+          <div className="mb-6 space-y-2.5 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <span className="font-mono text-[10px] uppercase tracking-wider text-zinc-500">
-                Most Common Titles & Regions
+              <span className="text-xs font-medium text-slate-500">
+                Quick filters by role and location
               </span>
               <div className="flex flex-wrap items-center gap-1.5">
                 {[
-                  { label: "All Regions", val: "" },
-                  { label: "India Hubs", val: "India" },
+                  { label: "All locations", val: "" },
+                  { label: "India", val: "India" },
                   { label: "Bengaluru", val: "Bengaluru" },
                   { label: "Pune / Hyderabad", val: "Pune" },
                   { label: "Remote", val: "Remote" },
@@ -542,10 +538,10 @@ export const JobsPage: React.FC = () => {
                         setLocationFilter(loc.val);
                         setCurrentPage(1);
                       }}
-                      className={`rounded border px-2 py-0.5 font-mono text-[10px] transition ${
+                      className={`rounded-md border px-2.5 py-1 text-xs font-medium transition ${
                         active
-                          ? "border-teal-500/50 bg-teal-500/15 text-teal-300"
-                          : "border-zinc-800 bg-[#09090b] text-zinc-400 hover:text-zinc-200"
+                          ? "border-blue-200 bg-blue-50 text-blue-700"
+                          : "border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100"
                       }`}
                     >
                       {loc.label}
@@ -567,14 +563,14 @@ export const JobsPage: React.FC = () => {
                       setSearch(isSelected ? "" : title);
                       setCurrentPage(1);
                     }}
-                    className={`inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs transition ${
+                    className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-medium transition ${
                       isSelected
-                        ? "border-teal-500/60 bg-teal-500/15 font-medium text-teal-200"
-                        : "border-zinc-800/90 bg-[#09090b] text-zinc-300 hover:border-zinc-700 hover:text-white"
+                        ? "border-blue-300 bg-blue-50 text-blue-700"
+                        : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
                     }`}
                   >
                     <span className="max-w-[200px] truncate">{title}</span>
-                    <span className="rounded bg-zinc-800 px-1.5 py-0.2 font-mono text-[10px] text-zinc-400 tabular-nums">
+                    <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] text-slate-600 tabular-nums">
                       {count}
                     </span>
                   </button>
@@ -585,23 +581,24 @@ export const JobsPage: React.FC = () => {
         )}
 
         {/* Status Bar */}
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-2 text-xs text-zinc-400">
-          <p className="font-mono tabular-nums">
-            {filteredJobs.length} {filteredJobs.length === 1 ? "job" : "jobs"}{" "}
-            found · Page {safePage} of {totalPages}
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-600">
+          <p className="tabular-nums">
+            Showing {filteredJobs.length}{" "}
+            {filteredJobs.length === 1 ? "role" : "roles"} · Page {safePage} of{" "}
+            {totalPages}
           </p>
           {!resumeId && (
             <Link
               to="/resume"
-              className="text-teal-400 underline-offset-4 hover:underline"
+              className="font-medium text-blue-600 hover:underline"
             >
-              Upload a resume to unlock instant Match % scores →
+              Upload your resume to see requirement coverage for each role →
             </Link>
           )}
         </div>
 
         {error && (
-          <div className="mb-6 rounded-xl border border-red-900/70 bg-red-950/40 p-4 text-sm text-red-300">
+          <div className="mb-6 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
             {error}
           </div>
         )}
@@ -611,36 +608,44 @@ export const JobsPage: React.FC = () => {
             {[1, 2, 3, 4, 5, 6].map((n) => (
               <div
                 key={n}
-                className="h-40 animate-pulse rounded-xl border border-zinc-800 bg-zinc-900/40"
+                className="h-40 animate-pulse rounded-xl border border-slate-200 bg-white"
               />
             ))}
           </div>
         ) : jobs.length === 0 ? (
-          <div className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-12 text-center text-sm text-zinc-400">
-            No jobs available right now. Click "Sync Latest Jobs" above to
-            populate verified listings.
+          <div className="rounded-xl border border-dashed border-slate-300 bg-white p-12 text-center shadow-sm">
+            <p className="text-sm font-medium text-slate-900">
+              No jobs synchronized yet
+            </p>
+            <p className="mt-1 text-xs text-slate-600">
+              Click "Refresh jobs" above to synchronize verified listings from
+              public job boards.
+            </p>
           </div>
         ) : filteredJobs.length === 0 ? (
-          <div className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-12 text-center">
-            <p className="text-sm text-zinc-300">
-              No local ATS jobs matched "{search || locationFilter}".
+          <div className="rounded-xl border border-dashed border-slate-300 bg-white p-12 text-center shadow-sm">
+            <p className="text-base font-semibold text-slate-900">
+              No jobs match your filters.
             </p>
-            <p className="mt-1 text-xs text-zinc-500">
-              Click "Sync Latest Jobs" to pull Indian & Global tech roles, or
-              search directly on LinkedIn / Naukri above.
+            <p className="mt-1 text-xs text-slate-600">
+              Try widening your location or experience filters.
             </p>
             <button
               type="button"
-              onClick={() => void handleSyncVerifiedJobs()}
-              className="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-teal-500 px-4 py-2 text-xs font-semibold text-zinc-950 hover:bg-teal-400"
+              onClick={() => {
+                setSearch("");
+                setLocationFilter("");
+                setSourceFilter("ALL");
+                setCurrentPage(1);
+              }}
+              className="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-xs font-medium text-white hover:bg-blue-700"
             >
-              <RefreshCw className="h-3.5 w-3.5" />
-              <span>Sync Verified India & Global Jobs</span>
+              <RotateCcw className="h-3.5 w-3.5" />
+              <span>Clear filters</span>
             </button>
           </div>
         ) : (
           <>
-            {/* 2-Column Paginated Card Grid */}
             <div className="grid gap-4 md:grid-cols-2">
               {paginatedJobs.map((job) => (
                 <JobCard
@@ -656,13 +661,12 @@ export const JobsPage: React.FC = () => {
               ))}
             </div>
 
-            {/* Numbered Pagination Controls */}
             {totalPages > 1 && (
               <nav
                 aria-label="Job pages"
-                className="mt-8 flex flex-wrap items-center justify-between gap-4 border-t border-zinc-800/80 pt-5"
+                className="mt-8 flex flex-wrap items-center justify-between gap-4 border-t border-slate-200 pt-5"
               >
-                <span className="font-mono text-xs text-zinc-500 tabular-nums">
+                <span className="text-xs text-slate-500 tabular-nums">
                   Showing {(safePage - 1) * JOBS_PER_PAGE + 1}–
                   {Math.min(safePage * JOBS_PER_PAGE, filteredJobs.length)} of{" "}
                   {filteredJobs.length}
@@ -676,7 +680,7 @@ export const JobsPage: React.FC = () => {
                       setCurrentPage((p) => Math.max(1, p - 1));
                       window.scrollTo({ top: 0, behavior: "smooth" });
                     }}
-                    className="inline-flex items-center gap-1 rounded-lg border border-zinc-800 bg-zinc-900/60 px-3 py-1.5 font-mono text-xs text-zinc-300 transition hover:border-zinc-700 hover:text-white disabled:opacity-40"
+                    className="inline-flex items-center gap-1 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 transition hover:bg-slate-50 disabled:opacity-40"
                   >
                     <ChevronLeft className="h-3.5 w-3.5" />
                     <span>Prev</span>
@@ -690,10 +694,10 @@ export const JobsPage: React.FC = () => {
                         setCurrentPage(pageNum);
                         window.scrollTo({ top: 0, behavior: "smooth" });
                       }}
-                      className={`h-8 min-w-[32px] rounded-lg border px-2.5 font-mono text-xs font-semibold tabular-nums transition ${
+                      className={`h-8 min-w-[32px] rounded-lg border px-2.5 text-xs font-semibold tabular-nums transition ${
                         pageNum === safePage
-                          ? "border-teal-500/60 bg-teal-500/15 text-teal-300"
-                          : "border-zinc-800 bg-zinc-900/40 text-zinc-400 hover:border-zinc-700 hover:text-zinc-200"
+                          ? "border-blue-600 bg-blue-600 text-white"
+                          : "border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
                       }`}
                     >
                       {pageNum}
@@ -707,7 +711,7 @@ export const JobsPage: React.FC = () => {
                       setCurrentPage((p) => Math.min(totalPages, p + 1));
                       window.scrollTo({ top: 0, behavior: "smooth" });
                     }}
-                    className="inline-flex items-center gap-1 rounded-lg border border-zinc-800 bg-zinc-900/60 px-3 py-1.5 font-mono text-xs text-zinc-300 transition hover:border-zinc-700 hover:text-white disabled:opacity-40"
+                    className="inline-flex items-center gap-1 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 transition hover:bg-slate-50 disabled:opacity-40"
                   >
                     <span>Next</span>
                     <ChevronRight className="h-3.5 w-3.5" />
@@ -719,41 +723,40 @@ export const JobsPage: React.FC = () => {
         )}
       </div>
 
-      {/* Modal: Import / Verify External Job from LinkedIn, Naukri, Indeed, Glassdoor */}
+      {/* Modal: Import External Job */}
       {isImportModalOpen && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-xs"
           onClick={() => !isImporting && setIsImportModalOpen(false)}
         >
           <div
-            className="w-full max-w-xl rounded-xl border border-zinc-800 bg-[#09090b] p-6 shadow-2xl"
+            className="w-full max-w-xl rounded-xl border border-slate-200 bg-white p-6 shadow-xl"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-start justify-between border-b border-zinc-800 pb-4">
+            <div className="flex items-start justify-between border-b border-slate-200 pb-4">
               <div>
-                <p className="font-mono text-[11px] uppercase tracking-wider text-teal-400">
-                  Cross-Platform Job Verifier
+                <p className="text-xs font-semibold uppercase tracking-wider text-blue-600">
+                  Analyze External Role
                 </p>
-                <h2 className="mt-1 text-lg font-semibold text-white">
-                  Import Job from LinkedIn, Naukri, Indeed or Glassdoor
+                <h2 className="mt-1 text-lg font-semibold text-slate-900">
+                  Import a Job Description
                 </h2>
-                <p className="mt-0.5 text-xs text-zinc-400">
-                  Paste any external job listing to extract canonical skills,
-                  calculate your match score, and run a role-specific mock
-                  interview.
+                <p className="mt-0.5 text-xs text-slate-600">
+                  Paste any job listing to extract required skills, calculate
+                  requirement coverage, and practice a targeted interview.
                 </p>
               </div>
               <button
                 type="button"
                 onClick={() => setIsImportModalOpen(false)}
-                className="rounded-lg border border-zinc-800 bg-zinc-900 p-1.5 text-zinc-400 hover:text-white"
+                className="rounded-lg border border-slate-200 bg-white p-1.5 text-slate-500 hover:bg-slate-100 hover:text-slate-900"
               >
                 <X className="h-4 w-4" />
               </button>
             </div>
 
             {importError && (
-              <div className="mt-4 rounded-lg border border-red-500/30 bg-red-950/20 p-3 text-xs text-red-300">
+              <div className="mt-4 rounded-lg border border-red-200 bg-red-50 p-3 text-xs text-red-700">
                 {importError}
               </div>
             )}
@@ -761,8 +764,8 @@ export const JobsPage: React.FC = () => {
             <form onSubmit={handleImportExternalJob} className="mt-4 space-y-4">
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div>
-                  <label className="mb-1 block font-mono text-[10px] uppercase tracking-wider text-zinc-400">
-                    Role Title *
+                  <label className="mb-1 block text-xs font-medium text-slate-700">
+                    Role title *
                   </label>
                   <input
                     type="text"
@@ -771,14 +774,14 @@ export const JobsPage: React.FC = () => {
                     onChange={(e) =>
                       setImportForm((f) => ({ ...f, title: e.target.value }))
                     }
-                    placeholder="e.g., SDE 1 — Full Stack Developer"
-                    className="w-full rounded-lg border border-zinc-800 bg-zinc-900/50 px-3 py-2 text-xs text-zinc-100 outline-none focus:border-teal-500"
+                    placeholder="e.g., Full-Stack Engineer"
+                    className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs text-slate-900 outline-none focus:border-blue-600"
                   />
                 </div>
 
                 <div>
-                  <label className="mb-1 block font-mono text-[10px] uppercase tracking-wider text-zinc-400">
-                    Company Name *
+                  <label className="mb-1 block text-xs font-medium text-slate-700">
+                    Company name *
                   </label>
                   <input
                     type="text"
@@ -787,35 +790,35 @@ export const JobsPage: React.FC = () => {
                     onChange={(e) =>
                       setImportForm((f) => ({ ...f, company: e.target.value }))
                     }
-                    placeholder="e.g., Razorpay, Swiggy, Infosys, Stripe"
-                    className="w-full rounded-lg border border-zinc-800 bg-zinc-900/50 px-3 py-2 text-xs text-zinc-100 outline-none focus:border-teal-500"
+                    placeholder="e.g., Stripe, Razorpay"
+                    className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs text-slate-900 outline-none focus:border-blue-600"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                 <div>
-                  <label className="mb-1 block font-mono text-[10px] uppercase tracking-wider text-zinc-400">
-                    Source Platform
+                  <label className="mb-1 block text-xs font-medium text-slate-700">
+                    Source
                   </label>
                   <select
                     value={importForm.source}
                     onChange={(e) =>
                       setImportForm((f) => ({ ...f, source: e.target.value }))
                     }
-                    className="w-full rounded-lg border border-zinc-800 bg-zinc-900/50 px-3 py-2 font-mono text-xs text-zinc-200 outline-none focus:border-teal-500"
+                    className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs text-slate-900 outline-none focus:border-blue-600"
                   >
                     <option value="LINKEDIN">LinkedIn</option>
                     <option value="NAUKRI">Naukri.com</option>
                     <option value="INDEED">Indeed</option>
                     <option value="GLASSDOOR">Glassdoor</option>
                     <option value="WELLFOUND">Wellfound</option>
-                    <option value="GREENHOUSE">Official ATS</option>
+                    <option value="GREENHOUSE">Greenhouse</option>
                   </select>
                 </div>
 
                 <div>
-                  <label className="mb-1 block font-mono text-[10px] uppercase tracking-wider text-zinc-400">
+                  <label className="mb-1 block text-xs font-medium text-slate-700">
                     Location
                   </label>
                   <input
@@ -825,13 +828,13 @@ export const JobsPage: React.FC = () => {
                       setImportForm((f) => ({ ...f, location: e.target.value }))
                     }
                     placeholder="Bengaluru, India"
-                    className="w-full rounded-lg border border-zinc-800 bg-zinc-900/50 px-3 py-2 text-xs text-zinc-100 outline-none focus:border-teal-500"
+                    className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs text-slate-900 outline-none focus:border-blue-600"
                   />
                 </div>
 
                 <div>
-                  <label className="mb-1 block font-mono text-[10px] uppercase tracking-wider text-zinc-400">
-                    Job URL (Optional)
+                  <label className="mb-1 block text-xs font-medium text-slate-700">
+                    Job URL (optional)
                   </label>
                   <input
                     type="url"
@@ -839,15 +842,15 @@ export const JobsPage: React.FC = () => {
                     onChange={(e) =>
                       setImportForm((f) => ({ ...f, url: e.target.value }))
                     }
-                    placeholder="https://linkedin.com/jobs/..."
-                    className="w-full rounded-lg border border-zinc-800 bg-zinc-900/50 px-3 py-2 text-xs text-zinc-100 outline-none focus:border-teal-500"
+                    placeholder="https://..."
+                    className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs text-slate-900 outline-none focus:border-blue-600"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="mb-1 block font-mono text-[10px] uppercase tracking-wider text-zinc-400">
-                  Paste Job Description & Requirements *
+                <label className="mb-1 block text-xs font-medium text-slate-700">
+                  Job description & requirements *
                 </label>
                 <textarea
                   rows={5}
@@ -859,28 +862,26 @@ export const JobsPage: React.FC = () => {
                       description: e.target.value,
                     }))
                   }
-                  placeholder="Paste the full job description from LinkedIn, Naukri, or Indeed here. TrueHire will automatically extract the required technical skills..."
-                  className="w-full resize-none rounded-lg border border-zinc-800 bg-zinc-900/50 p-3 text-xs leading-relaxed text-zinc-100 outline-none focus:border-teal-500"
+                  placeholder="Paste the full job description here..."
+                  className="w-full resize-none rounded-lg border border-slate-300 bg-white p-3 text-xs leading-relaxed text-slate-900 outline-none focus:border-blue-600"
                 />
               </div>
 
-              <div className="flex justify-end gap-2.5 border-t border-zinc-800 pt-4">
+              <div className="flex justify-end gap-2.5 border-t border-slate-200 pt-4">
                 <button
                   type="button"
                   onClick={() => setIsImportModalOpen(false)}
-                  className="rounded-lg border border-zinc-800 bg-zinc-900 px-4 py-2 text-xs font-medium text-zinc-300 hover:bg-zinc-800"
+                  className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={isImporting}
-                  className="inline-flex items-center gap-1.5 rounded-lg bg-teal-500 px-5 py-2 text-xs font-semibold text-zinc-950 transition hover:bg-teal-400 disabled:opacity-50"
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-5 py-2 text-xs font-medium text-white shadow-sm transition hover:bg-blue-700 disabled:opacity-50"
                 >
                   <span>
-                    {isImporting
-                      ? "Extracting Skills..."
-                      : "Save & Analyze Match →"}
+                    {isImporting ? "Analyzing..." : "Save & run match →"}
                   </span>
                 </button>
               </div>
@@ -889,34 +890,34 @@ export const JobsPage: React.FC = () => {
         </div>
       )}
 
-      {/* Slide-Over Job Inspector Drawer */}
+      {/* 4. Job Detail Drawer */}
       {activeDrawerJob && (
         <div
-          className="fixed inset-0 z-50 flex justify-end bg-black/75 backdrop-blur-sm"
+          className="fixed inset-0 z-50 flex justify-end bg-slate-900/40 backdrop-blur-xs"
           onClick={() => setActiveDrawerJob(null)}
         >
           <aside
-            className="flex h-full w-full max-w-2xl flex-col border-l border-zinc-800 bg-[#09090b] shadow-2xl"
+            className="flex h-full w-full max-w-2xl flex-col border-l border-slate-200 bg-white shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-start justify-between gap-4 border-b border-zinc-800 p-6">
+            <div className="flex items-start justify-between gap-4 border-b border-slate-200 p-6">
               <div>
                 <div className="flex items-center gap-2">
-                  <span className="font-mono text-[10px] font-semibold uppercase tracking-widest text-teal-400">
-                    Verified {activeDrawerJob.source}
+                  <span className="rounded-md border border-blue-200 bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700">
+                    {activeDrawerJob.source}
                   </span>
                   {activeDrawerJob.isActive !== false && (
-                    <span className="rounded border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 font-mono text-[10px] text-emerald-300">
-                      ACTIVE
+                    <span className="rounded-md border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700">
+                      Active
                     </span>
                   )}
                 </div>
-                <h2 className="mt-2 text-xl font-semibold text-white sm:text-2xl">
+                <h2 className="mt-2 text-xl font-semibold text-slate-900 sm:text-2xl">
                   {activeDrawerJob.title}
                 </h2>
-                <div className="mt-1.5 flex flex-wrap items-center gap-2 text-xs text-zinc-400">
-                  <span className="inline-flex items-center gap-1 font-medium text-zinc-200">
-                    <Building2 className="h-3.5 w-3.5 text-teal-400" />
+                <div className="mt-1.5 flex flex-wrap items-center gap-2 text-xs text-slate-500">
+                  <span className="inline-flex items-center gap-1 font-medium text-slate-800">
+                    <Building2 className="h-3.5 w-3.5 text-blue-600" />
                     {activeDrawerJob.company}
                   </span>
                   {activeDrawerJob.location && (
@@ -936,21 +937,21 @@ export const JobsPage: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setActiveDrawerJob(null)}
-                className="rounded-lg border border-zinc-800 bg-zinc-900 p-2 text-zinc-400 hover:text-white"
+                className="rounded-lg border border-slate-200 bg-white p-2 text-slate-500 hover:bg-slate-100 hover:text-slate-900"
                 aria-label="Close job details"
               >
                 <X className="h-4 w-4" />
               </button>
             </div>
 
-            <div className="flex flex-wrap items-center gap-2 border-b border-zinc-800 bg-zinc-900/40 px-6 py-3.5">
+            <div className="flex flex-wrap items-center gap-2 border-b border-slate-200 bg-slate-50 px-6 py-3.5">
               <Link
                 to={`/matches/${activeDrawerJob.id}${
                   resumeId ? `?resumeId=${resumeId}` : ""
                 }`}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-teal-500 px-4 py-2 text-xs font-semibold text-zinc-950 transition hover:bg-teal-400"
+                className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-xs font-medium text-white shadow-sm transition hover:bg-blue-700"
               >
-                <span>Match & Start Interview</span>
+                <span>Run match</span>
                 <ArrowUpRight className="h-3.5 w-3.5" />
               </Link>
 
@@ -958,24 +959,24 @@ export const JobsPage: React.FC = () => {
                 to={`/skill-gaps/${activeDrawerJob.id}${
                   resumeId ? `?resumeId=${resumeId}` : ""
                 }`}
-                className="rounded-lg border border-zinc-700 bg-zinc-900 px-3.5 py-2 text-xs font-medium text-zinc-200 hover:border-zinc-600 hover:text-white"
+                className="rounded-lg border border-slate-300 bg-white px-3.5 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50"
               >
-                Skill Gaps & Study Links
+                Start targeted interview
               </Link>
 
               <button
                 type="button"
                 onClick={() => void handleToggleSave(activeDrawerJob)}
                 disabled={isSaving}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-zinc-800 bg-[#09090b] px-3 py-2 text-xs font-medium text-zinc-300 hover:border-zinc-700 hover:text-white"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50"
               >
                 {savedJobIds.has(activeDrawerJob.id) ? (
-                  <BookmarkCheck className="h-3.5 w-3.5 text-teal-400" />
+                  <BookmarkCheck className="h-3.5 w-3.5 text-blue-600" />
                 ) : (
                   <Bookmark className="h-3.5 w-3.5" />
                 )}
                 <span>
-                  {savedJobIds.has(activeDrawerJob.id) ? "Saved" : "Save"}
+                  {savedJobIds.has(activeDrawerJob.id) ? "Saved" : "Save job"}
                 </span>
               </button>
 
@@ -983,9 +984,9 @@ export const JobsPage: React.FC = () => {
                 type="button"
                 onClick={() => void handleTrackApplication(activeDrawerJob)}
                 disabled={isTracking}
-                className="rounded-lg border border-zinc-800 bg-[#09090b] px-3 py-2 text-xs font-medium text-zinc-300 hover:border-zinc-700 hover:text-white"
+                className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50"
               >
-                {isTracking ? "Tracking..." : "Track"}
+                {isTracking ? "Adding..." : "Add to tracker"}
               </button>
 
               {activeDrawerJob.url && (
@@ -993,37 +994,36 @@ export const JobsPage: React.FC = () => {
                   href={activeDrawerJob.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="ml-auto inline-flex items-center gap-1 rounded-lg border border-zinc-800 bg-[#09090b] px-3 py-2 text-xs font-medium text-teal-400 hover:border-teal-500/40"
+                  className="ml-auto inline-flex items-center gap-1 rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-medium text-blue-600 hover:bg-blue-50"
                 >
-                  <span>Official Posting</span>
+                  <span>Apply on company site</span>
                   <ExternalLink className="h-3 w-3" />
                 </a>
               )}
             </div>
 
-            <div className="flex border-b border-zinc-800 px-6">
+            <div className="flex border-b border-slate-200 px-6">
               <button
                 type="button"
                 onClick={() => setDrawerTab("OVERVIEW")}
-                className={`border-b-2 py-3 pr-5 font-mono text-xs font-semibold transition ${
+                className={`border-b-2 py-3 pr-5 text-xs font-semibold transition ${
                   drawerTab === "OVERVIEW"
-                    ? "border-teal-400 text-teal-300"
-                    : "border-transparent text-zinc-400 hover:text-zinc-200"
+                    ? "border-blue-600 text-blue-600"
+                    : "border-transparent text-slate-500 hover:text-slate-900"
                 }`}
               >
-                Overview & Required Skills (
-                {activeDrawerJob.requirements.length})
+                Requirements ({activeDrawerJob.requirements.length})
               </button>
               <button
                 type="button"
                 onClick={() => setDrawerTab("DESCRIPTION")}
-                className={`border-b-2 px-5 py-3 font-mono text-xs font-semibold transition ${
+                className={`border-b-2 px-5 py-3 text-xs font-semibold transition ${
                   drawerTab === "DESCRIPTION"
-                    ? "border-teal-400 text-teal-300"
-                    : "border-transparent text-zinc-400 hover:text-zinc-200"
+                    ? "border-blue-600 text-blue-600"
+                    : "border-transparent text-slate-500 hover:text-slate-900"
                 }`}
               >
-                Full Job Description
+                Full description
               </button>
             </div>
 
@@ -1031,31 +1031,32 @@ export const JobsPage: React.FC = () => {
               {drawerTab === "OVERVIEW" ? (
                 <div className="space-y-6">
                   {activeDrawerJob.salaryRange && (
-                    <div className="rounded-lg border border-zinc-800 bg-zinc-900/40 p-4">
-                      <span className="font-mono text-[10px] uppercase tracking-wider text-zinc-500">
-                        Compensation Range
+                    <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+                      <span className="text-xs font-medium text-slate-500">
+                        Salary range
                       </span>
-                      <p className="mt-1 font-mono text-sm font-semibold text-teal-300">
+                      <p className="mt-1 text-sm font-semibold text-slate-900">
                         {activeDrawerJob.salaryRange}
                       </p>
                     </div>
                   )}
 
                   <div>
-                    <h3 className="font-mono text-xs uppercase tracking-wider text-zinc-400">
-                      Extracted Skills & Requirements
+                    <h3 className="text-sm font-semibold text-slate-900">
+                      Extracted Requirements
                     </h3>
                     {activeDrawerJob.requirements.length === 0 ? (
-                      <p className="mt-2 text-xs text-zinc-500">
-                        No structured skill tags extracted. Switch to the Full
-                        Job Description tab to read the complete posting.
+                      <p className="mt-2 text-xs text-slate-500">
+                        No structured skill tags were listed on this posting.
+                        Switch to the Full description tab to read the complete
+                        role details.
                       </p>
                     ) : (
                       <div className="mt-3 flex flex-wrap gap-2">
                         {activeDrawerJob.requirements.map((req) => (
                           <span
                             key={req}
-                            className="rounded-md border border-zinc-800 bg-zinc-900/70 px-3 py-1.5 font-mono text-xs text-zinc-200"
+                            className="rounded-md border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-medium text-slate-700"
                           >
                             {req}
                           </span>
@@ -1063,50 +1064,10 @@ export const JobsPage: React.FC = () => {
                       </div>
                     )}
                   </div>
-
-                  {/* Find Similar Roles on LinkedIn / Naukri / Glassdoor */}
-                  <div className="rounded-xl border border-zinc-800 bg-zinc-900/20 p-4">
-                    <p className="font-mono text-[10px] uppercase tracking-wider text-zinc-400">
-                      Verify Company & Similar Listings Across Platforms
-                    </p>
-                    <div className="mt-2.5 flex flex-wrap gap-2">
-                      {[
-                        {
-                          label: `${activeDrawerJob.company} on LinkedIn`,
-                          href: `https://www.linkedin.com/jobs/search/?keywords=${encodeURIComponent(
-                            `${activeDrawerJob.company} ${activeDrawerJob.title}`,
-                          )}`,
-                        },
-                        {
-                          label: `${activeDrawerJob.company} on Naukri`,
-                          href: `https://www.naukri.com/${activeDrawerJob.company
-                            .toLowerCase()
-                            .replace(/[^a-z0-9]+/g, "-")}-jobs`,
-                        },
-                        {
-                          label: `${activeDrawerJob.company} Reviews on Glassdoor`,
-                          href: `https://www.glassdoor.co.in/Reviews/${encodeURIComponent(
-                            activeDrawerJob.company,
-                          )}-Reviews-E.htm`,
-                        },
-                      ].map((item) => (
-                        <a
-                          key={item.label}
-                          href={item.href}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1.5 rounded-lg border border-zinc-800 bg-[#09090b] px-3 py-1.5 text-xs text-zinc-300 transition hover:border-teal-500/40 hover:text-teal-300"
-                        >
-                          <span>{item.label}</span>
-                          <ExternalLink className="h-3 w-3" />
-                        </a>
-                      ))}
-                    </div>
-                  </div>
                 </div>
               ) : (
                 <div
-                  className="prose prose-invert max-w-none text-sm leading-7 prose-headings:text-zinc-100 prose-p:text-zinc-300 prose-li:text-zinc-300"
+                  className="prose prose-slate max-w-none text-sm leading-7 text-slate-700"
                   dangerouslySetInnerHTML={{
                     __html: decodeHtml(activeDrawerJob.description),
                   }}

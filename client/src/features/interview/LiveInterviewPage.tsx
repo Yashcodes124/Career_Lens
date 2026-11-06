@@ -1,6 +1,14 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate, useLocation, Link } from "react-router-dom";
-import { ArrowLeft, Send, ArrowRight, CheckCircle2 } from "lucide-react";
+import {
+  ArrowLeft,
+  Send,
+  ArrowRight,
+  CheckCircle2,
+  Clock,
+  Check,
+  AlertTriangle,
+} from "lucide-react";
 import {
   fetchInterviewById,
   submitInterviewAnswer,
@@ -14,6 +22,12 @@ interface LocationState {
   focusTopics?: string[];
   roleTitle?: string;
 }
+
+const formatTimer = (seconds: number): string => {
+  const mins = Math.floor(seconds / 60);
+  const secs = seconds % 60;
+  return `${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
+};
 
 export const LiveInterviewPage: React.FC = () => {
   const { interviewId } = useParams<{ interviewId: string }>();
@@ -29,10 +43,13 @@ export const LiveInterviewPage: React.FC = () => {
     interview?.plan?.difficulty ?? navState.difficulty ?? "MEDIUM";
   const roleTitle =
     interview?.plan?.role ?? navState.roleTitle ?? "Software Engineer";
+  const companyName = interview?.plan?.company ?? "";
 
   const [currentQuestion, setCurrentQuestion] =
     useState<InterviewQuestion | null>(null);
   const [answer, setAnswer] = useState<string>("");
+  const [elapsedSeconds, setElapsedSeconds] = useState<number>(0);
+  const [draftSavedAt, setDraftSavedAt] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [submitting, setSubmitting] = useState<boolean>(false);
   const [pendingNextQuestion, setPendingNextQuestion] =
@@ -47,6 +64,46 @@ export const LiveInterviewPage: React.FC = () => {
   } | null>(null);
 
   const [error, setError] = useState<string | null>(null);
+
+  const draftKey =
+    interviewId && currentQuestion
+      ? `truehire_draft_${interviewId}_${currentQuestion.id}`
+      : null;
+
+  // Session timer
+  useEffect(() => {
+    if (loading) return;
+    const interval = window.setInterval(() => {
+      setElapsedSeconds((prev) => prev + 1);
+    }, 1000);
+    return () => window.clearInterval(interval);
+  }, [loading]);
+
+  // Restore saved draft when switching questions
+  useEffect(() => {
+    if (!draftKey) return;
+    try {
+      const saved = localStorage.getItem(draftKey);
+      if (saved && !answer) {
+        setAnswer(saved);
+      }
+    } catch {
+      // Ignore storage access errors
+    }
+  }, [draftKey]);
+
+  // Autosave draft on answer change
+  const handleAnswerChange = (value: string) => {
+    setAnswer(value);
+    if (draftKey) {
+      try {
+        localStorage.setItem(draftKey, value);
+        setDraftSavedAt("Draft saved");
+      } catch {
+        // Ignore storage errors
+      }
+    }
+  };
 
   const loadData = async () => {
     if (!interviewId) return;
@@ -92,7 +149,34 @@ export const LiveInterviewPage: React.FC = () => {
         answer.trim(),
       );
 
+      if (draftKey) {
+        try {
+          localStorage.removeItem(draftKey);
+        } catch {
+          // Ignore
+        }
+      }
+
       setFeedback(result.evaluation);
+
+      // Update local question list so progress sidebar reflects completion
+      setInterview((prev) =>
+        prev
+          ? {
+              ...prev,
+              questions: prev.questions.map((q) =>
+                q.id === currentQuestion.id
+                  ? {
+                      ...q,
+                      answer: answer.trim(),
+                      score: result.evaluation.score,
+                      feedback: result.evaluation.feedback,
+                    }
+                  : q,
+              ),
+            }
+          : prev,
+      );
 
       if (result.completed || !result.nextQuestion) {
         setIsCompleted(true);
@@ -122,6 +206,7 @@ export const LiveInterviewPage: React.FC = () => {
       setCurrentQuestion(pendingNextQuestion);
       setPendingNextQuestion(null);
       setAnswer("");
+      setDraftSavedAt(null);
       setFeedback(null);
     }
   };
@@ -140,10 +225,10 @@ export const LiveInterviewPage: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#0d1117] font-mono text-sm text-zinc-400">
-        <div className="flex items-center space-x-3">
-          <div className="h-2.5 w-2.5 animate-ping rounded-full bg-emerald-500" />
-          <span>Initializing live interview environment...</span>
+      <div className="flex min-h-screen items-center justify-center bg-[#f8fafc] text-sm text-slate-600">
+        <div className="flex items-center gap-3">
+          <div className="h-5 w-5 animate-spin rounded-full border-b-2 border-blue-600" />
+          <span>Loading your interview session...</span>
         </div>
       </div>
     );
@@ -151,23 +236,24 @@ export const LiveInterviewPage: React.FC = () => {
 
   if (error || !interview || !currentQuestion) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#0d1117] p-4">
-        <div className="w-full max-w-md rounded-xl border border-red-500/30 bg-[#161b22] p-6 font-mono">
-          <p className="mb-4 text-sm text-red-400">
-            {error || "Interview session data not found."}
+      <div className="flex min-h-screen items-center justify-center bg-[#f8fafc] p-4">
+        <div className="w-full max-w-md rounded-xl border border-red-200 bg-white p-6 shadow-sm">
+          <p className="mb-4 text-sm text-red-700">
+            {error || "Interview session data could not be loaded."}
           </p>
           <div className="flex gap-3">
             <button
+              type="button"
               onClick={() => void loadData()}
-              className="flex-1 rounded border border-red-500/40 bg-red-950/60 py-2 text-xs text-red-200 transition hover:bg-red-900/80"
+              className="flex-1 rounded-lg bg-blue-600 py-2 text-xs font-medium text-white transition hover:bg-blue-700"
             >
-              Reconnect Session
+              Try again
             </button>
             <Link
               to="/dashboard"
-              className="rounded border border-zinc-700 bg-zinc-800 px-4 py-2 text-xs text-zinc-200 transition hover:bg-zinc-700"
+              className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-xs font-medium text-slate-700 transition hover:bg-slate-50"
             >
-              Dashboard
+              Exit to Dashboard
             </Link>
           </div>
         </div>
@@ -175,180 +261,267 @@ export const LiveInterviewPage: React.FC = () => {
     );
   }
 
-  const totalQuestions = interview.questions.length;
+  const sortedQuestions = [...interview.questions].sort(
+    (a, b) => a.order - b.order,
+  );
+  const totalQuestions = sortedQuestions.length;
   const currentOrder = currentQuestion.order;
   const progressPercent = Math.round((currentOrder / totalQuestions) * 100);
   const wordCount = answer.trim() ? answer.trim().split(/\s+/).length : 0;
 
   return (
-    <div className="min-h-screen bg-[#0d1117] font-sans text-zinc-200 selection:bg-zinc-800 selection:text-white">
-      {/* Top Header / Progress Bar */}
-      <header className="sticky top-0 z-10 border-b border-zinc-800/80 bg-[#161b22]/95 backdrop-blur-md">
-        <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-4">
-          <div className="space-y-1">
-            <div className="flex items-center space-x-2.5">
-              <Link
-                to="/dashboard"
-                className="mr-2 inline-flex items-center gap-1 rounded border border-zinc-800 bg-zinc-900 px-2 py-0.5 text-[11px] text-zinc-400 transition hover:border-zinc-700 hover:text-white"
-              >
-                <ArrowLeft className="h-3 w-3" />
-                <span>Exit</span>
-              </Link>
-              <span className="inline-block h-2 w-2 rounded-full bg-emerald-500" />
-              <span className="font-mono text-xs font-medium text-emerald-400">
-                {currentQuestion.round}
-              </span>
-              <span className="rounded border border-zinc-700/50 bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] text-zinc-400">
-                {difficulty}
-              </span>
-              <span className="font-mono text-xs text-zinc-400">
-                · {durationMinutes}m
-              </span>
+    <div className="min-h-screen bg-[#f8fafc] text-slate-900">
+      {/* 1. Interview Header */}
+      <header className="sticky top-0 z-20 border-b border-slate-200 bg-white/95 backdrop-blur">
+        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-4 py-3.5 sm:px-6">
+          <div className="flex items-center gap-3">
+            <Link
+              to="/dashboard"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 transition hover:bg-slate-50"
+            >
+              <ArrowLeft className="h-3.5 w-3.5" />
+              <span>Exit interview</span>
+            </Link>
+            <div>
+              <h1 className="text-sm font-semibold text-slate-900">
+                {roleTitle}
+                {companyName ? (
+                  <span className="font-normal text-slate-500">
+                    {" "}
+                    · {companyName}
+                  </span>
+                ) : null}
+              </h1>
+              <p className="text-xs text-slate-500">
+                {currentQuestion.round} · {difficulty} difficulty
+              </p>
             </div>
-            <h1 className="text-sm font-medium tracking-tight text-zinc-300">
-              {interview.title || roleTitle}
-            </h1>
           </div>
 
-          <div className="text-right font-mono">
-            <span className="text-xs text-zinc-400">
-              Question{" "}
-              <span className="font-bold text-zinc-100">{currentOrder}</span> /{" "}
-              {totalQuestions}
-            </span>
-            <div className="mt-2 h-1.5 w-32 overflow-hidden rounded-full bg-zinc-800">
-              <div
-                className="h-1.5 bg-emerald-500 transition-all duration-300 ease-out"
-                style={{ width: `${progressPercent}%` }}
-              />
+          <div className="flex items-center gap-5">
+            <div className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-medium text-slate-700 tabular-nums">
+              <Clock className="h-3.5 w-3.5 text-blue-600" />
+              <span>
+                {formatTimer(elapsedSeconds)} / {durationMinutes}:00
+              </span>
+            </div>
+
+            <div className="text-right">
+              <span className="text-xs font-semibold text-slate-800 tabular-nums">
+                Question {currentOrder} of {totalQuestions}
+              </span>
+              <div className="mt-1.5 h-1.5 w-28 overflow-hidden rounded-full bg-slate-200">
+                <div
+                  className="h-full rounded-full bg-blue-600 transition-all duration-300"
+                  style={{ width: `${progressPercent}%` }}
+                />
+              </div>
             </div>
           </div>
         </div>
       </header>
 
-      {/* Main Container */}
-      <main className="mx-auto max-w-5xl space-y-6 px-6 py-8">
-        {/* Question Panel */}
-        <section className="relative overflow-hidden rounded-xl border border-zinc-800 bg-[#161b22] p-6">
-          <div className="mb-3 flex items-center justify-between font-mono text-xs text-zinc-500">
-            <span>Interviewer Prompt</span>
-            <span>Round: {currentQuestion.round}</span>
-          </div>
-          <h2 className="text-lg font-medium leading-relaxed tracking-tight text-zinc-100 md:text-xl">
-            {currentQuestion.question}
-          </h2>
-        </section>
-
-        {/* Answer Input Panel */}
-        <section className="overflow-hidden rounded-xl border border-zinc-800 bg-[#161b22]">
-          <div className="flex items-center justify-between border-b border-zinc-800/80 bg-[#0d1117] px-4 py-2.5 font-mono text-xs text-zinc-400">
-            <div className="flex items-center space-x-2">
-              <span className="inline-block h-2.5 w-2.5 rounded-full bg-teal-500/60" />
-              <span>candidate_response.md</span>
-            </div>
-            <span>Press Ctrl+Enter to submit</span>
-          </div>
-
-          <div className="p-4">
-            <textarea
-              rows={8}
-              value={answer}
-              onChange={(e) => setAnswer(e.target.value)}
-              onKeyDown={handleKeyDown}
-              disabled={submitting || feedback !== null}
-              placeholder="Structure your answer clearly (e.g., Context -> Architecture/Action -> Trade-offs & Measurable Impact)..."
-              className="w-full resize-none bg-transparent font-mono text-sm leading-relaxed text-zinc-100 placeholder-zinc-600 outline-none disabled:opacity-50"
-            />
-          </div>
-
-          {/* Action Footer */}
-          <div className="flex items-center justify-between border-t border-zinc-800/80 bg-[#0d1117]/50 px-6 py-3.5">
-            <span className="font-mono text-xs text-zinc-500">
-              {wordCount} words · {answer.trim().length} chars
-            </span>
-            {!feedback ? (
-              <button
-                onClick={() => void handleSubmitAnswer()}
-                disabled={!answer.trim() || submitting}
-                className="inline-flex items-center gap-2 rounded-lg bg-emerald-500 px-5 py-2 font-mono text-xs font-bold text-zinc-950 transition-colors hover:bg-emerald-400 disabled:bg-zinc-800 disabled:text-zinc-600"
-              >
-                <Send className="h-3.5 w-3.5" />
-                <span>
-                  {submitting ? "Evaluating Response..." : "Submit Answer"}
+      <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
+        <div className="grid gap-6 lg:grid-cols-[1fr_260px]">
+          <div className="space-y-6">
+            {/* 2. Current Question Card */}
+            <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+              <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <span className="rounded-md border border-blue-200 bg-blue-50 px-2.5 py-0.5 text-xs font-semibold text-blue-700">
+                    Question {currentOrder} of {totalQuestions}
+                  </span>
+                  <span className="rounded-md border border-slate-200 bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-700">
+                    {currentQuestion.round}
+                  </span>
+                </div>
+                <span className="text-xs font-medium text-slate-500">
+                  Difficulty: {difficulty}
                 </span>
-              </button>
-            ) : (
-              <button
-                onClick={() => void handleAdvance()}
-                disabled={submitting}
-                className="inline-flex items-center gap-2 rounded-lg bg-teal-500 px-5 py-2 font-mono text-xs font-bold text-slate-950 transition-colors hover:bg-teal-400"
-              >
-                {isCompleted ? (
-                  <>
-                    <CheckCircle2 className="h-3.5 w-3.5" />
+              </div>
+
+              <h2 className="text-lg font-semibold leading-relaxed text-slate-900 sm:text-xl">
+                {currentQuestion.question}
+              </h2>
+
+              <p className="mt-3 text-xs text-slate-500">
+                Expected structure: Briefly state the context, explain your
+                technical approach or implementation, and highlight key
+                trade-offs or edge cases.
+              </p>
+            </section>
+
+            {/* 3. Answer Area */}
+            <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+              <div className="flex items-center justify-between border-b border-slate-200 bg-slate-50 px-4 py-2.5 text-xs text-slate-600">
+                <span className="font-medium text-slate-700">Your Answer</span>
+                <div className="flex items-center gap-3">
+                  {draftSavedAt && (
+                    <span className="text-emerald-600 font-medium">
+                      {draftSavedAt}
+                    </span>
+                  )}
+                  <span className="text-slate-400">Ctrl + Enter to submit</span>
+                </div>
+              </div>
+
+              <div className="p-4">
+                <textarea
+                  rows={8}
+                  value={answer}
+                  onChange={(e) => handleAnswerChange(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  disabled={submitting || feedback !== null}
+                  placeholder="Write your response here..."
+                  className="w-full resize-none bg-white text-sm leading-relaxed text-slate-900 placeholder-slate-400 outline-none disabled:bg-slate-50 disabled:text-slate-500"
+                />
+              </div>
+
+              <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 bg-slate-50 px-5 py-3.5">
+                <span className="text-xs text-slate-500 tabular-nums">
+                  {wordCount} {wordCount === 1 ? "word" : "words"} ·{" "}
+                  {answer.trim().length} characters
+                </span>
+
+                {!feedback ? (
+                  <button
+                    type="button"
+                    onClick={() => void handleSubmitAnswer()}
+                    disabled={!answer.trim() || submitting}
+                    className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-5 py-2 text-xs font-medium text-white shadow-sm transition hover:bg-blue-700 disabled:opacity-50"
+                  >
+                    <Send className="h-3.5 w-3.5" />
                     <span>
-                      {submitting
-                        ? "Generating Final Evaluation..."
-                        : "View Final Results"}
+                      {submitting ? "Evaluating answer..." : "Submit answer"}
                     </span>
-                  </>
+                  </button>
                 ) : (
-                  <>
-                    <span>Next Question</span>
-                    <ArrowRight className="h-3.5 w-3.5" />
-                  </>
-                )}
-              </button>
-            )}
-          </div>
-        </section>
-
-        {/* Rubric Feedback Output */}
-        {feedback && (
-          <section className="relative space-y-3 rounded-xl border border-emerald-500/30 bg-[#011627] p-5 font-mono text-xs">
-            <div className="flex items-center justify-between border-b border-emerald-500/20 pb-2">
-              <span className="font-semibold text-emerald-400">
-                [Rubric Evaluation Output]
-              </span>
-              <span className="text-sm font-bold text-emerald-300">
-                Score: {feedback.score}/100
-              </span>
-            </div>
-            <p className="pt-1 leading-relaxed text-zinc-300">
-              {feedback.feedback}
-            </p>
-
-            {((feedback.strengths && feedback.strengths.length > 0) ||
-              (feedback.improvements && feedback.improvements.length > 0)) && (
-              <div className="grid grid-cols-1 gap-4 border-t border-emerald-500/10 pt-3 md:grid-cols-2">
-                {feedback.strengths && feedback.strengths.length > 0 && (
-                  <div>
-                    <span className="mb-1 block font-semibold text-emerald-400">
-                      Strengths Demonstrated:
-                    </span>
-                    <ul className="list-inside list-disc space-y-1 text-zinc-300">
-                      {feedback.strengths.map((s, i) => (
-                        <li key={i}>{s}</li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-                {feedback.improvements && feedback.improvements.length > 0 && (
-                  <div>
-                    <span className="mb-1 block font-semibold text-amber-400">
-                      Key Focus Areas (Synced to Skill Profile):
-                    </span>
-                    <ul className="list-inside list-disc space-y-1 text-zinc-300">
-                      {feedback.improvements.map((imp, i) => (
-                        <li key={i}>{imp}</li>
-                      ))}
-                    </ul>
-                  </div>
+                  <button
+                    type="button"
+                    onClick={() => void handleAdvance()}
+                    disabled={submitting}
+                    className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-5 py-2 text-xs font-medium text-white shadow-sm transition hover:bg-blue-700 disabled:opacity-50"
+                  >
+                    {isCompleted ? (
+                      <>
+                        <CheckCircle2 className="h-4 w-4" />
+                        <span>
+                          {submitting
+                            ? "Generating final evaluation..."
+                            : "View final evaluation"}
+                        </span>
+                      </>
+                    ) : (
+                      <>
+                        <span>Next question</span>
+                        <ArrowRight className="h-4 w-4" />
+                      </>
+                    )}
+                  </button>
                 )}
               </div>
+            </section>
+
+            {/* 4. Per-Answer Feedback State */}
+            {feedback && (
+              <section className="space-y-4 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+                <div className="flex items-center justify-between border-b border-slate-200 pb-3">
+                  <h3 className="text-sm font-semibold text-slate-900">
+                    Answer Feedback
+                  </h3>
+                  <span
+                    className={`rounded-md border px-2.5 py-0.5 text-xs font-semibold tabular-nums ${
+                      feedback.score >= 75
+                        ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                        : feedback.score >= 50
+                          ? "border-blue-200 bg-blue-50 text-blue-700"
+                          : "border-amber-200 bg-amber-50 text-amber-800"
+                    }`}
+                  >
+                    Score: {feedback.score}/100
+                  </span>
+                </div>
+
+                <p className="text-sm leading-relaxed text-slate-700">
+                  {feedback.feedback}
+                </p>
+
+                {((feedback.strengths && feedback.strengths.length > 0) ||
+                  (feedback.improvements &&
+                    feedback.improvements.length > 0)) && (
+                  <div className="grid grid-cols-1 gap-4 border-t border-slate-200 pt-4 md:grid-cols-2">
+                    {feedback.strengths && feedback.strengths.length > 0 && (
+                      <div className="rounded-lg border border-emerald-200 bg-emerald-50/50 p-3.5">
+                        <span className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-emerald-800">
+                          <Check className="h-3.5 w-3.5 text-emerald-600" />
+                          What was good
+                        </span>
+                        <ul className="space-y-1.5 text-xs text-slate-700">
+                          {feedback.strengths.map((s, i) => (
+                            <li key={i}>• {s}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
+                    {feedback.improvements &&
+                      feedback.improvements.length > 0 && (
+                        <div className="rounded-lg border border-amber-200 bg-amber-50/50 p-3.5">
+                          <span className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-amber-800">
+                            <AlertTriangle className="h-3.5 w-3.5 text-amber-600" />
+                            How to improve
+                          </span>
+                          <ul className="space-y-1.5 text-xs text-slate-700">
+                            {feedback.improvements.map((imp, i) => (
+                              <li key={i}>• {imp}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                  </div>
+                )}
+              </section>
             )}
-          </section>
-        )}
+          </div>
+
+          {/* 5. Question Progress Sidebar */}
+          <aside className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm h-fit">
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+              Question Progress
+            </h3>
+            <ul className="mt-3 space-y-2">
+              {sortedQuestions.map((q) => {
+                const isCurrent = q.id === currentQuestion.id;
+                const isDone = q.answer !== null;
+                return (
+                  <li
+                    key={q.id}
+                    className={`flex items-center justify-between rounded-lg border px-3 py-2 text-xs ${
+                      isCurrent
+                        ? "border-blue-300 bg-blue-50 font-semibold text-blue-800"
+                        : isDone
+                          ? "border-emerald-200 bg-emerald-50/50 text-emerald-800"
+                          : "border-slate-200 bg-slate-50 text-slate-500"
+                    }`}
+                  >
+                    <span className="truncate">
+                      Q{q.order} · {q.round}
+                    </span>
+                    <span className="shrink-0 tabular-nums">
+                      {isDone
+                        ? q.score != null
+                          ? `${q.score}%`
+                          : "Done"
+                        : isCurrent
+                          ? "Current"
+                          : "Pending"}
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+          </aside>
+        </div>
       </main>
     </div>
   );

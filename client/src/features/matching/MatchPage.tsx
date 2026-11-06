@@ -13,7 +13,9 @@ export default function MatchPage() {
   const queryResumeId = searchParams.get("resumeId");
 
   const { data: resumes, isLoading: resumesLoading } = useResumes();
-  const activeResumeId = queryResumeId || resumes?.[0]?.id || null;
+  const activeResume =
+    resumes?.find((r) => r.id === queryResumeId) ?? resumes?.[0] ?? null;
+  const activeResumeId = activeResume?.id ?? null;
 
   const [result, setResult] = useState<MatchResultType | null>(null);
   const [loading, setLoading] = useState(true);
@@ -57,77 +59,81 @@ export default function MatchPage() {
   }, [jobId, activeResumeId, resumesLoading]);
 
   return (
-    <div className="min-h-screen bg-[#09090b] text-zinc-100">
+    <div className="min-h-screen bg-[#f8fafc] text-slate-900">
       <Navbar />
 
-      <main className="mx-auto max-w-5xl px-4 py-8 sm:px-6">
+      <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
         <div className="mb-6">
           <Link
             to="/jobs"
-            className="inline-flex items-center gap-1.5 text-xs font-medium text-zinc-400 transition hover:text-teal-300"
+            className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-600 transition hover:text-blue-600"
           >
             <ArrowLeft className="h-3.5 w-3.5" />
-            <span>Back to Verified Jobs</span>
+            <span>Back to Explore Jobs</span>
           </Link>
         </div>
 
         {loading || resumesLoading ? (
-          <div className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-10 text-center">
-            <p className="font-mono text-xs text-zinc-400">
-              Analyzing your resume against this job...
+          <div className="rounded-xl border border-slate-200 bg-white p-10 text-center shadow-sm">
+            <p className="text-sm text-slate-600">
+              Comparing your resume skills against this role’s requirements...
             </p>
           </div>
         ) : !activeResumeId ? (
-          <div className="rounded-xl border border-dashed border-zinc-800 bg-zinc-900/30 p-10 text-center">
-            <h2 className="text-base font-semibold text-white">
-              Resume required for deterministic matching
+          <div className="rounded-xl border border-dashed border-slate-300 bg-white p-10 text-center shadow-sm">
+            <h2 className="text-base font-semibold text-slate-900">
+              Resume required for job matching
             </h2>
-            <p className="mt-1 text-xs text-zinc-400">
-              Upload a PDF or DOCX resume to compare your skills with this
-              posting.
+            <p className="mt-1 text-xs text-slate-600">
+              Upload your resume to see which skills match this role.
             </p>
             <Link
               to="/resume"
-              className="mt-4 inline-block rounded-lg bg-teal-500 px-4 py-2 text-xs font-semibold text-zinc-950 hover:bg-teal-400"
+              className="mt-4 inline-block rounded-lg bg-blue-600 px-4 py-2 text-xs font-medium text-white hover:bg-blue-700"
             >
-              Upload Resume
+              Upload resume
             </Link>
           </div>
         ) : error ? (
-          <div className="rounded-xl border border-red-500/30 bg-red-950/20 p-6 text-sm text-red-300">
-            <p className="font-semibold text-red-200">
+          <div className="rounded-xl border border-red-200 bg-red-50 p-6 text-sm text-red-800">
+            <p className="font-semibold text-red-900">
               Unable to compute match
             </p>
             <p className="mt-1">{error}</p>
           </div>
         ) : result ? (
           <>
-            <header className="mb-8 flex flex-wrap items-end justify-between gap-4 border-b border-zinc-800/80 pb-6">
+            <header className="mb-8 flex flex-wrap items-end justify-between gap-4 border-b border-slate-200 pb-6">
               <div>
-                <p className="font-mono text-xs uppercase tracking-wider text-teal-400">
-                  Resume Matcher
+                <p className="text-xs font-semibold uppercase tracking-wider text-blue-600">
+                  Match Analysis
                 </p>
-                <h1 className="mt-2 text-2xl font-semibold tracking-tight text-white sm:text-3xl">
-                  Skill Gap & Qualification Analysis
+                <h1 className="mt-1 text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl">
+                  Requirement Coverage & Skill Gaps
                 </h1>
-                <p className="mt-1 text-sm text-zinc-400">
-                  Deterministic analysis based on your resume skills and the job
-                  requirements.
+                <p className="mt-1 text-sm text-slate-600">
+                  Compared using{" "}
+                  <strong className="font-medium text-slate-800">
+                    {activeResume?.fileName ??
+                      activeResume?.title ??
+                      "your active resume"}
+                  </strong>{" "}
+                  on {new Date().toLocaleDateString()}.
                 </p>
               </div>
 
               <div className="flex flex-wrap gap-2.5">
                 <Link
                   to={`/skill-gaps/${jobId}?resumeId=${activeResumeId}`}
-                  className="rounded-lg bg-teal-500 px-4 py-2 text-xs font-semibold text-zinc-950 transition hover:bg-teal-400 active:scale-[0.98]"
+                  className="rounded-lg bg-blue-600 px-4 py-2 text-xs font-medium text-white shadow-sm transition hover:bg-blue-700"
                 >
-                  Open skill gap plan & interview
+                  Practice targeted interview
                 </Link>
                 <Link
                   to={`/tailor/${jobId}?resumeId=${activeResumeId}`}
-                  className="rounded-lg border border-zinc-800 bg-zinc-900/70 px-4 py-2 text-xs font-medium text-zinc-200 transition hover:border-zinc-700 hover:text-white"
+                  className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-xs font-medium text-slate-700 transition hover:bg-slate-50"
                 >
-                  Tailor resume
+                  Tailor application
                 </Link>
               </div>
             </header>

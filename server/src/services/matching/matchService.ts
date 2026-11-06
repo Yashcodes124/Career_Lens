@@ -3,10 +3,17 @@ import { getResumeById } from "../../repositories/resumeRepository";
 import { getJobById } from "../../repositories/jobRepository";
 import { upsertApplicationMatch } from "../../repositories/matchRepository";
 import { listUserSkills } from "../../repositories/skillRepository";
-import { calculateMatch, InterviewEvidence, MatchResult } from "./matchingService";
+import {
+  calculateMatch,
+  calculateTacticalMatrix,
+  InterviewEvidence,
+  MatchResult,
+  TacticalMatrix,
+} from "./matchingService";
 
 export interface MatchResponseData extends MatchResult {
   applicationId: string;
+  tactical?: TacticalMatrix | null;
 }
 
 export const matchResumeToJob = async (
@@ -26,13 +33,28 @@ export const matchResumeToJob = async (
 
   const userSkills = await listUserSkills(userId);
   const interview: InterviewEvidence = {
-    strongSkills: userSkills.filter((s) => s.status === "STRONG").map((s) => s.skill),
+    strongSkills: userSkills
+      .filter((s) => s.status === "STRONG")
+      .map((s) => s.skill),
     weakSkills: new Map(
-      userSkills.filter((s) => s.status === "WEAK").map((s) => [s.skill, s.evidence] as const),
+      userSkills
+        .filter((s) => s.status === "WEAK")
+        .map((s) => [s.skill, s.evidence] as const),
     ),
   };
 
-  const result = calculateMatch(resume.skills, job.requirements, job.description, interview);
+  const result = calculateMatch(
+    resume.skills,
+    job.requirements,
+    job.description,
+    interview,
+  );
+  const tactical = calculateTacticalMatrix(
+    resume.skills,
+    job.requirements,
+    job.description,
+    interview,
+  );
 
   // Saved on the application so the interview and tracker use the same numbers.
   const application = await upsertApplicationMatch(userId, jobId, {
@@ -40,5 +62,5 @@ export const matchResumeToJob = async (
     skillGaps: result.skillGaps.map((gap) => gap.skill),
   });
 
-  return { ...result, applicationId: application.id };
+  return { ...result, applicationId: application.id, tactical };
 };

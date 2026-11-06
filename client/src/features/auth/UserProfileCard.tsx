@@ -4,21 +4,22 @@ import { useAuth } from "./useAuth";
 import { CheckCircle2, AlertCircle, Loader2, X } from "lucide-react";
 
 const EXPERIENCE_LEVELS = [
-  "Entry Level",
+  "Student",
+  "Fresher",
+  "Junior",
   "Mid-Level",
   "Senior",
   "Lead",
-  "Manager",
-  "Executive",
 ];
 
 const QUICK_LOCATIONS = [
   "Remote",
   "Hybrid",
   "Bengaluru",
+  "Hyderabad",
+  "Pune",
   "San Francisco",
   "New York",
-  "Seattle",
 ];
 
 export const UserProfileCard: React.FC = () => {
@@ -90,7 +91,7 @@ export const UserProfileCard: React.FC = () => {
     setIsSubmitting(true);
     try {
       await updateProfile(payload);
-      setSuccessMessage("Profile updated.");
+      setSuccessMessage("Your profile preferences have been saved.");
       setNewPassword("");
     } catch (err: any) {
       setErrorMessage(err.message || "Failed to update profile.");
@@ -100,118 +101,122 @@ export const UserProfileCard: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#09090b] text-zinc-100">
+    <div className="min-h-screen bg-[#f8fafc] text-slate-900">
       <Navbar />
 
-      <main className="mx-auto max-w-3xl px-4 py-8 sm:px-6">
-        <header className="mb-8 flex flex-wrap items-end justify-between gap-4 border-b border-zinc-800/80 pb-6">
+      <main className="mx-auto max-w-3xl px-4 py-8 sm:px-6 lg:px-8">
+        <header className="mb-8 flex flex-wrap items-end justify-between gap-4 border-b border-slate-200 pb-6">
           <div>
-            <p className="font-mono text-xs uppercase tracking-wider text-teal-400">
-              Account & Role Configuration
+            <p className="text-xs font-semibold uppercase tracking-wider text-blue-600">
+              Account Settings
             </p>
-            <h1 className="mt-2 text-2xl font-semibold tracking-tight text-white sm:text-3xl">
+            <h1 className="mt-1 text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl">
               Candidate Profile
             </h1>
+            <p className="mt-1 text-sm text-slate-600">
+              Manage your target role, experience level, and preferred job
+              locations.
+            </p>
           </div>
           <div className="flex items-center gap-3">
-            <span className="rounded border border-zinc-800 bg-zinc-900 px-2.5 py-1 font-mono text-[11px] uppercase text-zinc-300">
-              ROLE // {user.role}
+            <span className="rounded-md border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-600">
+              {user.role === "ADMIN" ? "Administrator" : "Candidate"}
             </span>
             <button
               type="button"
               onClick={() => void logout()}
-              className="rounded-lg border border-zinc-800 bg-zinc-900/60 px-3 py-1.5 text-xs font-medium text-zinc-300 transition hover:border-red-500/40 hover:text-red-300"
+              className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 transition hover:border-red-300 hover:bg-red-50 hover:text-red-700"
             >
-              Sign out
+              Log out
             </button>
           </div>
         </header>
 
         {successMessage && (
-          <div className="mb-6 flex items-center gap-2.5 rounded-lg border border-emerald-500/30 bg-emerald-950/20 p-3.5 text-xs text-emerald-300">
-            <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-400" />
+          <div className="mb-6 flex items-center gap-2.5 rounded-lg border border-emerald-200 bg-emerald-50 p-3.5 text-xs font-medium text-emerald-800">
+            <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />
             <span>{successMessage}</span>
           </div>
         )}
 
         {errorMessage && (
-          <div className="mb-6 flex items-center gap-2.5 rounded-lg border border-red-500/30 bg-red-950/20 p-3.5 text-xs text-red-300">
-            <AlertCircle className="h-4 w-4 shrink-0 text-red-400" />
+          <div className="mb-6 flex items-center gap-2.5 rounded-lg border border-red-200 bg-red-50 p-3.5 text-xs font-medium text-red-700">
+            <AlertCircle className="h-4 w-4 shrink-0 text-red-600" />
             <span>{errorMessage}</span>
           </div>
         )}
 
         <form
           onSubmit={handleUpdate}
-          className="space-y-6 rounded-xl border border-zinc-800 bg-zinc-900/40 p-6"
+          className="space-y-6 rounded-xl border border-slate-200 bg-white p-6 shadow-sm"
         >
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
             <div>
-              <label className="mb-1.5 block font-mono text-[11px] uppercase tracking-wider text-zinc-400">
-                Full Name
+              <label className="mb-1.5 block text-xs font-medium text-slate-700">
+                Full name
               </label>
               <input
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="w-full rounded-lg border border-zinc-800 bg-[#09090b] px-3.5 py-2.5 text-sm text-zinc-100 outline-none focus:border-teal-500"
+                className="w-full rounded-lg border border-slate-300 bg-white px-3.5 py-2.5 text-sm text-slate-900 outline-none transition focus:border-blue-600 focus:ring-2 focus:ring-blue-500/15"
               />
             </div>
 
             <div>
-              <label className="mb-1.5 block font-mono text-[11px] uppercase tracking-wider text-zinc-400">
-                Email Address
+              <label className="mb-1.5 block text-xs font-medium text-slate-700">
+                Email address
               </label>
               <input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full rounded-lg border border-zinc-800 bg-[#09090b] px-3.5 py-2.5 text-sm text-zinc-100 outline-none focus:border-teal-500"
+                className="w-full rounded-lg border border-slate-300 bg-white px-3.5 py-2.5 text-sm text-slate-900 outline-none transition focus:border-blue-600 focus:ring-2 focus:ring-blue-500/15"
               />
             </div>
           </div>
 
           <div>
-            <label className="mb-1.5 block font-mono text-[11px] uppercase tracking-wider text-zinc-400">
-              Change Password (Optional)
+            <label className="mb-1.5 block text-xs font-medium text-slate-700">
+              Change password (optional)
             </label>
             <input
               type="password"
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
-              placeholder="Leave blank to keep current password"
+              placeholder="Leave blank to keep your current password"
               minLength={8}
-              className="w-full rounded-lg border border-zinc-800 bg-[#09090b] px-3.5 py-2.5 text-sm text-zinc-100 placeholder-zinc-600 outline-none focus:border-teal-500"
+              className="w-full rounded-lg border border-slate-300 bg-white px-3.5 py-2.5 text-sm text-slate-900 placeholder-slate-400 outline-none transition focus:border-blue-600 focus:ring-2 focus:ring-blue-500/15"
             />
           </div>
 
-          <div className="border-t border-zinc-800/80 pt-6">
-            <h2 className="mb-4 text-sm font-semibold text-white">
+          <div className="border-t border-slate-200 pt-6">
+            <h2 className="mb-4 text-base font-semibold text-slate-900">
               Career Readiness Preferences
             </h2>
 
             <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
               <div>
-                <label className="mb-1.5 block font-mono text-[11px] uppercase tracking-wider text-zinc-400">
-                  Target Role
+                <label className="mb-1.5 block text-xs font-medium text-slate-700">
+                  Target role
                 </label>
                 <input
                   type="text"
                   value={targetRole}
                   onChange={(e) => setTargetRole(e.target.value)}
                   placeholder="e.g., Backend Engineer, Full-Stack Developer"
-                  className="w-full rounded-lg border border-zinc-800 bg-[#09090b] px-3.5 py-2.5 text-sm text-zinc-100 placeholder-zinc-600 outline-none focus:border-teal-500"
+                  className="w-full rounded-lg border border-slate-300 bg-white px-3.5 py-2.5 text-sm text-slate-900 placeholder-slate-400 outline-none transition focus:border-blue-600 focus:ring-2 focus:ring-blue-500/15"
                 />
               </div>
 
               <div>
-                <label className="mb-1.5 block font-mono text-[11px] uppercase tracking-wider text-zinc-400">
-                  Experience Level
+                <label className="mb-1.5 block text-xs font-medium text-slate-700">
+                  Experience level
                 </label>
                 <select
                   value={experienceLevel}
                   onChange={(e) => setExperienceLevel(e.target.value)}
-                  className="w-full rounded-lg border border-zinc-800 bg-[#09090b] px-3.5 py-2.5 text-sm text-zinc-100 outline-none focus:border-teal-500"
+                  className="w-full rounded-lg border border-slate-300 bg-white px-3.5 py-2.5 text-sm text-slate-900 outline-none transition focus:border-blue-600 focus:ring-2 focus:ring-blue-500/15"
                 >
                   <option value="">Select experience level</option>
                   {EXPERIENCE_LEVELS.map((lvl) => (
@@ -224,8 +229,8 @@ export const UserProfileCard: React.FC = () => {
             </div>
 
             <div className="mt-5">
-              <label className="mb-2 block font-mono text-[11px] uppercase tracking-wider text-zinc-400">
-                Preferred Locations
+              <label className="mb-2 block text-xs font-medium text-slate-700">
+                Preferred locations
               </label>
 
               <div className="mb-3 flex flex-wrap gap-1.5">
@@ -236,10 +241,10 @@ export const UserProfileCard: React.FC = () => {
                       key={loc}
                       type="button"
                       onClick={() => toggleLocation(loc)}
-                      className={`rounded-md border px-2.5 py-1 text-xs font-medium transition ${
+                      className={`rounded-lg border px-3 py-1 text-xs font-medium transition ${
                         active
-                          ? "border-teal-500/50 bg-teal-500/10 text-teal-300"
-                          : "border-zinc-800 bg-[#09090b] text-zinc-400 hover:border-zinc-700"
+                          ? "border-blue-200 bg-blue-50 text-blue-700"
+                          : "border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100 hover:text-slate-900"
                       }`}
                     >
                       {loc}
@@ -259,13 +264,13 @@ export const UserProfileCard: React.FC = () => {
                       addCustomLocation();
                     }
                   }}
-                  placeholder="Add another location and press Enter..."
-                  className="flex-1 rounded-lg border border-zinc-800 bg-[#09090b] px-3.5 py-2 text-xs text-zinc-100 placeholder-zinc-600 outline-none focus:border-teal-500"
+                  placeholder="Add another city and press Enter..."
+                  className="flex-1 rounded-lg border border-slate-300 bg-white px-3.5 py-2 text-xs text-slate-900 placeholder-slate-400 outline-none transition focus:border-blue-600"
                 />
                 <button
                   type="button"
                   onClick={addCustomLocation}
-                  className="rounded-lg border border-zinc-700 bg-zinc-900 px-4 py-2 text-xs font-medium text-zinc-200 hover:bg-zinc-800"
+                  className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50"
                 >
                   Add
                 </button>
@@ -276,13 +281,13 @@ export const UserProfileCard: React.FC = () => {
                   {preferredLocations.map((loc) => (
                     <span
                       key={loc}
-                      className="inline-flex items-center gap-1.5 rounded border border-zinc-800 bg-[#09090b] px-2.5 py-1 font-mono text-xs text-zinc-200"
+                      className="inline-flex items-center gap-1.5 rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-700"
                     >
                       {loc}
                       <button
                         type="button"
                         onClick={() => toggleLocation(loc)}
-                        className="text-zinc-500 hover:text-zinc-200"
+                        className="text-slate-400 hover:text-slate-700"
                       >
                         <X className="h-3 w-3" />
                       </button>
@@ -293,19 +298,19 @@ export const UserProfileCard: React.FC = () => {
             </div>
           </div>
 
-          <div className="flex justify-end border-t border-zinc-800/80 pt-5">
+          <div className="flex justify-end border-t border-slate-200 pt-5">
             <button
               type="submit"
               disabled={isSubmitting}
-              className="inline-flex items-center gap-2 rounded-lg bg-teal-500 px-5 py-2.5 text-xs font-semibold text-zinc-950 transition hover:bg-teal-400 active:scale-[0.98] disabled:opacity-50"
+              className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-5 py-2.5 text-xs font-medium text-white shadow-sm transition hover:bg-blue-700 disabled:opacity-50"
             >
               {isSubmitting ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  <span>Saving Changes...</span>
+                  <span>Saving changes...</span>
                 </>
               ) : (
-                <span>Update Profile</span>
+                <span>Save changes</span>
               )}
             </button>
           </div>

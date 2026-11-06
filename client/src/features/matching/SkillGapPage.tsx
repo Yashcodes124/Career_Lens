@@ -5,7 +5,7 @@ import {
   useParams,
   useSearchParams,
 } from "react-router-dom";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Play } from "lucide-react";
 import { Navbar } from "../../components/NavBar";
 import { calculateJobMatch } from "./matchingApi";
 import type { MatchResponseData } from "./types";
@@ -96,12 +96,12 @@ export const SkillGapPage: React.FC = () => {
   if (!jobId) {
     return (
       <Shell>
-        <p className="text-sm text-zinc-400">
-          Choose a job to see its skill gaps.
+        <p className="text-sm text-slate-600">
+          Choose a job to view its skill gaps.
         </p>
         <Link
           to="/jobs"
-          className="mt-4 inline-block text-sm text-teal-400 hover:text-teal-300"
+          className="mt-4 inline-block text-sm font-medium text-blue-600 hover:text-blue-700"
         >
           Browse jobs
         </Link>
@@ -112,9 +112,9 @@ export const SkillGapPage: React.FC = () => {
   if (resumesLoading) {
     return (
       <Shell>
-        <p className="font-mono text-xs text-zinc-400">
-          Loading your resumes...
-        </p>
+        <div className="rounded-xl border border-slate-200 bg-white p-10 text-center shadow-sm">
+          <p className="text-sm text-slate-600">Loading your resume...</p>
+        </div>
       </Shell>
     );
   }
@@ -122,9 +122,9 @@ export const SkillGapPage: React.FC = () => {
   if (resumesError) {
     return (
       <Shell>
-        <p className="text-sm text-red-400">
+        <div className="rounded-xl border border-red-200 bg-red-50 p-6 text-sm text-red-700">
           We could not load your resumes. Check your connection and try again.
-        </p>
+        </div>
       </Shell>
     );
   }
@@ -132,15 +132,17 @@ export const SkillGapPage: React.FC = () => {
   if (!resumeId) {
     return (
       <Shell>
-        <p className="text-sm text-zinc-400">
-          Upload a resume to see how it compares with this job.
-        </p>
-        <Link
-          to="/resume"
-          className="mt-4 inline-block rounded-lg bg-teal-500 px-4 py-2 text-xs font-semibold text-zinc-950 hover:bg-teal-400"
-        >
-          Upload a resume
-        </Link>
+        <div className="rounded-xl border border-dashed border-slate-300 bg-white p-10 text-center shadow-sm">
+          <p className="text-sm text-slate-600">
+            Upload your resume to see which skills match this role.
+          </p>
+          <Link
+            to="/resume"
+            className="mt-4 inline-block rounded-lg bg-blue-600 px-4 py-2 text-xs font-medium text-white hover:bg-blue-700"
+          >
+            Upload resume
+          </Link>
+        </div>
       </Shell>
     );
   }
@@ -151,48 +153,62 @@ export const SkillGapPage: React.FC = () => {
 
   return (
     <Shell>
-      <div className="mb-8 flex flex-wrap items-end justify-between gap-4 border-b border-zinc-800/80 pb-6">
+      <div className="mb-8 flex flex-wrap items-end justify-between gap-4 border-b border-slate-200 pb-6">
         <div>
-          <p className="font-mono text-xs uppercase tracking-wider text-teal-400">
-            Skill gap plan
+          <p className="text-xs font-semibold uppercase tracking-wider text-blue-600">
+            Preparation Plan
           </p>
-          <h1 className="mt-2 text-2xl font-semibold tracking-tight text-white sm:text-3xl">
-            What to improve for this job
+          <h1 className="mt-1 text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl">
+            Skill Gaps
           </h1>
+          <p className="mt-1 text-sm text-slate-600">
+            Focus on the skills that appear most often across your target roles.
+          </p>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex flex-wrap items-center gap-3">
+          <button
+            type="button"
+            onClick={() => setIsModalOpen(true)}
+            disabled={!data || data.status !== "OK" || !data.applicationId}
+            className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-xs font-medium text-white shadow-sm transition hover:bg-blue-700 disabled:opacity-50"
+          >
+            <Play className="h-3.5 w-3.5 fill-current" />
+            <span>Start practice interview</span>
+          </button>
           <Link
             to={`/tailor/${jobId}?resumeId=${resumeId}`}
-            className="rounded-lg border border-zinc-800 bg-zinc-900/70 px-3.5 py-2 text-xs font-medium text-zinc-200 transition hover:border-zinc-700 hover:text-white"
+            className="rounded-lg border border-slate-300 bg-white px-3.5 py-2 text-xs font-medium text-slate-700 transition hover:bg-slate-50"
           >
             Tailor resume
           </Link>
           <Link
             to={`/matches/${jobId}?resumeId=${resumeId}`}
-            className="inline-flex items-center gap-1.5 text-xs font-medium text-teal-400 hover:text-teal-300"
+            className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-600 hover:text-blue-600"
           >
             <ArrowLeft className="h-3.5 w-3.5" />
-            <span>Back to match details</span>
+            <span>Back to match</span>
           </Link>
         </div>
       </div>
 
       {loading && (
-        <p className="font-mono text-xs text-zinc-400">
-          Analyzing your resume against this job...
-        </p>
+        <div className="rounded-xl border border-slate-200 bg-white p-10 text-center shadow-sm">
+          <p className="text-sm text-slate-600">
+            Analyzing your resume against this role’s requirements...
+          </p>
+        </div>
       )}
 
       {error && (
         <div
           role="alert"
-          className="rounded-xl border border-red-500/30 bg-red-950/20 p-5 text-sm text-red-300"
+          className="rounded-xl border border-red-200 bg-red-50 p-5 text-sm text-red-700"
         >
           <p>{error}</p>
           <button
             type="button"
             onClick={() => setAttempt((n) => n + 1)}
-            className="mt-3 rounded-lg border border-red-500/40 px-3 py-1.5 text-xs text-red-200 hover:bg-red-500/10"
+            className="mt-3 rounded-lg border border-red-300 bg-white px-3 py-1.5 text-xs font-medium text-red-700 hover:bg-red-50"
           >
             Try again
           </button>
@@ -203,31 +219,33 @@ export const SkillGapPage: React.FC = () => {
         <>
           <MatchResult result={data} />
 
-          <div className="mt-6 flex flex-col gap-4 rounded-xl border border-zinc-800 bg-zinc-900/50 p-6 sm:flex-row sm:items-center sm:justify-between">
+          <div className="mt-6 flex flex-col gap-4 rounded-xl border border-blue-200 bg-blue-50/70 p-6 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <h2 className="text-sm font-semibold text-white">
-                Practise the job skills & gaps above
+              <h2 className="text-base font-semibold text-slate-900">
+                Practice these skill gaps in a targeted interview
               </h2>
-              <p className="mt-1 text-xs text-zinc-400">
-                Choose specific skills from this job ({priorityGapNames.length}{" "}
-                gaps, {matchedSkillNames.length} matched), set your duration and
-                difficulty, and launch a custom mock interview.
+              <p className="mt-1 text-xs text-slate-600">
+                Configure your duration (15–60 min), difficulty, and focus
+                skills ({priorityGapNames.length} gaps,{" "}
+                {matchedSkillNames.length} matched) to practice before your real
+                screen.
               </p>
             </div>
             <button
               type="button"
               onClick={() => setIsModalOpen(true)}
               disabled={data.status !== "OK" || !data.applicationId}
-              className="shrink-0 rounded-lg bg-teal-500 px-5 py-2.5 text-xs font-semibold text-zinc-950 transition hover:bg-teal-400 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
+              className="shrink-0 inline-flex items-center gap-2 rounded-lg bg-blue-600 px-5 py-2.5 text-xs font-medium text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              Start mock interview
+              <Play className="h-3.5 w-3.5 fill-current" />
+              <span>Start practice interview</span>
             </button>
           </div>
 
           {startError && (
             <div
               role="alert"
-              className="mt-3 rounded-lg border border-red-500/30 bg-red-950/20 p-3.5 text-xs text-red-300"
+              className="mt-3 rounded-lg border border-red-200 bg-red-50 p-3.5 text-xs text-red-700"
             >
               {startError}
             </div>
@@ -249,9 +267,11 @@ export const SkillGapPage: React.FC = () => {
 };
 
 const Shell: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  <div className="min-h-screen bg-[#09090b] text-zinc-100">
+  <div className="min-h-screen bg-[#f8fafc] text-slate-900">
     <Navbar />
-    <main className="mx-auto max-w-5xl px-4 py-8 sm:px-6">{children}</main>
+    <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
+      {children}
+    </main>
   </div>
 );
 

@@ -11,6 +11,8 @@ let cachedClient: OpenAI | null = null;
 let cachedKey = "";
 let cachedBaseUrl = "";
 
+
+
 const getClient = (): OpenAI => {
   const apiKey = process.env.NVIDIA_API_KEY || process.env.AI_API_KEY;
   if (!apiKey) {

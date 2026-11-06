@@ -42,22 +42,23 @@ const DURATION_PRESETS: Record<
   15: {
     rounds: "2 Focused Rounds",
     questions: "3–4 Questions",
-    summary: "Rapid skill check on your selected focus skills",
+    summary: "Quick check on your selected focus skills",
   },
   30: {
     rounds: "3 Balanced Rounds",
     questions: "5–6 Questions",
-    summary: "Technical deep-dive + practical project & trade-off scenarios",
+    summary:
+      "Technical deep-dive plus practical project and trade-off scenarios",
   },
   45: {
     rounds: "4 Comprehensive Rounds",
     questions: "7–8 Questions",
-    summary: "Core skills, system architecture, debugging & behavioral",
+    summary: "Core skills, system architecture, debugging, and behavioral",
   },
   60: {
     rounds: "4 Full Loop Rounds",
     questions: "9–10 Questions",
-    summary: "End-to-end onsite simulation across all selected skills",
+    summary: "Full onsite simulation across all selected skills",
   },
 };
 
@@ -71,7 +72,6 @@ export const PreInterviewModal: React.FC<PreInterviewModalProps> = ({
   matchedSkills = [],
   isStarting = false,
 }) => {
-  // Combine job skill gaps + matched job skills + dynamicTopics without duplicates
   const availableSkills = useMemo(() => {
     const combined = [...priorityGaps, ...dynamicTopics, ...matchedSkills]
       .map((s) => s.trim())
@@ -91,7 +91,6 @@ export const PreInterviewModal: React.FC<PreInterviewModalProps> = ({
 
   useEffect(() => {
     if (isOpen) {
-      // Pre-select up to 3 priority job skills by default when modal opens
       const initial =
         priorityGaps.length > 0
           ? priorityGaps.slice(0, 3)
@@ -140,28 +139,28 @@ export const PreInterviewModal: React.FC<PreInterviewModalProps> = ({
   const preset = DURATION_PRESETS[duration] ?? DURATION_PRESETS[30];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
-      <div className="w-full max-w-xl rounded-xl border border-zinc-800 bg-[#09090b] p-6 shadow-2xl">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-xs">
+      <div className="w-full max-w-xl rounded-xl border border-slate-200 bg-white p-6 shadow-xl">
         {/* Header */}
-        <div className="flex items-start justify-between border-b border-zinc-800 pb-4">
+        <div className="flex items-start justify-between border-b border-slate-200 pb-4">
           <div>
-            <div className="inline-flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-wider text-teal-400">
+            <div className="inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-blue-600">
               <Sliders className="h-3.5 w-3.5" />
-              <span>Skill-Driven Interview Customizer</span>
+              <span>Interview Configuration</span>
             </div>
-            <h2 className="mt-1 text-lg font-semibold text-white">
-              Configure Mock Interview
+            <h2 className="mt-1 text-lg font-semibold text-slate-900">
+              Prepare for Interview
             </h2>
-            <p className="mt-0.5 text-xs text-zinc-400">
+            <p className="mt-0.5 text-xs text-slate-500">
               Role:{" "}
-              <span className="font-medium text-zinc-200">{jobTitle}</span>
+              <span className="font-medium text-slate-800">{jobTitle}</span>
             </p>
           </div>
           <button
             type="button"
             onClick={onClose}
             disabled={isStarting}
-            className="rounded-lg border border-zinc-800 bg-zinc-900/60 p-1.5 text-zinc-400 transition hover:text-white disabled:opacity-50"
+            className="rounded-lg border border-slate-200 bg-white p-1.5 text-slate-500 transition hover:bg-slate-100 hover:text-slate-900 disabled:opacity-50"
             aria-label="Close modal"
           >
             <X className="h-4 w-4" />
@@ -172,11 +171,11 @@ export const PreInterviewModal: React.FC<PreInterviewModalProps> = ({
           {/* Duration & Structure Preview */}
           <div>
             <div className="mb-2 flex items-center justify-between">
-              <label className="flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-wider text-zinc-300">
-                <Clock className="h-3.5 w-3.5 text-teal-400" />
-                <span>Session Duration</span>
+              <label className="flex items-center gap-1.5 text-xs font-semibold text-slate-800">
+                <Clock className="h-3.5 w-3.5 text-blue-600" />
+                <span>Duration</span>
               </label>
-              <span className="font-mono text-[11px] text-teal-400">
+              <span className="text-xs font-medium text-blue-600">
                 {preset.rounds} · {preset.questions}
               </span>
             </div>
@@ -187,31 +186,39 @@ export const PreInterviewModal: React.FC<PreInterviewModalProps> = ({
                   type="button"
                   disabled={isStarting}
                   onClick={() => setDuration(mins)}
-                  className={`rounded-lg border py-2 px-3 font-mono text-xs font-semibold transition ${
+                  className={`rounded-lg border py-2 px-3 text-xs font-semibold tabular-nums transition ${
                     duration === mins
-                      ? "border-teal-500/60 bg-teal-500/15 text-teal-300"
-                      : "border-zinc-800 bg-zinc-900/40 text-zinc-400 hover:border-zinc-700 hover:text-zinc-200"
+                      ? "border-blue-600 bg-blue-600 text-white"
+                      : "border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100"
                   }`}
                 >
-                  {mins}m
+                  {mins} min
                 </button>
               ))}
             </div>
-            <p className="mt-1.5 text-[11px] text-zinc-500">{preset.summary}</p>
+            <p className="mt-1.5 text-xs text-slate-500">{preset.summary}</p>
           </div>
 
           {/* Difficulty Selection */}
           <div>
-            <label className="mb-2 flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-wider text-zinc-300">
-              <Layers className="h-3.5 w-3.5 text-teal-400" />
-              <span>Difficulty & Depth</span>
+            <label className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-slate-800">
+              <Layers className="h-3.5 w-3.5 text-blue-600" />
+              <span>Difficulty</span>
             </label>
             <div className="grid grid-cols-3 gap-2">
               {(
                 [
-                  { id: "EASY", desc: "Fundamentals & Concepts" },
-                  { id: "MEDIUM", desc: "Production Scenarios" },
-                  { id: "HARD", desc: "Deep Edge Cases & Scale" },
+                  { id: "EASY", label: "Easy", desc: "Core concepts" },
+                  {
+                    id: "MEDIUM",
+                    label: "Medium",
+                    desc: "Practical scenarios",
+                  },
+                  {
+                    id: "HARD",
+                    label: "Hard",
+                    desc: "System scale & trade-offs",
+                  },
                 ] as const
               ).map((item) => (
                 <button
@@ -221,14 +228,14 @@ export const PreInterviewModal: React.FC<PreInterviewModalProps> = ({
                   onClick={() => setDifficulty(item.id)}
                   className={`rounded-lg border p-2.5 text-left transition ${
                     difficulty === item.id
-                      ? "border-teal-500/60 bg-teal-500/15 text-teal-300"
-                      : "border-zinc-800 bg-zinc-900/40 text-zinc-400 hover:border-zinc-700 hover:text-zinc-200"
+                      ? "border-blue-600 bg-blue-50/70 text-blue-900"
+                      : "border-slate-200 bg-slate-50/60 text-slate-700 hover:bg-slate-100"
                   }`}
                 >
-                  <span className="block font-mono text-xs font-semibold">
-                    {item.id}
+                  <span className="block text-xs font-semibold">
+                    {item.label}
                   </span>
-                  <span className="mt-0.5 block text-[10px] text-zinc-400">
+                  <span className="mt-0.5 block text-[11px] text-slate-500">
                     {item.desc}
                   </span>
                 </button>
@@ -236,14 +243,12 @@ export const PreInterviewModal: React.FC<PreInterviewModalProps> = ({
             </div>
           </div>
 
-          {/* Job Skills & Gap Focus Selector */}
+          {/* Focus Skills Selector */}
           <div>
             <div className="mb-2 flex items-center justify-between">
-              <label className="flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-wider text-zinc-300">
-                <Target className="h-3.5 w-3.5 text-teal-400" />
-                <span>
-                  Select Job Skills to Practice ({selectedTopics.length} chosen)
-                </span>
+              <label className="flex items-center gap-1.5 text-xs font-semibold text-slate-800">
+                <Target className="h-3.5 w-3.5 text-blue-600" />
+                <span>Focus Skills ({selectedTopics.length} selected)</span>
               </label>
               <button
                 type="button"
@@ -255,7 +260,7 @@ export const PreInterviewModal: React.FC<PreInterviewModalProps> = ({
                       : allDisplaySkills,
                   )
                 }
-                className="font-mono text-[11px] text-teal-400 hover:text-teal-300"
+                className="text-xs font-medium text-blue-600 hover:text-blue-700"
               >
                 {selectedTopics.length === allDisplaySkills.length
                   ? "Reset"
@@ -263,7 +268,7 @@ export const PreInterviewModal: React.FC<PreInterviewModalProps> = ({
               </button>
             </div>
 
-            <div className="max-h-40 overflow-y-auto rounded-lg border border-zinc-800/90 bg-zinc-900/30 p-3">
+            <div className="max-h-40 overflow-y-auto rounded-lg border border-slate-200 bg-slate-50 p-3">
               <div className="flex flex-wrap gap-1.5">
                 {allDisplaySkills.map((topic) => {
                   const isSelected = selectedTopics.includes(topic);
@@ -274,15 +279,15 @@ export const PreInterviewModal: React.FC<PreInterviewModalProps> = ({
                       type="button"
                       disabled={isStarting}
                       onClick={() => toggleTopic(topic)}
-                      className={`inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 font-mono text-xs transition ${
+                      className={`inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-xs font-medium transition ${
                         isSelected
-                          ? "border-teal-500/60 bg-teal-500/15 text-teal-200"
-                          : "border-zinc-800 bg-[#09090b] text-zinc-400 hover:border-zinc-700 hover:text-zinc-200"
+                          ? "border-blue-300 bg-blue-50 text-blue-800"
+                          : "border-slate-200 bg-white text-slate-600 hover:bg-slate-100"
                       }`}
                     >
                       <span>{topic}</span>
                       {isGap && (
-                        <span className="rounded bg-amber-500/20 px-1 py-0.2 text-[9px] uppercase text-amber-300">
+                        <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-800">
                           Gap
                         </span>
                       )}
@@ -292,7 +297,7 @@ export const PreInterviewModal: React.FC<PreInterviewModalProps> = ({
               </div>
             </div>
 
-            {/* Add Any Custom Skill Input */}
+            {/* Custom Skill Input */}
             <div className="mt-2.5 flex gap-2">
               <input
                 type="text"
@@ -305,28 +310,30 @@ export const PreInterviewModal: React.FC<PreInterviewModalProps> = ({
                     handleAddCustomSkill();
                   }
                 }}
-                placeholder="Add any specific skill or topic (e.g., Java, Spring Boot, SQL)..."
-                className="flex-1 rounded-lg border border-zinc-800 bg-zinc-900/50 px-3 py-1.5 text-xs text-zinc-100 placeholder-zinc-500 outline-none focus:border-teal-500"
+                placeholder="Add custom skill (e.g., PostgreSQL, Redis, System Design)..."
+                className="flex-1 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs text-slate-900 placeholder-slate-400 outline-none focus:border-blue-600"
               />
               <button
                 type="button"
                 disabled={isStarting || !customSkill.trim()}
                 onClick={handleAddCustomSkill}
-                className="inline-flex items-center gap-1 rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-1.5 text-xs font-medium text-zinc-200 hover:bg-zinc-800 disabled:opacity-50"
+                className="inline-flex items-center gap-1 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
               >
                 <Plus className="h-3.5 w-3.5" />
-                <span>Add Skill</span>
+                <span>Add</span>
               </button>
             </div>
           </div>
         </div>
 
         {/* Footer Actions */}
-        <div className="mt-6 flex items-center justify-between border-t border-zinc-800 pt-4">
-          <span className="font-mono text-[11px] text-zinc-500">
+        <div className="mt-6 flex items-center justify-between border-t border-slate-200 pt-4">
+          <span className="text-xs text-slate-500 tabular-nums">
             {isStarting
-              ? "Building custom questions for your selected skills..."
-              : `${selectedTopics.length} skill${selectedTopics.length === 1 ? "" : "s"} · ${duration}m · ${difficulty}`}
+              ? "Preparing your targeted questions..."
+              : `${selectedTopics.length} skill${
+                  selectedTopics.length === 1 ? "" : "s"
+                } · ${duration} min · ${difficulty}`}
           </span>
 
           <div className="flex gap-2.5">
@@ -334,7 +341,7 @@ export const PreInterviewModal: React.FC<PreInterviewModalProps> = ({
               type="button"
               onClick={onClose}
               disabled={isStarting}
-              className="rounded-lg border border-zinc-800 bg-zinc-900 px-4 py-2 text-xs font-medium text-zinc-300 transition hover:bg-zinc-800 disabled:opacity-50"
+              className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-xs font-medium text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
             >
               Cancel
             </button>
@@ -342,17 +349,17 @@ export const PreInterviewModal: React.FC<PreInterviewModalProps> = ({
               type="button"
               onClick={handleStart}
               disabled={isStarting || selectedTopics.length === 0}
-              className="inline-flex items-center gap-2 rounded-lg bg-teal-500 px-5 py-2 text-xs font-semibold text-zinc-950 transition hover:bg-teal-400 active:scale-[0.98] disabled:opacity-50"
+              className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-5 py-2 text-xs font-medium text-white shadow-sm transition hover:bg-blue-700 disabled:opacity-50"
             >
               {isStarting ? (
                 <>
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  <span>Generating Session...</span>
+                  <span>Starting...</span>
                 </>
               ) : (
                 <>
                   <Play className="h-3.5 w-3.5 fill-current" />
-                  <span>Start Session</span>
+                  <span>Start interview</span>
                 </>
               )}
             </button>

@@ -25,6 +25,7 @@ import { InterviewEvaluationPage } from "./features/interview/InterviewEvaluatio
 import { SkillGapPage } from "./features/matching/SkillGapPage";
 import { ResumePage } from "./features/resume/ResumePage";
 import { DashboardPage } from "./features/dashboard/DashboardPage";
+import { ReadinessPage } from "./features/readiness/ReadinessPage";
 import { TailoringPage } from "./features/tailoring/TailoringPage";
 import { LandingPage } from "./features/landing/LandingPage";
 
@@ -53,6 +54,22 @@ export const App: React.FC = () => {
               element={
                 <ProtectedRoute>
                   <DashboardPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/readiness"
+              element={
+                <ProtectedRoute>
+                  <ReadinessPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/skills"
+              element={
+                <ProtectedRoute>
+                  <ReadinessPage />
                 </ProtectedRoute>
               }
             />
@@ -170,8 +187,29 @@ export const App: React.FC = () => {
 };
 
 const AuthShell: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  <div className="flex min-h-screen items-center justify-center bg-[#09090b] p-4">
-    {children}
+  <div className="flex min-h-screen flex-col bg-[#f8fafc] text-slate-900">
+    <header className="border-b border-slate-200 bg-white">
+      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
+        <Link
+          to="/"
+          className="flex items-center gap-2.5 text-base font-semibold tracking-tight text-slate-900"
+        >
+          <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-600 text-xs font-bold text-white">
+            TH
+          </span>
+          <span>TrueHire</span>
+        </Link>
+        <Link
+          to="/"
+          className="text-xs font-medium text-slate-600 hover:text-slate-900"
+        >
+          Back to home
+        </Link>
+      </div>
+    </header>
+    <div className="flex flex-1 items-center justify-center p-4 sm:p-6">
+      {children}
+    </div>
   </div>
 );
 
@@ -203,18 +241,20 @@ const RegisterPage: React.FC = () => {
 };
 
 const NotFound: React.FC = () => (
-  <div className="flex min-h-screen items-center justify-center bg-[#09090b] px-4">
-    <div className="max-w-md rounded-xl border border-zinc-800 bg-zinc-900/40 p-8 text-center">
-      <p className="font-mono text-xs uppercase tracking-widest text-teal-400">
-        Error 404
+  <div className="flex min-h-screen items-center justify-center bg-[#f8fafc] px-4">
+    <div className="max-w-md rounded-xl border border-slate-200 bg-white p-8 text-center shadow-sm">
+      <p className="text-xs font-semibold uppercase tracking-wider text-blue-600">
+        404 Not Found
       </p>
-      <h1 className="mt-2 text-2xl font-semibold text-white">Page not found</h1>
-      <p className="mt-2 text-xs text-zinc-400">
+      <h1 className="mt-2 text-2xl font-semibold text-slate-900">
+        Page not found
+      </h1>
+      <p className="mt-2 text-sm text-slate-600">
         The page you are looking for does not exist or may have moved.
       </p>
       <Link
         to="/dashboard"
-        className="mt-6 inline-flex items-center justify-center rounded-lg bg-teal-500 px-4 py-2 text-xs font-semibold text-zinc-950 transition hover:bg-teal-400"
+        className="mt-6 inline-flex items-center justify-center rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700"
       >
         Back to Dashboard
       </Link>

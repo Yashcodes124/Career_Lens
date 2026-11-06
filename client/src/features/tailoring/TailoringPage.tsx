@@ -6,12 +6,12 @@ import { useResumes } from "../resume/useResumes";
 import { fetchTailoring, type TailoringSuggestions } from "./tailoringApi";
 
 const PRIORITY_CLASSES = {
-  high: "border-rose-500/30 bg-rose-500/10 text-rose-300",
-  medium: "border-amber-500/30 bg-amber-500/10 text-amber-300",
-  low: "border-sky-500/30 bg-sky-500/10 text-sky-300",
+  high: "border-red-200 bg-red-50 text-red-700",
+  medium: "border-amber-200 bg-amber-50 text-amber-800",
+  low: "border-blue-200 bg-blue-50 text-blue-700",
 } as const;
 
-const CARD = "rounded-xl border border-zinc-800 bg-zinc-900/40 p-6";
+const CARD = "rounded-xl border border-slate-200 bg-white p-6 shadow-sm";
 
 export const TailoringPage: React.FC = () => {
   const { jobId } = useParams<{ jobId: string }>();
@@ -110,29 +110,29 @@ export const TailoringPage: React.FC = () => {
     data && data.addToSkills.length === 0 && data.notOnResume.length === 0;
 
   return (
-    <div className="min-h-screen bg-[#09090b] text-zinc-100">
+    <div className="min-h-screen bg-[#f8fafc] text-slate-900">
       <Navbar />
 
-      <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
-        <header className="mb-8 flex flex-wrap items-end justify-between gap-4 border-b border-zinc-800/80 pb-6">
+      <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
+        <header className="mb-8 flex flex-wrap items-end justify-between gap-4 border-b border-slate-200 pb-6">
           <div>
-            <p className="font-mono text-xs uppercase tracking-wider text-teal-400">
-              Evidence-Bounded Tailoring
+            <p className="text-xs font-semibold uppercase tracking-wider text-blue-600">
+              Evidence-Based Resume Tailoring
             </p>
-            <h1 className="mt-2 text-2xl font-semibold tracking-tight text-white sm:text-3xl">
+            <h1 className="mt-1 text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl">
               {data
                 ? `Tailor your skills for ${data.jobTitle}`
                 : "Tailor your skills"}
             </h1>
-            <p className="mt-1.5 max-w-2xl text-sm text-zinc-400">
+            <p className="mt-1.5 max-w-2xl text-sm text-slate-600">
               Suggestions come strictly from your existing resume text and the
-              job posting. Nothing is fabricated or added unless you accept it.
+              job posting. Nothing is fabricated or added unless you confirm it.
             </p>
           </div>
           {jobId && resumeId && (
             <Link
               to={`/matches/${jobId}?resumeId=${resumeId}`}
-              className="inline-flex items-center gap-1.5 text-xs font-medium text-teal-400 hover:text-teal-300"
+              className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-600 hover:text-blue-600"
             >
               <ArrowLeft className="h-3.5 w-3.5" />
               <span>Back to match details</span>
@@ -141,19 +141,19 @@ export const TailoringPage: React.FC = () => {
         </header>
 
         {resumesLoading && (
-          <p className="font-mono text-xs text-zinc-400">
-            Loading your resumes...
-          </p>
+          <div className={CARD}>
+            <p className="text-sm text-slate-600">Loading your resumes...</p>
+          </div>
         )}
 
         {!resumesLoading && !resumeId && (
           <div className={CARD}>
-            <p className="text-sm text-zinc-400">
+            <p className="text-sm text-slate-600">
               Upload a resume before tailoring it to a job.
             </p>
             <Link
               to="/resume"
-              className="mt-3 inline-block text-sm text-teal-400 hover:text-teal-300"
+              className="mt-3 inline-block rounded-lg bg-blue-600 px-4 py-2 text-xs font-medium text-white hover:bg-blue-700"
             >
               Upload a resume
             </Link>
@@ -161,21 +161,23 @@ export const TailoringPage: React.FC = () => {
         )}
 
         {loading && (
-          <p className="font-mono text-xs text-zinc-400">
-            Checking your resume against this job...
-          </p>
+          <div className={CARD}>
+            <p className="text-sm text-slate-600">
+              Checking your resume text against this job’s requirements...
+            </p>
+          </div>
         )}
 
         {error && (
           <div
             role="alert"
-            className="mb-6 rounded-xl border border-red-500/30 bg-red-950/20 p-5 text-sm text-red-300"
+            className="mb-6 rounded-xl border border-red-200 bg-red-50 p-5 text-sm text-red-700"
           >
             <p>{error}</p>
             <button
               type="button"
               onClick={() => setAttempt((n) => n + 1)}
-              className="mt-3 rounded-lg border border-red-500/40 px-3 py-1.5 text-xs text-red-200 hover:bg-red-500/10"
+              className="mt-3 rounded-lg border border-red-300 bg-white px-3 py-1.5 text-xs font-medium text-red-700 hover:bg-red-50"
             >
               Try again
             </button>
@@ -185,20 +187,20 @@ export const TailoringPage: React.FC = () => {
         {data && !loading && (
           <div className="grid gap-6 lg:grid-cols-2">
             <section className={CARD} aria-labelledby="current-heading">
-              <div className="flex items-center justify-between border-b border-zinc-800/80 pb-4">
+              <div className="flex items-center justify-between border-b border-slate-200 pb-4">
                 <h2
                   id="current-heading"
-                  className="text-base font-semibold text-white"
+                  className="text-base font-semibold text-slate-900"
                 >
-                  Your skills list today
+                  Your Current Skills List
                 </h2>
-                <span className="font-mono text-xs text-zinc-500 tabular-nums">
-                  {data.currentSkills.length} VERIFIED
+                <span className="text-xs font-medium text-slate-500 tabular-nums">
+                  {data.currentSkills.length} extracted
                 </span>
               </div>
 
               {data.currentSkills.length === 0 ? (
-                <p className="mt-4 text-sm text-zinc-400">
+                <p className="mt-4 text-sm text-slate-600">
                   Your resume has no skills listed yet.
                 </p>
               ) : (
@@ -206,7 +208,7 @@ export const TailoringPage: React.FC = () => {
                   {data.currentSkills.map((skill) => (
                     <li
                       key={skill}
-                      className="rounded-md border border-zinc-800 bg-[#09090b] px-3 py-1 font-mono text-xs text-zinc-200"
+                      className="rounded-md border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-800"
                     >
                       {skill}
                     </li>
@@ -216,18 +218,18 @@ export const TailoringPage: React.FC = () => {
             </section>
 
             <section className={CARD} aria-labelledby="suggested-heading">
-              <div className="flex items-center justify-between border-b border-zinc-800/80 pb-4">
+              <div className="flex items-center justify-between border-b border-slate-200 pb-4">
                 <h2
                   id="suggested-heading"
-                  className="text-base font-semibold text-white"
+                  className="text-base font-semibold text-slate-900"
                 >
-                  Add to your skills list
+                  Backed by Your Resume Text
                 </h2>
                 {data.addToSkills.length > 1 && (
                   <button
                     type="button"
                     onClick={acceptAll}
-                    className="font-mono text-xs text-teal-400 hover:text-teal-300"
+                    className="text-xs font-medium text-blue-600 hover:text-blue-700"
                   >
                     {accepted.size === data.addToSkills.length
                       ? "Clear selection"
@@ -237,9 +239,9 @@ export const TailoringPage: React.FC = () => {
               </div>
 
               {noSuggestions && (
-                <p className="mt-4 text-sm text-zinc-400">
-                  Nothing to add. Your skills list already covers the skills
-                  this posting names.
+                <p className="mt-4 text-sm text-slate-600">
+                  Your structured skills list already includes every requirement
+                  mentioned in your resume text.
                 </p>
               )}
 
@@ -252,21 +254,21 @@ export const TailoringPage: React.FC = () => {
                         <label
                           className={`flex cursor-pointer items-start gap-3 rounded-lg border p-3.5 transition ${
                             isChecked
-                              ? "border-teal-500/40 bg-teal-500/5"
-                              : "border-zinc-800 bg-[#09090b] hover:border-zinc-700"
+                              ? "border-blue-300 bg-blue-50/60"
+                              : "border-slate-200 bg-slate-50/50 hover:bg-slate-100"
                           }`}
                         >
                           <input
                             type="checkbox"
                             checked={isChecked}
                             onChange={() => toggle(item.skill)}
-                            className="mt-0.5 h-4 w-4 accent-teal-500"
+                            className="mt-0.5 h-4 w-4 accent-blue-600"
                           />
                           <span className="min-w-0 flex-1">
-                            <span className="block text-sm font-medium text-white">
+                            <span className="block text-sm font-semibold text-slate-900">
                               {item.skill}
                             </span>
-                            <span className="mt-1 block text-xs leading-relaxed text-zinc-400">
+                            <span className="mt-1 block text-xs leading-relaxed text-slate-600">
                               {item.evidence}
                             </span>
                           </span>
@@ -278,26 +280,26 @@ export const TailoringPage: React.FC = () => {
               )}
 
               {data.notOnResume.length > 0 && (
-                <div className="mt-6 border-t border-zinc-800 pt-5">
-                  <h3 className="text-sm font-semibold text-white">
-                    Not on your resume
+                <div className="mt-6 border-t border-slate-200 pt-5">
+                  <h3 className="text-sm font-semibold text-slate-900">
+                    Not Found on Your Resume (Excluded)
                   </h3>
-                  <p className="mt-1 text-xs leading-relaxed text-zinc-400">
-                    These skills do not appear in your resume text, so they are
-                    not suggested for your list. If you have this experience,
-                    describe it in your experience section with a real example.
+                  <p className="mt-1 text-xs leading-relaxed text-slate-600">
+                    These job requirements do not appear in your resume text, so
+                    TrueHire will not fabricate them. If you have experience
+                    with them, add a real project example to your resume.
                   </p>
-                  <ul className="mt-3 divide-y divide-zinc-800/70 rounded-lg border border-zinc-800 bg-[#09090b] px-3.5">
+                  <ul className="mt-3 divide-y divide-slate-200 rounded-lg border border-slate-200 bg-slate-50/60 px-3.5">
                     {data.notOnResume.map((gap) => (
                       <li
                         key={gap.skill}
                         className="flex items-center justify-between gap-3 py-2.5"
                       >
-                        <span className="text-xs font-medium text-zinc-200">
+                        <span className="text-xs font-medium text-slate-800">
                           {gap.skill}
                         </span>
                         <span
-                          className={`rounded border px-2 py-0.5 font-mono text-[10px] font-semibold uppercase ${PRIORITY_CLASSES[gap.priority]}`}
+                          className={`rounded-md border px-2 py-0.5 text-xs font-medium capitalize ${PRIORITY_CLASSES[gap.priority]}`}
                         >
                           {gap.priority} priority
                         </span>
@@ -307,11 +309,11 @@ export const TailoringPage: React.FC = () => {
                 </div>
               )}
 
-              <div className="mt-6 flex flex-wrap items-center gap-3 border-t border-zinc-800 pt-5">
+              <div className="mt-6 flex flex-wrap items-center gap-3 border-t border-slate-200 pt-5">
                 <button
                   type="button"
                   onClick={() => void copyList()}
-                  className="inline-flex items-center gap-1.5 rounded-lg bg-teal-500 px-4 py-2 text-xs font-semibold text-zinc-950 transition hover:bg-teal-400 active:scale-[0.98]"
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-xs font-medium text-white shadow-sm transition hover:bg-blue-700"
                 >
                   {copied ? (
                     <Check className="h-3.5 w-3.5" />
@@ -323,13 +325,13 @@ export const TailoringPage: React.FC = () => {
                 <button
                   type="button"
                   onClick={downloadList}
-                  className="inline-flex items-center gap-1.5 rounded-lg border border-zinc-700 bg-zinc-900 px-4 py-2 text-xs font-medium text-zinc-200 transition hover:border-zinc-600 hover:text-white"
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-4 py-2 text-xs font-medium text-slate-700 transition hover:bg-slate-50"
                 >
                   <Download className="h-3.5 w-3.5" />
                   <span>Download .txt</span>
                 </button>
-                <span className="ml-auto font-mono text-xs text-zinc-400 tabular-nums">
-                  {exportList.length} skills in the list
+                <span className="ml-auto text-xs font-medium text-slate-500 tabular-nums">
+                  {exportList.length} skills in list
                 </span>
               </div>
             </section>
