@@ -40,6 +40,14 @@ export async function fetchInterviewById(
   return response.data;
 }
 
+export async function fetchUserInterviews(): Promise<Interview[]> {
+  const response = await apiClient<{ success: boolean; data: Interview[] }>(
+    "/interviews",
+    { method: "GET" },
+  );
+  return response.data ?? [];
+}
+
 export async function startInterview(
   interviewId: string,
 ): Promise<{ interview: Interview; firstQuestion: Interview["questions"][0] }> {

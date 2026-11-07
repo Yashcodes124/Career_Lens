@@ -124,6 +124,22 @@ export const createInterviewWithQuestions = async (
     return interview;
   });
 };
+// GET /api/interviews
+export const findInterviewsByUserId = async (userId: string) => {
+  return await prisma.interview.findMany({
+    where: { userId },
+    orderBy: { updatedAt: "desc" },
+    include: {
+      questions: {
+        orderBy: { order: "asc" },
+      },
+      evaluation: true,
+      application: {
+        include: { job: true },
+      },
+    },
+  });
+};
 
 // Stores the candidate's answer before any AI call, so an evaluation failure cannot lose it.
 export const saveAnswer = async (questionId: string, answer: string) => {

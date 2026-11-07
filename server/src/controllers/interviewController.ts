@@ -6,6 +6,8 @@ import {
   submitAnswerService,
   generateFinalEvaluationService,
 } from "../services/interviewService";
+import { findInterviewsByUserId } from "../repositories/interviewRepository";
+
 
 export const createInterviewController = async (
   req: Request,
@@ -173,6 +175,19 @@ export const submitAnswerController = async (
     });
   } catch (error) {
     next(error);
+  }
+};
+
+export const listUserInterviewsController = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const interviews = await findInterviewsByUserId(req.user!.userId);
+    return res.status(200).json({ success: true, data: interviews });
+  } catch (err) {
+    next(err);
   }
 };
 

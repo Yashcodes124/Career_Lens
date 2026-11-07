@@ -8,11 +8,13 @@ import {
   startInterviewController,
   submitAnswerController,
   generateFinalEvaluationController,
+  listUserInterviewsController,
 } from "../controllers/interviewController";
 import { authMiddleware } from "../middleware/authMiddleware";
 
 const router = Router();
 
+router.get("/", authMiddleware, listUserInterviewsController);
 router.post("/", authMiddleware, aiLimiter, createInterviewController);
 router.get("/:interviewId", authMiddleware, getInterviewSessionByIdController);
 router.post("/:interviewId/start", authMiddleware, startInterviewController);

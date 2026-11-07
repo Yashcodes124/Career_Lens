@@ -6,6 +6,7 @@ import { useAuth } from "../features/auth/useAuth";
 const NAV_LINKS = [
   { label: "Dashboard", path: "/dashboard" },
   { label: "Readiness", path: "/readiness" },
+  { label: "Interviews", path: "/interviews" },
   { label: "Jobs", path: "/jobs" },
   { label: "Saved", path: "/saved-jobs" },
   { label: "Applications", path: "/applications" },
