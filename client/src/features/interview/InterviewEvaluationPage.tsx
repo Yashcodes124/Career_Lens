@@ -15,6 +15,8 @@ import {
   Calendar,
 } from "lucide-react";
 import { Navbar } from "../../components/NavBar";
+import { CountUpNumber } from "../../components/ui/AceternityPrimitives";
+
 import {
   fetchInterviewById,
   generateInterviewEvaluation,
@@ -204,7 +206,7 @@ export const InterviewEvaluationPage: React.FC = () => {
           <div className="rounded-xl border border-slate-200 bg-slate-50 px-6 py-4 text-right">
             <p className="text-xs font-medium text-slate-500">Overall Score</p>
             <p className="mt-1 text-3xl font-bold text-blue-600 tabular-nums">
-              {score}
+              <CountUpNumber value={score} />
               <span className="text-lg font-normal text-slate-400">/100</span>
             </p>
             <p className="mt-0.5 text-xs font-medium text-slate-700">
@@ -227,14 +229,14 @@ export const InterviewEvaluationPage: React.FC = () => {
             {competencyItems.map((item) => (
               <div
                 key={item.label}
-                className="rounded-lg border border-slate-200 bg-slate-50/60 p-4"
+                className="interactive-card rounded-lg border border-slate-200 bg-slate-50/60 p-4"
               >
                 <div className="flex items-baseline justify-between">
                   <span className="text-xs font-medium text-slate-700">
                     {item.label}
                   </span>
                   <span className="text-lg font-semibold text-slate-900 tabular-nums">
-                    {item.val}%
+                    <CountUpNumber value={item.val} suffix="%" />
                   </span>
                 </div>
                 <div className="mt-2.5 h-1.5 w-full overflow-hidden rounded-full bg-slate-200">

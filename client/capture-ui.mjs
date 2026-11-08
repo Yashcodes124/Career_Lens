@@ -143,6 +143,16 @@ async function getAuthTokenAndSampleData() {
     ]);
     sampleApplicationId = applicationList?.[0]?.id ?? null;
 
+    // Auto-create an application if none exists so we can create an interview
+    if (!sampleApplicationId && sampleJobId) {
+      const createdApp = await requestJson("/applications", {
+        method: "POST",
+        headers: { ...authHeaders, "Content-Type": "application/json" },
+        body: JSON.stringify({ jobId: sampleJobId }),
+      });
+      sampleApplicationId =
+        createdApp.data?.data?.id || createdApp.data?.id || null;
+    }
     if (!sampleInterviewId) {
       const interviews = await requestJson("/interviews", {
         headers: authHeaders,
@@ -153,6 +163,20 @@ async function getAuthTokenAndSampleData() {
         "items",
       ]);
       sampleInterviewId = interviewList?.[0]?.id ?? null;
+    }
+
+    if (!sampleInterviewId && sampleApplicationId) {
+      const createdInterview = await requestJson("/interviews", {
+        method: "POST",
+        headers: { ...authHeaders, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          applicationId: sampleApplicationId,
+          durationMinutes: 15,
+          difficulty: "MEDIUM",
+        }),
+      });
+      sampleInterviewId =
+        createdInterview.data?.data?.id || createdInterview.data?.id || null;
     }
   }
 
@@ -250,6 +274,11 @@ const protectedRoutes = [
   {
     name: "10-applications",
     path: "/applications",
+    waitSelector: "main, h1, h2",
+  },
+  {
+    name: "10b-interviews-hub",
+    path: "/interviews",
     waitSelector: "main, h1, h2",
   },
   { name: "11-readiness", path: "/readiness", waitSelector: "main, h1, h2" },

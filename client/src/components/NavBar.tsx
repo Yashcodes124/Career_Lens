@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Menu, X } from "lucide-react";
 import { useAuth } from "../features/auth/useAuth";
+import { ThemeSwitcher } from "./ui/AceternityPrimitives";
 
 const NAV_LINKS = [
   { label: "Dashboard", path: "/dashboard" },
@@ -60,6 +61,7 @@ export const Navbar: React.FC = () => {
         </div>
 
         <div className="hidden items-center gap-4 md:flex">
+          <ThemeSwitcher />
           {user?.targetRole && (
             <span className="rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-600">
               {user.targetRole}

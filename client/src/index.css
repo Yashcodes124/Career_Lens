@@ -3,46 +3,117 @@
 @tailwind utilities;
 
 @layer base {
-  :root {
-    --bg-canvas: #f1f5f9;
-    --bg-surface: #ffffff;
-    --ink-obsidian: #0f172a;
+  :root,
+  html[data-theme="daylight"] {
+    color-scheme: light;
+    --bg-canvas: #f3f5f9;
+    --bg-surface-1: #ffffff;
+    --bg-surface-2: #f8fafc;
+    --bg-surface-3: #eef2f6;
+    --bg-glass: rgba(255, 255, 255, 0.88);
+    --border-hairline: #e2e8f0;
+    --border-strong: #cbd5e1;
+    --text-primary: #0f172a;
+    --text-secondary: #475569;
+    --text-muted: #64748b;
     --accent-primary: #2563eb;
-    --accent-indigo: #4f46e5;
-    --ease-spring: cubic-bezier(0.22, 1, 0.36, 1);
+    --accent-glow: rgba(37, 99, 235, 0.12);
+    --card-shadow:
+      0 1px 3px rgba(15, 23, 42, 0.04), 0 8px 24px -6px rgba(15, 23, 42, 0.05);
+    --grid-line: rgba(15, 23, 42, 0.04);
+  }
+
+  html[data-theme="obsidian"] {
+    color-scheme: dark;
+    --bg-canvas: #090a0f;
+    --bg-surface-1: #12141d;
+    --bg-surface-2: #181b26;
+    --bg-surface-3: #1f2433;
+    --bg-glass: rgba(14, 16, 24, 0.88);
+    --border-hairline: rgba(255, 255, 255, 0.07);
+    --border-strong: rgba(255, 255, 255, 0.14);
+    --text-primary: #f8fafc;
+    --text-secondary: #94a3b8;
+    --text-muted: #64748b;
+    --accent-primary: #14b8a6;
+    --accent-glow: rgba(20, 184, 166, 0.15);
+    --card-shadow: 0 12px 32px -8px rgba(0, 0, 0, 0.6);
+    --grid-line: rgba(255, 255, 255, 0.03);
+  }
+
+  html[data-theme="vengeance"] {
+    color-scheme: dark;
+    --bg-canvas: #070510;
+    --bg-surface-1: #110e20;
+    --bg-surface-2: #18142c;
+    --bg-surface-3: #221c3d;
+    --bg-glass: rgba(15, 11, 29, 0.88);
+    --border-hairline: rgba(167, 139, 250, 0.12);
+    --border-strong: rgba(167, 139, 250, 0.24);
+    --text-primary: #f5f3ff;
+    --text-secondary: #a5b4fc;
+    --text-muted: #7c739e;
+    --accent-primary: #8b5cf6;
+    --accent-glow: rgba(139, 92, 246, 0.18);
+    --card-shadow: 0 14px 36px -8px rgba(5, 2, 18, 0.75);
+    --grid-line: rgba(167, 139, 250, 0.04);
   }
 
   html {
-    font-family:
-      "Inter",
-      system-ui,
-      -apple-system,
-      sans-serif;
-    background-color: var(--bg-canvas);
-    color: var(--ink-obsidian);
-    scroll-behavior: smooth;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
     -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    background-color: var(--bg-canvas);
+    color: var(--text-primary);
+    transition:
+      background-color 0.25s ease,
+      color 0.25s ease;
   }
 
-  /* Subtle architectural dot-matrix background across pages */
   body {
-    background-color: #f4f6fa;
-    background-image: radial-gradient(#cbd5e1 1px, transparent 1px);
-    background-size: 24px 24px;
-    background-attachment: fixed;
+    background-color: var(--bg-canvas);
+    color: var(--text-primary);
+    overflow-x: hidden;
   }
 }
 
-/* Global Spring Entrance & Stagger Animations */
-@keyframes springRise {
-  0% {
-    opacity: 0;
-    transform: translateY(14px) scale(0.99);
-  }
-  100% {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
+/* Lenis Smooth Scroll */
+html.lenis,
+html.lenis body {
+  height: auto;
+}
+.lenis.lenis-smooth {
+  scroll-behavior: auto !important;
+}
+
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Architectural Grid */
+.bg-architectural-grid {
+  background-size: 36px 36px;
+  background-image:
+    linear-gradient(to right, var(--grid-line) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--grid-line) 1px, transparent 1px);
+}
+
+/* Interactive Card Physics */
+.interactive-card {
+  box-shadow: var(--card-shadow);
+  transition:
+    transform 0.3s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 0.3s cubic-bezier(0.22, 1, 0.36, 1),
+    border-color 0.25s ease,
+    background-color 0.25s ease;
+}
+
+.interactive-card:hover {
+  transform: translateY(-3px);
+  border-color: var(--accent-primary) !important;
+  box-shadow:
+    0 18px 36px -10px var(--accent-glow),
+    var(--card-shadow);
 }
 
 @keyframes floatSlow {
@@ -55,111 +126,236 @@
   }
 }
 
-@keyframes pulseGlow {
-  0%,
-  100% {
-    box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.25);
-  }
-  50% {
-    box-shadow: 0 0 0 8px rgba(37, 99, 235, 0);
-  }
-}
-
-main > header,
-main > section,
-main > div {
-  animation: springRise 0.5s var(--ease-spring) both;
-}
-
-main > *:nth-child(2) {
-  animation-delay: 0.06s;
-}
-main > *:nth-child(3) {
-  animation-delay: 0.12s;
-}
-main > *:nth-child(4) {
-  animation-delay: 0.18s;
-}
-
-/* Automatic Interactive Card Lift & Spotlight Border across all pages */
-article.rounded-xl,
-section.rounded-xl,
-div.rounded-xl.bg-white {
-  background: rgba(255, 255, 255, 0.92);
-  backdrop-filter: blur(8px);
-  box-shadow:
-    0 1px 3px rgba(15, 23, 42, 0.04),
-    0 4px 12px rgba(15, 23, 42, 0.02);
-  transition:
-    transform 0.28s var(--ease-spring),
-    box-shadow 0.28s var(--ease-spring),
-    border-color 0.2s ease;
-}
-
-article.rounded-xl:hover,
-div.rounded-xl.bg-white:hover {
-  transform: translateY(-2px);
-  border-color: #93c5fd;
-  box-shadow:
-    0 12px 28px -6px rgba(37, 99, 235, 0.1),
-    0 4px 10px -2px rgba(15, 23, 42, 0.04);
-}
-
-/* Tactile Button Micro-Interactions */
-button,
-a.rounded-lg,
-a.rounded-xl {
-  transition: all 0.2s var(--ease-spring);
-}
-
-button:active:not(:disabled),
-a.rounded-lg:active {
-  transform: scale(0.97);
-}
-
-.float-badge {
-  animation: floatSlow 4s ease-in-out infinite;
-}
-
-.pulse-cta {
-  animation: pulseGlow 2.5s infinite;
-}
-
-/* Architectural Grid & Radial Mask for Light/Dark Hero */
-.bg-architectural-grid {
-  background-size: 32px 32px;
-  background-image:
-    linear-gradient(to right, rgba(15, 23, 42, 0.045) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(15, 23, 42, 0.045) 1px, transparent 1px);
-}
-
-/* Interactive Card Hover Physics & Border Glow */
-.interactive-card {
-  transition:
-    transform 0.28s cubic-bezier(0.22, 1, 0.36, 1),
-    box-shadow 0.28s cubic-bezier(0.22, 1, 0.36, 1),
-    border-color 0.2s ease;
-}
-
-.interactive-card:hover {
-  transform: translateY(-2px);
-  border-color: rgba(37, 99, 235, 0.35);
-  box-shadow:
-    0 12px 28px -8px rgba(15, 23, 42, 0.07),
-    0 4px 10px -4px rgba(37, 99, 235, 0.05);
-}
-
-/* Subtle Floating Animation for Hero Telemetry Pills */
-@keyframes floatSlow {
-  0%,
-  100% {
-    transform: translateY(0px);
-  }
-  50% {
-    transform: translateY(-5px);
-  }
-}
-
 .animate-float {
   animation: floatSlow 5s ease-in-out infinite;
+}
+
+@keyframes shimmerSweep {
+  0% {
+    transform: translateX(-100%) skewX(-15deg);
+  }
+  100% {
+    transform: translateX(200%) skewX(-15deg);
+  }
+}
+
+.shimmer-sweep {
+  background: linear-gradient(
+    90deg,
+    transparent,
+    var(--accent-glow),
+    transparent
+  );
+  animation: shimmerSweep 3.2s infinite;
+}
+
+/* ============================================================================
+   DAYLIGHT THEME REFINEMENTS (Soft Recessed Canvas & Crisp Elevated Cards)
+   ============================================================================ */
+html[data-theme="daylight"] .bg-[\#f8fafc] {
+  background-color: var(--bg-canvas) !important;
+}
+
+html[data-theme="daylight"] section.border-b.border-slate-200,
+html[data-theme="daylight"] section.border-b.border-slate-200\/80,
+html[data-theme="daylight"] section.border-b.border-slate-200\/90 {
+  border-bottom-color: rgba(203, 213, 225, 0.45) !important;
+}
+
+/* ============================================================================
+   OBSIDIAN & VENGEANCE COMPLETE SURFACE ENGINE (Fixes All Nested Cards & Text)
+   ============================================================================ */
+html[data-theme="obsidian"] .bg-[\#f8fafc],
+html[data-theme="vengeance"] .bg-[\#f8fafc] {
+  background-color: var(--bg-canvas) !important;
+  color: var(--text-primary) !important;
+}
+
+/* Sticky Navbar & Glass Headers */
+html[data-theme="obsidian"] header.bg-white,
+html[data-theme="obsidian"] header.bg-white\/95,
+html[data-theme="obsidian"] header.bg-white\/90,
+html[data-theme="vengeance"] header.bg-white,
+html[data-theme="vengeance"] header.bg-white\/95,
+html[data-theme="vengeance"] header.bg-white\/90 {
+  background-color: var(--bg-glass) !important;
+  border-color: var(--border-hairline) !important;
+}
+
+/* Level 1 Cards (bg-white, bg-white/95, bg-white/90) */
+html[data-theme="obsidian"] .bg-white,
+html[data-theme="obsidian"] .bg-white\/95,
+html[data-theme="obsidian"] .bg-white\/90,
+html[data-theme="vengeance"] .bg-white,
+html[data-theme="vengeance"] .bg-white\/95,
+html[data-theme="vengeance"] .bg-white\/90 {
+  background-color: var(--bg-surface-1) !important;
+  border-color: var(--border-hairline) !important;
+  color: var(--text-primary) !important;
+}
+
+/* Keep section backgrounds transparent to canvas so cards pop cleanly */
+html[data-theme="obsidian"] section.bg-white,
+html[data-theme="vengeance"] section.bg-white {
+  background-color: transparent !important;
+}
+
+/* Level 2 Nested Inner Cards & Wells (bg-slate-50, bg-slate-50/70, bg-slate-50/60, bg-slate-100) */
+html[data-theme="obsidian"] .bg-slate-50,
+html[data-theme="obsidian"] .bg-slate-50\/70,
+html[data-theme="obsidian"] .bg-slate-50\/60,
+html[data-theme="obsidian"] .bg-slate-50\/50,
+html[data-theme="vengeance"] .bg-slate-50,
+html[data-theme="vengeance"] .bg-slate-50\/70,
+html[data-theme="vengeance"] .bg-slate-50\/60,
+html[data-theme="vengeance"] .bg-slate-50\/50 {
+  background-color: var(--bg-surface-2) !important;
+  border-color: var(--border-hairline) !important;
+  color: var(--text-primary) !important;
+}
+
+html[data-theme="obsidian"] .bg-slate-100,
+html[data-theme="obsidian"] .bg-slate-200,
+html[data-theme="vengeance"] .bg-slate-100,
+html[data-theme="vengeance"] .bg-slate-200 {
+  background-color: var(--bg-surface-3) !important;
+  border-color: var(--border-strong) !important;
+  color: var(--text-primary) !important;
+}
+
+/* All Borders & Section Hairlines (Eliminates Glaring White <hr> Lines) */
+html[data-theme="obsidian"] .border-slate-200,
+html[data-theme="obsidian"] .border-slate-200\/80,
+html[data-theme="obsidian"] .border-slate-200\/90,
+html[data-theme="obsidian"] .border-slate-100,
+html[data-theme="vengeance"] .border-slate-200,
+html[data-theme="vengeance"] .border-slate-200\/80,
+html[data-theme="vengeance"] .border-slate-200\/90,
+html[data-theme="vengeance"] .border-slate-100 {
+  border-color: var(--border-hairline) !important;
+}
+
+html[data-theme="obsidian"] .border-slate-300,
+html[data-theme="vengeance"] .border-slate-300 {
+  border-color: var(--border-strong) !important;
+}
+
+html[data-theme="obsidian"] .divide-slate-200 > :not([hidden]) ~ :not([hidden]),
+html[data-theme="obsidian"] .divide-slate-100 > :not([hidden]) ~ :not([hidden]),
+html[data-theme="vengeance"]
+  .divide-slate-200
+  > :not([hidden])
+  ~ :not([hidden]),
+html[data-theme="vengeance"]
+  .divide-slate-100
+  > :not([hidden])
+  ~ :not([hidden]) {
+  border-color: var(--border-hairline) !important;
+}
+
+/* Typography Hierarchy in Dark Themes */
+html[data-theme="obsidian"] .text-slate-950,
+html[data-theme="obsidian"] .text-slate-900,
+html[data-theme="obsidian"] .text-slate-800,
+html[data-theme="vengeance"] .text-slate-950,
+html[data-theme="vengeance"] .text-slate-900,
+html[data-theme="vengeance"] .text-slate-800 {
+  color: var(--text-primary) !important;
+}
+
+html[data-theme="obsidian"] .text-slate-700,
+html[data-theme="obsidian"] .text-slate-600,
+html[data-theme="vengeance"] .text-slate-700,
+html[data-theme="vengeance"] .text-slate-600 {
+  color: var(--text-secondary) !important;
+}
+
+html[data-theme="obsidian"] .text-slate-500,
+html[data-theme="obsidian"] .text-slate-400,
+html[data-theme="vengeance"] .text-slate-500,
+html[data-theme="vengeance"] .text-slate-400 {
+  color: var(--text-muted) !important;
+}
+
+/* Semantic Status Badges in Dark Themes (Emerald, Amber, Blue, Red) */
+html[data-theme="obsidian"] .bg-emerald-50,
+html[data-theme="obsidian"] .bg-emerald-50\/50,
+html[data-theme="obsidian"] .bg-emerald-50\/40,
+html[data-theme="vengeance"] .bg-emerald-50,
+html[data-theme="vengeance"] .bg-emerald-50\/50,
+html[data-theme="vengeance"] .bg-emerald-50\/40 {
+  background-color: rgba(16, 185, 129, 0.14) !important;
+  border-color: rgba(16, 185, 129, 0.3) !important;
+}
+html[data-theme="obsidian"] .text-emerald-700,
+html[data-theme="obsidian"] .text-emerald-800,
+html[data-theme="vengeance"] .text-emerald-700,
+html[data-theme="vengeance"] .text-emerald-800 {
+  color: #34d399 !important;
+}
+
+html[data-theme="obsidian"] .bg-amber-50,
+html[data-theme="obsidian"] .bg-amber-50\/50,
+html[data-theme="obsidian"] .bg-amber-50\/40,
+html[data-theme="vengeance"] .bg-amber-50,
+html[data-theme="vengeance"] .bg-amber-50\/50,
+html[data-theme="vengeance"] .bg-amber-50\/40 {
+  background-color: rgba(245, 158, 11, 0.14) !important;
+  border-color: rgba(245, 158, 11, 0.3) !important;
+}
+html[data-theme="obsidian"] .text-amber-700,
+html[data-theme="obsidian"] .text-amber-800,
+html[data-theme="vengeance"] .text-amber-700,
+html[data-theme="vengeance"] .text-amber-800 {
+  color: #fbbf24 !important;
+}
+
+html[data-theme="obsidian"] .bg-blue-50,
+html[data-theme="obsidian"] .bg-blue-50\/60,
+html[data-theme="obsidian"] .bg-blue-50\/40,
+html[data-theme="vengeance"] .bg-blue-50,
+html[data-theme="vengeance"] .bg-blue-50\/60,
+html[data-theme="vengeance"] .bg-blue-50\/40 {
+  background-color: rgba(59, 130, 246, 0.15) !important;
+  border-color: rgba(59, 130, 246, 0.32) !important;
+}
+html[data-theme="obsidian"] .text-blue-700,
+html[data-theme="obsidian"] .text-blue-600,
+html[data-theme="obsidian"] .text-blue-900,
+html[data-theme="vengeance"] .text-blue-700,
+html[data-theme="vengeance"] .text-blue-600,
+html[data-theme="vengeance"] .text-blue-900 {
+  color: #60a5fa !important;
+}
+
+html[data-theme="obsidian"] .bg-red-50,
+html[data-theme="vengeance"] .bg-red-50 {
+  background-color: rgba(239, 68, 68, 0.14) !important;
+  border-color: rgba(239, 68, 68, 0.3) !important;
+}
+html[data-theme="obsidian"] .text-red-700,
+html[data-theme="obsidian"] .text-red-800,
+html[data-theme="vengeance"] .text-red-700,
+html[data-theme="vengeance"] .text-red-800 {
+  color: #f87171 !important;
+}
+
+/* Form Inputs, Textareas & Selects in Dark Themes */
+html[data-theme="obsidian"] input,
+html[data-theme="obsidian"] textarea,
+html[data-theme="obsidian"] select,
+html[data-theme="vengeance"] input,
+html[data-theme="vengeance"] textarea,
+html[data-theme="vengeance"] select {
+  background-color: var(--bg-surface-2) !important;
+  border-color: var(--border-strong) !important;
+  color: var(--text-primary) !important;
+}
+
+/* Hover States in Dark Themes */
+html[data-theme="obsidian"] .hover\:bg-slate-50:hover,
+html[data-theme="obsidian"] .hover\:bg-slate-100:hover,
+html[data-theme="vengeance"] .hover\:bg-slate-50:hover,
+html[data-theme="vengeance"] .hover\:bg-slate-100:hover {
+  background-color: var(--bg-surface-3) !important;
 }

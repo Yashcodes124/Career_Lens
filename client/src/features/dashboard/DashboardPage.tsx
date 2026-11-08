@@ -1,6 +1,6 @@
-import React, { useMemo } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowUpRight, RotateCw } from "lucide-react";
+import { ArrowUpRight, Play, RotateCw } from "lucide-react";
 import { Navbar } from "../../components/NavBar";
 import { useAuth } from "../auth/useAuth";
 import { ReadinessPanel } from "../readiness/ReadinessPanel";
@@ -8,6 +8,9 @@ import { useReadiness } from "../readiness/useReadiness";
 import { useResumes } from "../resume/useResumes";
 import { useApplications } from "../tracker/useApplications";
 import type { Application, ApplicationStatus } from "../tracker/types";
+import { fetchUserInterviews } from "../interview/interviewApi";
+import type { Interview, InterviewQuestion } from "../interview/types";
+import { CountUpNumber } from "../../components/ui/AceternityPrimitives";
 
 const STATUS_LABEL: Record<ApplicationStatus, string> = {
   SAVED: "Saved",
@@ -261,6 +264,22 @@ export const DashboardPage: React.FC = () => {
   const latestResumeId = latestResume?.id;
   const firstName = user?.name?.split(" ")[0];
 
+  const [interviews, setInterviews] = useState<Interview[]>([]);
+
+  useEffect(() => {
+    fetchUserInterviews()
+      .then((list: Interview[]) => setInterviews(list))
+      .catch(() => {});
+  }, []);
+
+  const leftOffInterview = useMemo(
+    () =>
+      interviews.find((i: Interview) => i.status === "IN_PROGRESS") ??
+      interviews.find((i: Interview) => i.status === "SCHEDULED") ??
+      null,
+    [interviews],
+  );
+
   const stats = useMemo(() => {
     const verifiedCount =
       readiness?.skills.filter((s) => s.status === "STRONG").length ?? 0;
@@ -321,58 +340,113 @@ export const DashboardPage: React.FC = () => {
         </header>
 
         {/* 2. Readiness Overview Metrics */}
+        {/* 2. Readiness Overview Metrics */}
         <section
           aria-label="Readiness overview"
           className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4"
         >
-          <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="interactive-card rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
             <p className="text-xs font-medium text-slate-500">
               Overall Readiness Score
             </p>
             <p className="mt-1.5 text-2xl font-semibold text-blue-600 tabular-nums">
-              {stats.readinessScore}%
+              <CountUpNumber value={stats.readinessScore} suffix="%" />
             </p>
             <p className="mt-1 text-xs text-slate-500">
               Based on verified skill evidence
             </p>
           </div>
 
-          <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="interactive-card rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
             <p className="text-xs font-medium text-slate-500">
               Skills Verified
             </p>
             <p className="mt-1.5 text-2xl font-semibold text-emerald-600 tabular-nums">
-              {stats.verifiedCount}
+              <CountUpNumber value={stats.verifiedCount} />
             </p>
             <p className="mt-1 text-xs text-slate-500">
               Demonstrated in mock interviews
             </p>
           </div>
 
-          <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="interactive-card rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
             <p className="text-xs font-medium text-slate-500">
               Skills Needing Practice
             </p>
             <p className="mt-1.5 text-2xl font-semibold text-amber-600 tabular-nums">
-              {stats.needsPracticeCount}
+              <CountUpNumber value={stats.needsPracticeCount} />
             </p>
             <p className="mt-1 text-xs text-slate-500">
               Flagged in interview evaluations
             </p>
           </div>
 
-          <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="interactive-card rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
             <p className="text-xs font-medium text-slate-500">
               Active Applications
             </p>
             <p className="mt-1.5 text-2xl font-semibold text-slate-900 tabular-nums">
-              {stats.activeAppsCount}
+              <CountUpNumber value={stats.activeAppsCount} />
             </p>
             <p className="mt-1 text-xs text-slate-500">
               Tracked in your job pipeline
             </p>
           </div>
         </section>
+
+        {leftOffInterview && (
+          <section className="interactive-card flex flex-wrap items-center justify-between gap-4 rounded-xl border border-slate-800 bg-[#0b0f19] p-5 text-white shadow-md">
+            <div>
+              <div className="inline-flex items-center gap-2 rounded-full border border-amber-400/30 bg-amber-500/10 px-2.5 py-0.5 text-[11px] font-semibold text-amber-300">
+                <span className="h-1.5 w-1.5 rounded-full bg-amber-400 animate-ping" />
+                <span>
+                  {leftOffInterview.status === "IN_PROGRESS"
+                    ? "Left-Off Interview · Resume Session"
+                    : "Scheduled Interview · Ready to Start"}
+                </span>
+              </div>
+              <h2 className="mt-1.5 text-base font-semibold text-white">
+                {leftOffInterview.plan?.role ?? leftOffInterview.title}
+                {leftOffInterview.plan?.company
+                  ? ` · ${leftOffInterview.plan.company}`
+                  : ""}
+              </h2>
+              <p className="mt-0.5 text-xs text-slate-400">
+                {
+                  leftOffInterview.questions.filter(
+                    (q: InterviewQuestion) => q.feedback !== null,
+                  ).length
+                }{" "}
+                of {leftOffInterview.questions.length} questions completed ·{" "}
+                {leftOffInterview.plan?.estimatedDuration ?? 30}m ·{" "}
+                {leftOffInterview.plan?.difficulty ?? "MEDIUM"}
+              </p>
+            </div>
+            <div className="flex items-center gap-2.5">
+              <Link
+                to={
+                  leftOffInterview.status === "IN_PROGRESS"
+                    ? `/interviews/${leftOffInterview.id}/live`
+                    : `/interviews/${leftOffInterview.id}/prep`
+                }
+                className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-xs font-semibold text-white transition hover:bg-blue-500"
+              >
+                <Play className="h-3.5 w-3.5 fill-current" />
+                <span>
+                  {leftOffInterview.status === "IN_PROGRESS"
+                    ? "Resume Left-Off"
+                    : "Start Interview"}
+                </span>
+              </Link>
+              <Link
+                to="/interviews"
+                className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs font-medium text-slate-300 hover:text-white"
+              >
+                All Sessions ({interviews.length})
+              </Link>
+            </div>
+          </section>
+        )}
 
         {/* 3. Next Best Action, Top Skill Gaps & Interview Progress */}
         <ReadinessPanel />
