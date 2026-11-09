@@ -1,361 +1,291 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
+  /* ==========================================================================
+     1. SINGLE SOURCE OF TRUTH: LIGHT DESIGN TOKENS
+     ========================================================================== */
   :root,
-  html[data-theme="daylight"] {
+  html,
+  html[data-theme="daylight"],
+  html[data-theme="obsidian"],
+  html[data-theme="vengeance"],
+  html[data-theme="arctic"],
+  html.dark {
     color-scheme: light;
-    --bg-canvas: #f3f5f9;
-    --bg-surface-1: #ffffff;
-    --bg-surface-2: #f8fafc;
-    --bg-surface-3: #eef2f6;
-    --bg-glass: rgba(255, 255, 255, 0.88);
-    --border-hairline: #e2e8f0;
+
+    /* Surface & Background Tokens */
+    --bg-canvas: #f6f8fb;
+    --bg-surface: #ffffff;
+    --bg-muted: #f1f5f9;
+
+    /* Legacy variable aliases so existing components never break before Phase 2–6 */
+    --bg-base: var(--bg-canvas);
+    --bg-surface-1: var(--bg-surface);
+    --bg-surface-2: var(--bg-muted);
+    --bg-surface-3: var(--border-default);
+
+    /* Border Tokens */
+    --border-default: #e2e8f0;
+    --border-subtle: #e2e8f0;
+    --border-hairline: var(--border-default);
     --border-strong: #cbd5e1;
-    --text-primary: #0f172a;
-    --text-secondary: #475569;
-    --text-muted: #64748b;
-    --accent-primary: #2563eb;
-    --accent-glow: rgba(37, 99, 235, 0.12);
-    --card-shadow:
-      0 1px 3px rgba(15, 23, 42, 0.04), 0 8px 24px -6px rgba(15, 23, 42, 0.05);
-    --grid-line: rgba(15, 23, 42, 0.04);
+
+    /* Primary Brand / Action Tokens */
+    --primary: #2563eb;
+    --primary-hover: #1d4ed8;
+    --primary-soft: #eff6ff;
+    --accent-primary: var(--primary);
+
+    /* Typography Hierarchy Tokens */
+    --text-heading: #0f172a;
+    --text-body: #334155;
+    --text-secondary: #64748b;
+    --text-primary: var(--text-heading);
+    --text-muted: var(--text-secondary);
+
+    /* Semantic Status Tokens */
+    --status-success: #15803d;
+    --status-success-soft: #f0fdf4;
+    --status-success-border: #bbf7d0;
+
+    --status-warning: #b45309;
+    --status-warning-soft: #fffbeb;
+    --status-warning-border: #fde68a;
+
+    --status-danger: #b91c1c;
+    --status-danger-soft: #fef2f2;
+    --status-danger-border: #fecaca;
+
+    /* Radius Scale */
+    --radius-card: 12px;
+    --radius-input: 10px;
+    --radius-sm: 6px;
+
+    /* Subtle Shadow Scale (No heavy or neon glows) */
+    --shadow-xs: 0 1px 2px 0 rgba(15, 23, 42, 0.03);
+    --shadow-sm: 0 1px 3px 0 rgba(15, 23, 42, 0.04), 0 1px 2px -1px rgba(15, 23, 42, 0.02);
+    --shadow-card: 0 1px 3px 0 rgba(15, 23, 42, 0.04), 0 1px 2px -1px rgba(15, 23, 42, 0.02);
+
+    /* Typography & Spacing */
+    --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   }
 
-  html[data-theme="obsidian"] {
-    color-scheme: dark;
-    --bg-canvas: #090a0f;
-    --bg-surface-1: #12141d;
-    --bg-surface-2: #181b26;
-    --bg-surface-3: #1f2433;
-    --bg-glass: rgba(14, 16, 24, 0.88);
-    --border-hairline: rgba(255, 255, 255, 0.07);
-    --border-strong: rgba(255, 255, 255, 0.14);
-    --text-primary: #f8fafc;
-    --text-secondary: #94a3b8;
-    --text-muted: #64748b;
-    --accent-primary: #14b8a6;
-    --accent-glow: rgba(20, 184, 166, 0.15);
-    --card-shadow: 0 12px 32px -8px rgba(0, 0, 0, 0.6);
-    --grid-line: rgba(255, 255, 255, 0.03);
-  }
-
-  html[data-theme="vengeance"] {
-    color-scheme: dark;
-    --bg-canvas: #070510;
-    --bg-surface-1: #110e20;
-    --bg-surface-2: #18142c;
-    --bg-surface-3: #221c3d;
-    --bg-glass: rgba(15, 11, 29, 0.88);
-    --border-hairline: rgba(167, 139, 250, 0.12);
-    --border-strong: rgba(167, 139, 250, 0.24);
-    --text-primary: #f5f3ff;
-    --text-secondary: #a5b4fc;
-    --text-muted: #7c739e;
-    --accent-primary: #8b5cf6;
-    --accent-glow: rgba(139, 92, 246, 0.18);
-    --card-shadow: 0 14px 36px -8px rgba(5, 2, 18, 0.75);
-    --grid-line: rgba(167, 139, 250, 0.04);
+  /* ==========================================================================
+     2. GLOBAL TYPOGRAPHY & BASE ELEMENT STYLES
+     ========================================================================== */
+  *,
+  *::before,
+  *::after {
+    border-color: var(--border-default);
   }
 
   html {
+    font-family: var(--font-sans);
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     background-color: var(--bg-canvas);
-    color: var(--text-primary);
-    transition:
-      background-color 0.25s ease,
-      color 0.25s ease;
+    color: var(--text-body);
+    scroll-behavior: smooth;
   }
 
   body {
-    background-color: var(--bg-canvas);
-    color: var(--text-primary);
+    min-height: 100vh;
+    background-color: var(--bg-canvas) !important;
+    background-image: none !important;
+    color: var(--text-body) !important;
+    font-family: var(--font-sans);
+    font-size: 0.9375rem;
+    line-height: 1.6;
     overflow-x: hidden;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    color: var(--text-heading);
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    line-height: 1.25;
+  }
+
+  p {
+    color: var(--text-body);
+  }
+
+  small {
+    color: var(--text-secondary);
+  }
+
+  a {
+    color: inherit;
+    text-decoration: none;
+  }
+
+  hr {
+    border: 0;
+    border-top: 1px solid var(--border-default);
+  }
+
+  /* Base Form Elements */
+  input,
+  textarea,
+  select {
+    background-color: var(--bg-surface);
+    color: var(--text-heading);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-input);
+    font-family: var(--font-sans);
+  }
+
+  input::placeholder,
+  textarea::placeholder {
+    color: var(--text-secondary);
+  }
+
+  button {
+    font-family: var(--font-sans);
+  }
+
+  /* ==========================================================================
+     3. ACCESSIBLE FOCUS-VISIBLE, SELECTION & SCROLLBAR STYLES
+     ========================================================================== */
+  :focus-visible {
+    outline: 2px solid var(--primary) !important;
+    outline-offset: 2px !important;
+  }
+
+  ::selection {
+    background-color: var(--primary-soft);
+    color: var(--primary-hover);
+  }
+
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: var(--bg-canvas);
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: var(--radius-sm);
+    border: 2px solid var(--bg-canvas);
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--text-secondary);
   }
 }
 
-/* Lenis Smooth Scroll */
-html.lenis,
-html.lenis body {
-  height: auto;
-}
-.lenis.lenis-smooth {
-  scroll-behavior: auto !important;
-}
-
+/* ============================================================================
+   4. UTILITY CLASSES & TRANSITIONAL COMPATIBILITY SAFEGUARDS
+   Ensures all existing pages remain 100% readable in the single light theme
+   prior to page-level refactoring in Phases 2–6.
+   ============================================================================ */
 .tabular-nums {
   font-variant-numeric: tabular-nums;
 }
 
-/* Architectural Grid */
+/* Neutralize legacy decorative grids, shimmer beams, and heavy hover effects */
 .bg-architectural-grid {
-  background-size: 36px 36px;
-  background-image:
-    linear-gradient(to right, var(--grid-line) 1px, transparent 1px),
-    linear-gradient(to bottom, var(--grid-line) 1px, transparent 1px);
-}
-
-/* Interactive Card Physics */
-.interactive-card {
-  box-shadow: var(--card-shadow);
-  transition:
-    transform 0.3s cubic-bezier(0.22, 1, 0.36, 1),
-    box-shadow 0.3s cubic-bezier(0.22, 1, 0.36, 1),
-    border-color 0.25s ease,
-    background-color 0.25s ease;
-}
-
-.interactive-card:hover {
-  transform: translateY(-3px);
-  border-color: var(--accent-primary) !important;
-  box-shadow:
-    0 18px 36px -10px var(--accent-glow),
-    var(--card-shadow);
-}
-
-@keyframes floatSlow {
-  0%,
-  100% {
-    transform: translateY(0px);
-  }
-  50% {
-    transform: translateY(-6px);
-  }
-}
-
-.animate-float {
-  animation: floatSlow 5s ease-in-out infinite;
-}
-
-@keyframes shimmerSweep {
-  0% {
-    transform: translateX(-100%) skewX(-15deg);
-  }
-  100% {
-    transform: translateX(200%) skewX(-15deg);
-  }
+  background-image: none !important;
 }
 
 .shimmer-sweep {
-  background: linear-gradient(
-    90deg,
-    transparent,
-    var(--accent-glow),
-    transparent
-  );
-  animation: shimmerSweep 3.2s infinite;
+  display: none !important;
 }
 
-/* ============================================================================
-   DAYLIGHT THEME REFINEMENTS (Soft Recessed Canvas & Crisp Elevated Cards)
-   ============================================================================ */
-html[data-theme="daylight"] .bg-[\#f8fafc] {
+.interactive-card {
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.interactive-card:hover {
+  transform: none;
+  border-color: var(--border-strong);
+  box-shadow: var(--shadow-sm);
+}
+
+/* Map legacy hardcoded canvas backgrounds to --bg-canvas (#f6f8fb) */
+.bg-\[\#f8fafc\],
+.bg-\[\#09090b\],
+.bg-\[\#070709\],
+.bg-zinc-950 {
   background-color: var(--bg-canvas) !important;
+  color: var(--text-body) !important;
 }
 
-html[data-theme="daylight"] section.border-b.border-slate-200,
-html[data-theme="daylight"] section.border-b.border-slate-200\/80,
-html[data-theme="daylight"] section.border-b.border-slate-200\/90 {
-  border-bottom-color: rgba(203, 213, 225, 0.45) !important;
+/* Map legacy dark card surfaces to --bg-surface (#ffffff) or --bg-muted (#f1f5f9) */
+.bg-zinc-900,
+.bg-zinc-900\/40,
+.bg-zinc-900\/60,
+.bg-zinc-900\/70,
+.bg-zinc-900\/90 {
+  background-color: var(--bg-surface) !important;
+  color: var(--text-body) !important;
 }
 
-/* ============================================================================
-   OBSIDIAN & VENGEANCE COMPLETE SURFACE ENGINE (Fixes All Nested Cards & Text)
-   ============================================================================ */
-html[data-theme="obsidian"] .bg-[\#f8fafc],
-html[data-theme="vengeance"] .bg-[\#f8fafc] {
-  background-color: var(--bg-canvas) !important;
-  color: var(--text-primary) !important;
+.bg-zinc-900\/20,
+.bg-zinc-800,
+.bg-zinc-800\/70 {
+  background-color: var(--bg-muted) !important;
+  color: var(--text-body) !important;
 }
 
-/* Sticky Navbar & Glass Headers */
-html[data-theme="obsidian"] header.bg-white,
-html[data-theme="obsidian"] header.bg-white\/95,
-html[data-theme="obsidian"] header.bg-white\/90,
-html[data-theme="vengeance"] header.bg-white,
-html[data-theme="vengeance"] header.bg-white\/95,
-html[data-theme="vengeance"] header.bg-white\/90 {
-  background-color: var(--bg-glass) !important;
-  border-color: var(--border-hairline) !important;
+/* Map legacy dark borders to --border-default (#e2e8f0) */
+.border-zinc-800,
+.border-zinc-800\/80,
+.border-zinc-800\/90,
+.border-zinc-700 {
+  border-color: var(--border-default) !important;
 }
 
-/* Level 1 Cards (bg-white, bg-white/95, bg-white/90) */
-html[data-theme="obsidian"] .bg-white,
-html[data-theme="obsidian"] .bg-white\/95,
-html[data-theme="obsidian"] .bg-white\/90,
-html[data-theme="vengeance"] .bg-white,
-html[data-theme="vengeance"] .bg-white\/95,
-html[data-theme="vengeance"] .bg-white\/90 {
-  background-color: var(--bg-surface-1) !important;
-  border-color: var(--border-hairline) !important;
-  color: var(--text-primary) !important;
+/* Map legacy light-on-dark typography classes to readable dark-on-light tokens */
+.text-zinc-100,
+.text-zinc-200 {
+  color: var(--text-heading) !important;
 }
 
-/* Keep section backgrounds transparent to canvas so cards pop cleanly */
-html[data-theme="obsidian"] section.bg-white,
-html[data-theme="vengeance"] section.bg-white {
-  background-color: transparent !important;
+.text-zinc-300 {
+  color: var(--text-body) !important;
 }
 
-/* Level 2 Nested Inner Cards & Wells (bg-slate-50, bg-slate-50/70, bg-slate-50/60, bg-slate-100) */
-html[data-theme="obsidian"] .bg-slate-50,
-html[data-theme="obsidian"] .bg-slate-50\/70,
-html[data-theme="obsidian"] .bg-slate-50\/60,
-html[data-theme="obsidian"] .bg-slate-50\/50,
-html[data-theme="vengeance"] .bg-slate-50,
-html[data-theme="vengeance"] .bg-slate-50\/70,
-html[data-theme="vengeance"] .bg-slate-50\/60,
-html[data-theme="vengeance"] .bg-slate-50\/50 {
-  background-color: var(--bg-surface-2) !important;
-  border-color: var(--border-hairline) !important;
-  color: var(--text-primary) !important;
-}
-
-html[data-theme="obsidian"] .bg-slate-100,
-html[data-theme="obsidian"] .bg-slate-200,
-html[data-theme="vengeance"] .bg-slate-100,
-html[data-theme="vengeance"] .bg-slate-200 {
-  background-color: var(--bg-surface-3) !important;
-  border-color: var(--border-strong) !important;
-  color: var(--text-primary) !important;
-}
-
-/* All Borders & Section Hairlines (Eliminates Glaring White <hr> Lines) */
-html[data-theme="obsidian"] .border-slate-200,
-html[data-theme="obsidian"] .border-slate-200\/80,
-html[data-theme="obsidian"] .border-slate-200\/90,
-html[data-theme="obsidian"] .border-slate-100,
-html[data-theme="vengeance"] .border-slate-200,
-html[data-theme="vengeance"] .border-slate-200\/80,
-html[data-theme="vengeance"] .border-slate-200\/90,
-html[data-theme="vengeance"] .border-slate-100 {
-  border-color: var(--border-hairline) !important;
-}
-
-html[data-theme="obsidian"] .border-slate-300,
-html[data-theme="vengeance"] .border-slate-300 {
-  border-color: var(--border-strong) !important;
-}
-
-html[data-theme="obsidian"] .divide-slate-200 > :not([hidden]) ~ :not([hidden]),
-html[data-theme="obsidian"] .divide-slate-100 > :not([hidden]) ~ :not([hidden]),
-html[data-theme="vengeance"]
-  .divide-slate-200
-  > :not([hidden])
-  ~ :not([hidden]),
-html[data-theme="vengeance"]
-  .divide-slate-100
-  > :not([hidden])
-  ~ :not([hidden]) {
-  border-color: var(--border-hairline) !important;
-}
-
-/* Typography Hierarchy in Dark Themes */
-html[data-theme="obsidian"] .text-slate-950,
-html[data-theme="obsidian"] .text-slate-900,
-html[data-theme="obsidian"] .text-slate-800,
-html[data-theme="vengeance"] .text-slate-950,
-html[data-theme="vengeance"] .text-slate-900,
-html[data-theme="vengeance"] .text-slate-800 {
-  color: var(--text-primary) !important;
-}
-
-html[data-theme="obsidian"] .text-slate-700,
-html[data-theme="obsidian"] .text-slate-600,
-html[data-theme="vengeance"] .text-slate-700,
-html[data-theme="vengeance"] .text-slate-600 {
+.text-zinc-400,
+.text-zinc-500 {
   color: var(--text-secondary) !important;
 }
 
-html[data-theme="obsidian"] .text-slate-500,
-html[data-theme="obsidian"] .text-slate-400,
-html[data-theme="vengeance"] .text-slate-500,
-html[data-theme="vengeance"] .text-slate-400 {
-  color: var(--text-muted) !important;
+/* Map legacy teal primary accents to --primary (#2563eb) */
+.bg-teal-500,
+.bg-teal-400 {
+  background-color: var(--primary) !important;
+  color: #ffffff !important;
 }
 
-/* Semantic Status Badges in Dark Themes (Emerald, Amber, Blue, Red) */
-html[data-theme="obsidian"] .bg-emerald-50,
-html[data-theme="obsidian"] .bg-emerald-50\/50,
-html[data-theme="obsidian"] .bg-emerald-50\/40,
-html[data-theme="vengeance"] .bg-emerald-50,
-html[data-theme="vengeance"] .bg-emerald-50\/50,
-html[data-theme="vengeance"] .bg-emerald-50\/40 {
-  background-color: rgba(16, 185, 129, 0.14) !important;
-  border-color: rgba(16, 185, 129, 0.3) !important;
-}
-html[data-theme="obsidian"] .text-emerald-700,
-html[data-theme="obsidian"] .text-emerald-800,
-html[data-theme="vengeance"] .text-emerald-700,
-html[data-theme="vengeance"] .text-emerald-800 {
-  color: #34d399 !important;
+.bg-teal-500:hover,
+.hover\:bg-teal-400:hover {
+  background-color: var(--primary-hover) !important;
 }
 
-html[data-theme="obsidian"] .bg-amber-50,
-html[data-theme="obsidian"] .bg-amber-50\/50,
-html[data-theme="obsidian"] .bg-amber-50\/40,
-html[data-theme="vengeance"] .bg-amber-50,
-html[data-theme="vengeance"] .bg-amber-50\/50,
-html[data-theme="vengeance"] .bg-amber-50\/40 {
-  background-color: rgba(245, 158, 11, 0.14) !important;
-  border-color: rgba(245, 158, 11, 0.3) !important;
-}
-html[data-theme="obsidian"] .text-amber-700,
-html[data-theme="obsidian"] .text-amber-800,
-html[data-theme="vengeance"] .text-amber-700,
-html[data-theme="vengeance"] .text-amber-800 {
-  color: #fbbf24 !important;
+.text-teal-400,
+.text-teal-300 {
+  color: var(--primary) !important;
 }
 
-html[data-theme="obsidian"] .bg-blue-50,
-html[data-theme="obsidian"] .bg-blue-50\/60,
-html[data-theme="obsidian"] .bg-blue-50\/40,
-html[data-theme="vengeance"] .bg-blue-50,
-html[data-theme="vengeance"] .bg-blue-50\/60,
-html[data-theme="vengeance"] .bg-blue-50\/40 {
-  background-color: rgba(59, 130, 246, 0.15) !important;
-  border-color: rgba(59, 130, 246, 0.32) !important;
-}
-html[data-theme="obsidian"] .text-blue-700,
-html[data-theme="obsidian"] .text-blue-600,
-html[data-theme="obsidian"] .text-blue-900,
-html[data-theme="vengeance"] .text-blue-700,
-html[data-theme="vengeance"] .text-blue-600,
-html[data-theme="vengeance"] .text-blue-900 {
-  color: #60a5fa !important;
+.bg-teal-500\/10 {
+  background-color: var(--primary-soft) !important;
 }
 
-html[data-theme="obsidian"] .bg-red-50,
-html[data-theme="vengeance"] .bg-red-50 {
-  background-color: rgba(239, 68, 68, 0.14) !important;
-  border-color: rgba(239, 68, 68, 0.3) !important;
-}
-html[data-theme="obsidian"] .text-red-700,
-html[data-theme="obsidian"] .text-red-800,
-html[data-theme="vengeance"] .text-red-700,
-html[data-theme="vengeance"] .text-red-800 {
-  color: #f87171 !important;
-}
-
-/* Form Inputs, Textareas & Selects in Dark Themes */
-html[data-theme="obsidian"] input,
-html[data-theme="obsidian"] textarea,
-html[data-theme="obsidian"] select,
-html[data-theme="vengeance"] input,
-html[data-theme="vengeance"] textarea,
-html[data-theme="vengeance"] select {
-  background-color: var(--bg-surface-2) !important;
-  border-color: var(--border-strong) !important;
-  color: var(--text-primary) !important;
-}
-
-/* Hover States in Dark Themes */
-html[data-theme="obsidian"] .hover\:bg-slate-50:hover,
-html[data-theme="obsidian"] .hover\:bg-slate-100:hover,
-html[data-theme="vengeance"] .hover\:bg-slate-50:hover,
-html[data-theme="vengeance"] .hover\:bg-slate-100:hover {
-  background-color: var(--bg-surface-3) !important;
+.border-teal-500\/30,
+.border-teal-500\/50 {
+  border-color: var(--primary) !important;
 }
