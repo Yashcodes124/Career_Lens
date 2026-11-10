@@ -4,223 +4,210 @@ import {
   Routes,
   Route,
   Link,
-  useLocation,
   useNavigate,
+  useLocation,
 } from "react-router-dom";
-import { PageTransition } from "./components/ui/AceternityPrimitives";
-import { AuthProvider } from "./features/auth/AuthContext";
-import { ProtectedRoute } from "./features/auth/ProtectedRoute";
-import { LoginForm } from "./features/auth/LoginForm";
-import { RegisterForm } from "./features/auth/RegisterForm";
-import { UserProfileCard } from "./features/auth/UserProfileCard";
-import { ProfileSetupForm } from "./features/auth/ProfileSetupForm";
-import { OnboardingWizard } from "./features/auth/OnboardingWizard";
+import {
+  AuthProvider,
+  LoginForm,
+  RegisterForm,
+  ProfileSetupForm,
+  UserProfileCard,
+  ProtectedRoute,
+  OnboardingWizard,
+} from "./features/auth";
+import { LandingPage } from "./features/landing/LandingPage";
+import { DashboardPage } from "./features/dashboard/DashboardPage";
 import { JobsPage } from "./features/jobs/JobsPage";
 import { SavedJobsPage } from "./features/jobs/SavedJobsPage";
-import { TrackerPage } from "./features/tracker/TrackerPage";
+import { ResumePage } from "./features/resume/ResumePage";
 import MatchPage from "./features/matching/MatchPage";
+import { SkillGapPage } from "./features/matching/SkillGapPage";
+import { TailoringPage } from "./features/tailoring/TailoringPage";
+import { TrackerPage } from "./features/tracker/TrackerPage";
+import { ReadinessPage } from "./features/readiness/ReadinessPage";
 import { InterviewPreparationPage } from "./features/interview/InterviewPreparationPage";
 import { LiveInterviewPage } from "./features/interview/LiveInterviewPage";
-import { InterviewsPage } from "./features/interview/InterviewsPage";
 import { InterviewEvaluationPage } from "./features/interview/InterviewEvaluationPage";
-import { SkillGapPage } from "./features/matching/SkillGapPage";
-import { ResumePage } from "./features/resume/ResumePage";
-import { DashboardPage } from "./features/dashboard/DashboardPage";
-import { ReadinessPage } from "./features/readiness/ReadinessPage";
-import { TailoringPage } from "./features/tailoring/TailoringPage";
-import { LandingPage } from "./features/landing/LandingPage";
+import { InterviewsPage } from "./features/interview/InterviewsPage";
+import { AppShell } from "./components/layout";
+import { Card } from "./components/ui";
+
+const WorkspaceRoute: React.FC<{ children: React.ReactNode }> = ({
+  children,
+}) => (
+  <ProtectedRoute>
+    <AppShell variant="workspace">{children}</AppShell>
+  </ProtectedRoute>
+);
 
 export const App: React.FC = () => {
   return (
     <AuthProvider>
       <Router>
-        <PageTransition>
-          <Routes>
-            {/* Public Landing & Auth Routes */}
-            <Route path="/" element={<LandingPage />} />
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/register" element={<RegisterPage />} />
+        <Routes>
+          {/* Public Routes */}
+          <Route path="/" element={<LandingPage />} />
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/register" element={<RegisterPage />} />
 
-            {/* Protected Routes */}
-            <Route
-              path="/onboarding"
-              element={
-                <ProtectedRoute>
+          {/* Protected Onboarding Flow */}
+          <Route
+            path="/onboarding"
+            element={
+              <ProtectedRoute>
+                <AppShell variant="minimal">
                   <OnboardingWizard />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/dashboard"
-              element={
-                <ProtectedRoute>
-                  <DashboardPage />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/readiness"
-              element={
-                <ProtectedRoute>
-                  <ReadinessPage />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/skills"
-              element={
-                <ProtectedRoute>
-                  <ReadinessPage />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/tailor/:jobId"
-              element={
-                <ProtectedRoute>
-                  <TailoringPage />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/skill-gaps/:jobId"
-              element={
-                <ProtectedRoute>
-                  <SkillGapPage />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/skill-gap/:jobId"
-              element={
-                <ProtectedRoute>
-                  <SkillGapPage />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/profile"
-              element={
-                <ProtectedRoute>
-                  <UserProfileCard />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/profile-setup"
-              element={
-                <ProtectedRoute>
-                  <ProfileSetupForm />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/resume"
-              element={
-                <ProtectedRoute>
-                  <ResumePage />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/jobs"
-              element={
-                <ProtectedRoute>
-                  <JobsPage />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/applications"
-              element={
-                <ProtectedRoute>
-                  <TrackerPage />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/saved-jobs"
-              element={
-                <ProtectedRoute>
-                  <SavedJobsPage />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/matches/:jobId"
-              element={
-                <ProtectedRoute>
-                  <MatchPage />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/interviews"
-              element={
-                <ProtectedRoute>
-                  <InterviewsPage />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/interviews/:interviewId/prep"
-              element={
-                <ProtectedRoute>
-                  <InterviewPreparationPage />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/interviews/:interviewId/live"
-              element={
-                <ProtectedRoute>
-                  <LiveInterviewPage />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/interviews/:interviewId/evaluation"
-              element={
-                <ProtectedRoute>
-                  <InterviewEvaluationPage />
-                </ProtectedRoute>
-              }
-            />
+                </AppShell>
+              </ProtectedRoute>
+            }
+          />
 
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </PageTransition>
+          {/* Protected Workspace Routes */}
+          <Route
+            path="/dashboard"
+            element={
+              <WorkspaceRoute>
+                <DashboardPage />
+              </WorkspaceRoute>
+            }
+          />
+          <Route
+            path="/readiness"
+            element={
+              <WorkspaceRoute>
+                <ReadinessPage />
+              </WorkspaceRoute>
+            }
+          />
+          <Route
+            path="/skills"
+            element={
+              <WorkspaceRoute>
+                <ReadinessPage />
+              </WorkspaceRoute>
+            }
+          />
+          <Route
+            path="/interviews"
+            element={
+              <WorkspaceRoute>
+                <InterviewsPage />
+              </WorkspaceRoute>
+            }
+          />
+          <Route
+            path="/interviews/:interviewId/prep"
+            element={
+              <WorkspaceRoute>
+                <InterviewPreparationPage />
+              </WorkspaceRoute>
+            }
+          />
+          <Route
+            path="/interviews/:interviewId/live"
+            element={
+              <WorkspaceRoute>
+                <LiveInterviewPage />
+              </WorkspaceRoute>
+            }
+          />
+          <Route
+            path="/interviews/:interviewId/evaluation"
+            element={
+              <WorkspaceRoute>
+                <InterviewEvaluationPage />
+              </WorkspaceRoute>
+            }
+          />
+          <Route
+            path="/jobs"
+            element={
+              <WorkspaceRoute>
+                <JobsPage />
+              </WorkspaceRoute>
+            }
+          />
+          <Route
+            path="/saved-jobs"
+            element={
+              <WorkspaceRoute>
+                <SavedJobsPage />
+              </WorkspaceRoute>
+            }
+          />
+          <Route
+            path="/applications"
+            element={
+              <WorkspaceRoute>
+                <TrackerPage />
+              </WorkspaceRoute>
+            }
+          />
+          <Route
+            path="/resume"
+            element={
+              <WorkspaceRoute>
+                <ResumePage />
+              </WorkspaceRoute>
+            }
+          />
+          <Route
+            path="/profile"
+            element={
+              <WorkspaceRoute>
+                <UserProfileCard />
+              </WorkspaceRoute>
+            }
+          />
+          <Route
+            path="/profile-setup"
+            element={
+              <WorkspaceRoute>
+                <ProfileSetupForm />
+              </WorkspaceRoute>
+            }
+          />
+          <Route
+            path="/matches/:jobId"
+            element={
+              <WorkspaceRoute>
+                <MatchPage />
+              </WorkspaceRoute>
+            }
+          />
+          <Route
+            path="/skill-gap/:jobId"
+            element={
+              <WorkspaceRoute>
+                <SkillGapPage />
+              </WorkspaceRoute>
+            }
+          />
+          <Route
+            path="/skill-gaps/:jobId"
+            element={
+              <WorkspaceRoute>
+                <SkillGapPage />
+              </WorkspaceRoute>
+            }
+          />
+          <Route
+            path="/tailor/:jobId"
+            element={
+              <WorkspaceRoute>
+                <TailoringPage />
+              </WorkspaceRoute>
+            }
+          />
+
+          {/* 404 Fallback */}
+          <Route path="*" element={<NotFound />} />
+        </Routes>
       </Router>
     </AuthProvider>
   );
 };
-
-const AuthShell: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  <div className="flex min-h-screen flex-col bg-[#f8fafc] text-slate-900">
-    <header className="border-b border-slate-200 bg-white">
-      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-        <Link
-          to="/"
-          className="flex items-center gap-2.5 text-base font-semibold tracking-tight text-slate-900"
-        >
-          <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-600 text-xs font-bold text-white">
-            TH
-          </span>
-          <span>TrueHire</span>
-        </Link>
-        <Link
-          to="/"
-          className="text-xs font-medium text-slate-600 hover:text-slate-900"
-        >
-          Back to home
-        </Link>
-      </div>
-    </header>
-    <div className="flex flex-1 items-center justify-center p-4 sm:p-6">
-      {children}
-    </div>
-  </div>
-);
 
 const LoginPage: React.FC = () => {
   const navigate = useNavigate();
@@ -228,47 +215,47 @@ const LoginPage: React.FC = () => {
   const from =
     (location.state as { from?: string } | null)?.from ?? "/dashboard";
   return (
-    <AuthShell>
+    <AppShell variant="auth">
       <LoginForm
         onSuccess={() => navigate(from, { replace: true })}
         onSwitchToRegister={() => navigate("/register")}
       />
-    </AuthShell>
+    </AppShell>
   );
 };
 
 const RegisterPage: React.FC = () => {
   const navigate = useNavigate();
   return (
-    <AuthShell>
+    <AppShell variant="auth">
       <RegisterForm
         onSuccess={() => navigate("/onboarding", { replace: true })}
         onSwitchToLogin={() => navigate("/login")}
       />
-    </AuthShell>
+    </AppShell>
   );
 };
 
 const NotFound: React.FC = () => (
-  <div className="flex min-h-screen items-center justify-center bg-[#f8fafc] px-4">
-    <div className="max-w-md rounded-xl border border-slate-200 bg-white p-8 text-center shadow-sm">
-      <p className="text-xs font-semibold uppercase tracking-wider text-blue-600">
+  <AppShell variant="minimal">
+    <Card className="mx-auto max-w-md text-center" padding="lg">
+      <p className="text-xs font-semibold uppercase tracking-wider text-primary">
         404 Not Found
       </p>
-      <h1 className="mt-2 text-2xl font-semibold text-slate-900">
+      <h1 className="mt-2 text-2xl font-semibold text-content-heading">
         Page not found
       </h1>
-      <p className="mt-2 text-sm text-slate-600">
+      <p className="mt-2 text-sm text-content-secondary">
         The page you are looking for does not exist or may have moved.
       </p>
       <Link
         to="/dashboard"
-        className="mt-6 inline-flex items-center justify-center rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700"
+        className="mt-6 inline-flex h-10 items-center justify-center rounded-input bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
       >
         Back to Dashboard
       </Link>
-    </div>
-  </div>
+    </Card>
+  </AppShell>
 );
 
 export default App;
