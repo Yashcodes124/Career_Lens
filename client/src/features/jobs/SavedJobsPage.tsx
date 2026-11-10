@@ -1,196 +1,441 @@
-import React, { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
-import { ExternalLink, Trash2, ArrowUpRight, Bookmark } from "lucide-react";
+import React, { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import {
+  ArrowRight,
+  ArrowUpRight,
+  Bookmark,
+  ExternalLink,
+  Search,
+  Trash2,
+} from "lucide-react";
 import { fetchSavedJobs, unsaveJob } from "./jobsApi";
+import { JobCard } from "./JobCard";
 import type { Job } from "./types";
-import { Navbar } from "../../components/NavBar";
-import { useLatestResumeId } from "../resume/useResumes";
+import { createApplication } from "../tracker/trackerApi";
+import { useResumes } from "../resume/useResumes";
+import { ContentContainer, PageHeader } from "../../components/layout";
+import {
+  Badge,
+  Button,
+  Card,
+  Drawer,
+  EmptyState,
+  ErrorState,
+  Input,
+  RequirementRow,
+  ScoreRing,
+  Select,
+  Skeleton,
+  Tabs,
+  Toast,
+} from "../../components/ui";
 
-const cleanSnippet = (raw: string): string => {
-  if (!raw) return "";
+const decodeHtml = (html: string): string => {
+  if (!html) return "";
   const textarea = document.createElement("textarea");
-  textarea.innerHTML = raw;
-  return textarea.value
-    .replace(/<[^>]+>/g, " ")
-    .replace(/\s+/g, " ")
-    .trim()
-    .slice(0, 220);
+  textarea.innerHTML = html;
+  return textarea.value;
 };
 
 export const SavedJobsPage: React.FC = () => {
-  const [jobs, setJobs] = useState<Job[]>([]);
+  const navigate = useNavigate();
+  const { data: resumes } = useResumes();
+  const activeResume = resumes?.[0] ?? null;
+  const resumeId = activeResume?.id;
+  const resumeSkills = useMemo(
+    () => activeResume?.skills ?? [],
+    [activeResume],
+  );
+
+  const [savedJobs, setSavedJobs] = useState<Job[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const resumeId = useLatestResumeId();
 
-  useEffect(() => {
-    const loadSavedJobs = async () => {
-      try {
-        setIsLoading(true);
-        setError(null);
-        const results = await fetchSavedJobs();
-        setJobs(results);
-      } catch (err) {
-        setError(
-          err instanceof Error ? err.message : "Unable to load saved jobs.",
-        );
-      } finally {
-        setIsLoading(false);
-      }
-    };
+  const [search, setSearch] = useState("");
+  const [minMatch, setMinMatch] = useState("0");
+  const [selectedJob, setSelectedJob] = useState<Job | null>(null);
+  const [drawerTab, setDrawerTab] = useState("overview");
+  const [isTracking, setIsTracking] = useState(false);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-    void loadSavedJobs();
-  }, []);
-
-  const handleRemove = async (jobId: string) => {
+  const loadSaved = async () => {
     try {
-      await unsaveJob(jobId);
-      setJobs((current) => current.filter((job) => job.id !== jobId));
-    } catch (err) {
+      setIsLoading(true);
+      setError(null);
+      const data = await fetchSavedJobs();
+      setSavedJobs(data);
+    } catch (err: unknown) {
       setError(
-        err instanceof Error ? err.message : "Unable to remove saved job.",
+        err instanceof Error ? err.message : "Could not load your saved jobs.",
       );
+    } finally {
+      setIsLoading(false);
     }
   };
 
+  useEffect(() => {
+    void loadSaved();
+  }, []);
+
+  const enrichedSavedJobs = useMemo(() => {
+    const normalizedResumeSet = new Set(
+      resumeSkills.map((s) => s.toLowerCase().trim()),
+    );
+
+    return savedJobs.map((job) => {
+      const reqs = job.requirements ?? [];
+      const matched: string[] = [];
+      const missing: string[] = [];
+
+      for (const req of reqs) {
+        const normReq = req.toLowerCase().trim();
+        const isHit =
+          normalizedResumeSet.has(normReq) ||
+          resumeSkills.some((rs) => {
+            const normRs = rs.toLowerCase().trim();
+            return (
+              normRs.length >= 3 &&
+              (normReq.includes(normRs) || normRs.includes(normReq))
+            );
+          });
+        if (isHit) matched.push(req);
+        else missing.push(req);
+      }
+
+      const matchScore =
+        reqs.length > 0 && resumeSkills.length > 0
+          ? Math.round((matched.length / reqs.length) * 100)
+          : null;
+
+      return {
+        job,
+        matchScore,
+        matched,
+        missing,
+      };
+    });
+  }, [savedJobs, resumeSkills]);
+
+  const filteredSavedJobs = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    const minScoreNum = Number(minMatch);
+
+    return enrichedSavedJobs.filter(({ job, matchScore }) => {
+      const matchesQuery =
+        !q ||
+        job.title.toLowerCase().includes(q) ||
+        job.company.toLowerCase().includes(q) ||
+        (job.location ?? "").toLowerCase().includes(q) ||
+        (job.requirements ?? []).some((r) => r.toLowerCase().includes(q));
+
+      const matchesMinScore =
+        minScoreNum <= 0 || (matchScore !== null && matchScore >= minScoreNum);
+
+      return matchesQuery && matchesMinScore;
+    });
+  }, [enrichedSavedJobs, search, minMatch]);
+
+  const handleUnsave = async (job: Job) => {
+    try {
+      await unsaveJob(job.id);
+      setSavedJobs((prev) => prev.filter((item) => item.id !== job.id));
+      if (selectedJob?.id === job.id) {
+        setSelectedJob(null);
+      }
+      setToastMessage(`Removed ${job.title} from Saved Jobs.`);
+    } catch {
+      setToastMessage("Failed to remove saved job.");
+    }
+  };
+
+  const handleTrack = async (job: Job) => {
+    if (isTracking) return;
+    try {
+      setIsTracking(true);
+      await createApplication(job.id);
+      setToastMessage(`Added ${job.title} to Application Tracker.`);
+      navigate("/applications");
+    } catch {
+      setToastMessage("Could not add job to tracker.");
+    } finally {
+      setIsTracking(false);
+    }
+  };
+
+  const selectedEnriched = useMemo(
+    () =>
+      selectedJob
+        ? (enrichedSavedJobs.find((item) => item.job.id === selectedJob.id) ??
+          null)
+        : null,
+    [selectedJob, enrichedSavedJobs],
+  );
+
   return (
-    <div className="min-h-screen bg-[#f8fafc] text-slate-900">
-      <Navbar />
-
-      <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
-        <header className="mb-8 flex flex-wrap items-end justify-between gap-4 border-b border-slate-200 pb-6">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-wider text-blue-600">
-              Shortlisted Roles
-            </p>
-            <h1 className="mt-1 text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl">
-              Saved Jobs
-            </h1>
-            <p className="mt-1 text-sm text-slate-600">
-              Roles bookmarked from the job board for requirement matching and
-              interview practice.
-            </p>
-          </div>
-          <Link
-            to="/jobs"
-            className="rounded-lg bg-blue-600 px-4 py-2 text-xs font-medium text-white shadow-sm transition hover:bg-blue-700"
+    <ContentContainer size="xl" className="space-y-6">
+      <PageHeader
+        breadcrumbs={[
+          { label: "Explore Jobs", href: "/jobs" },
+          { label: "Saved Jobs" },
+        ]}
+        eyebrow="Bookmarked Roles"
+        title={`Saved Jobs (${savedJobs.length})`}
+        description="Compare requirement coverage across your bookmarked roles, inspect missing skills, and launch targeted mock interviews."
+        primaryAction={
+          <Button
+            variant="primary"
+            onClick={() => navigate("/jobs")}
+            rightIcon={<ArrowRight className="h-4 w-4" />}
           >
-            Explore jobs
-          </Link>
-        </header>
+            Browse more jobs
+          </Button>
+        }
+        secondaryActions={
+          <Button variant="outline" onClick={() => navigate("/applications")}>
+            Open pipeline tracker
+          </Button>
+        }
+      />
 
-        {error && (
-          <div className="mb-6 rounded-xl border border-red-200 bg-red-50 p-4 text-xs text-red-700">
-            {error}
-          </div>
-        )}
+      {toastMessage && (
+        <Toast
+          tone="success"
+          title="Saved jobs updated"
+          description={toastMessage}
+          onDismiss={() => setToastMessage(null)}
+        />
+      )}
 
-        {isLoading ? (
-          <div className="space-y-3">
-            {[1, 2].map((n) => (
-              <div
-                key={n}
-                className="h-32 animate-pulse rounded-xl border border-slate-200 bg-white"
-              />
-            ))}
+      {error && (
+        <ErrorState
+          title="Unable to load saved jobs"
+          message={error}
+          onRetry={() => void loadSaved()}
+        />
+      )}
+
+      {savedJobs.length > 0 && (
+        <Card padding="sm" className="grid gap-3 sm:grid-cols-3">
+          <div className="sm:col-span-2">
+            <Input
+              placeholder="Filter saved jobs by title, company, location, or skill..."
+              value={search}
+              leftAddon={<Search className="h-4 w-4" />}
+              onChange={(e) => setSearch(e.target.value)}
+            />
           </div>
-        ) : jobs.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-slate-300 bg-white p-12 text-center shadow-sm">
-            <Bookmark className="mx-auto h-7 w-7 text-slate-400" />
-            <h2 className="mt-3 text-base font-semibold text-slate-900">
-              No saved jobs yet
-            </h2>
-            <p className="mt-1 text-xs text-slate-600">
-              Save roles from the Explore Jobs page to compare requirements and
-              practice interviews.
-            </p>
-            <Link
-              to="/jobs"
-              className="mt-4 inline-block rounded-lg bg-blue-600 px-4 py-2 text-xs font-medium text-white hover:bg-blue-700"
-            >
+          <Select
+            value={minMatch}
+            options={[
+              { value: "0", label: "All match scores" },
+              { value: "40", label: "40%+ match" },
+              { value: "60", label: "60%+ match" },
+              { value: "75", label: "75%+ strong match" },
+            ]}
+            onChange={(e) => setMinMatch(e.target.value)}
+          />
+        </Card>
+      )}
+
+      {isLoading ? (
+        <div className="grid gap-4 md:grid-cols-2" aria-busy="true">
+          <Skeleton className="h-44 w-full" />
+          <Skeleton className="h-44 w-full" />
+        </div>
+      ) : savedJobs.length === 0 ? (
+        <EmptyState
+          title="No saved jobs yet"
+          description="Bookmark verified engineering roles on the Explore Jobs page to compare requirements and prepare for interviews."
+          icon={<Bookmark className="h-5 w-5" />}
+          action={
+            <Button variant="primary" onClick={() => navigate("/jobs")}>
               Explore verified jobs
-            </Link>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            {jobs.map((job) => (
-              <article
-                key={job.id}
-                className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition hover:border-slate-300"
+            </Button>
+          }
+        />
+      ) : filteredSavedJobs.length === 0 ? (
+        <EmptyState
+          title="No saved jobs match your filter"
+          description="Clear your search query or lower the minimum match score filter."
+          action={
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setSearch("");
+                setMinMatch("0");
+              }}
+            >
+              Reset filter
+            </Button>
+          }
+        />
+      ) : (
+        <div className="grid gap-4 md:grid-cols-2">
+          {filteredSavedJobs.map(({ job, matchScore, matched, missing }) => (
+            <JobCard
+              key={job.id}
+              job={job}
+              resumeId={resumeId}
+              resumeSkills={resumeSkills}
+              matchScore={matchScore}
+              matchedSkills={matched}
+              missingSkills={missing}
+              isSaved={true}
+              isSelected={selectedJob?.id === job.id}
+              onSelect={(target) => {
+                setSelectedJob(target);
+                setDrawerTab("overview");
+              }}
+              onToggleSave={(target) => void handleUnsave(target)}
+            />
+          ))}
+        </div>
+      )}
+
+      {/* Saved Job Detail Drawer */}
+      <Drawer
+        open={Boolean(selectedJob)}
+        onClose={() => setSelectedJob(null)}
+        title={selectedJob?.title ?? "Job Details"}
+        description={
+          selectedJob
+            ? `${selectedJob.company} · ${selectedJob.location || "Verified Listing"} · ${selectedJob.source || "Greenhouse"}`
+            : undefined
+        }
+        widthClassName="max-w-2xl"
+        footer={
+          selectedJob ? (
+            <div className="flex w-full flex-wrap items-center justify-between gap-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <Button
+                  variant="danger"
+                  size="sm"
+                  onClick={() => void handleUnsave(selectedJob)}
+                  leftIcon={<Trash2 className="h-3.5 w-3.5" />}
+                >
+                  Remove saved
+                </Button>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  loading={isTracking}
+                  onClick={() => void handleTrack(selectedJob)}
+                >
+                  Add to tracker
+                </Button>
+                {selectedJob.url && (
+                  <a
+                    href={selectedJob.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex h-8 items-center gap-1 rounded-sm border border-border bg-surface px-3 text-xs font-medium text-content-body hover:bg-muted"
+                  >
+                    <span>Official posting</span>
+                    <ExternalLink className="h-3.5 w-3.5" />
+                  </a>
+                )}
+              </div>
+
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={() =>
+                  navigate(
+                    `/matches/${selectedJob.id}${
+                      resumeId ? `?resumeId=${resumeId}` : ""
+                    }`,
+                  )
+                }
+                rightIcon={<ArrowUpRight className="h-4 w-4" />}
               >
-                <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-                  <div>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="rounded-md border border-blue-200 bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700">
-                        {job.source}
-                      </span>
-                      {job.isActive && (
-                        <span className="rounded-md border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700">
-                          Active
-                        </span>
-                      )}
-                    </div>
-
-                    <h2 className="mt-2 text-lg font-semibold text-slate-900">
-                      {job.title}
-                    </h2>
-
-                    <div className="mt-1 flex flex-wrap gap-2 text-xs text-slate-500">
-                      <span className="font-medium text-slate-800">
-                        {job.company}
-                      </span>
-                      {job.location && (
-                        <>
-                          <span>·</span>
-                          <span>{job.location}</span>
-                        </>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Link
-                      to={`/matches/${job.id}${
-                        resumeId ? `?resumeId=${resumeId}` : ""
-                      }`}
-                      className="inline-flex items-center gap-1 rounded-lg bg-blue-600 px-3.5 py-2 text-xs font-medium text-white shadow-sm transition hover:bg-blue-700"
-                    >
-                      <span>View match</span>
-                      <ArrowUpRight className="h-3.5 w-3.5" />
-                    </Link>
-
-                    {job.url && (
-                      <a
-                        href={job.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 rounded-lg border border-slate-300 bg-white px-3.5 py-2 text-xs font-medium text-slate-700 transition hover:bg-slate-50"
-                      >
-                        <span>Apply</span>
-                        <ExternalLink className="h-3 w-3" />
-                      </a>
-                    )}
-
-                    <button
-                      type="button"
-                      onClick={() => void handleRemove(job.id)}
-                      className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-600 transition hover:border-red-200 hover:bg-red-50 hover:text-red-700"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                      <span>Remove</span>
-                    </button>
-                  </div>
+                Full match & interview
+              </Button>
+            </div>
+          ) : undefined
+        }
+      >
+        {selectedJob && selectedEnriched && (
+          <div className="space-y-5">
+            <Card
+              muted
+              padding="md"
+              className="flex flex-wrap items-center justify-between gap-4"
+            >
+              <div className="space-y-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Badge tone="neutral" size="sm">
+                    {selectedJob.source || "Greenhouse"}
+                  </Badge>
+                  {selectedJob.salaryRange && (
+                    <Badge tone="primary" size="sm">
+                      {selectedJob.salaryRange}
+                    </Badge>
+                  )}
                 </div>
-
-                <p className="mt-3 line-clamp-2 text-xs leading-relaxed text-slate-600">
-                  {cleanSnippet(job.description)}...
+                <p className="text-sm font-semibold text-content-heading">
+                  {selectedJob.requirements?.length
+                    ? `You meet ${selectedEnriched.matched.length} of ${selectedJob.requirements.length} requirements.`
+                    : "Inspect full posting below."}
                 </p>
-              </article>
-            ))}
+              </div>
+              <ScoreRing
+                score={selectedEnriched.matchScore}
+                size={68}
+                label="Match"
+              />
+            </Card>
+
+            <Tabs
+              activeTab={drawerTab}
+              onChange={setDrawerTab}
+              items={[
+                {
+                  id: "overview",
+                  label: "Requirements",
+                  count: selectedJob.requirements?.length ?? 0,
+                  content: (
+                    <div className="space-y-2.5">
+                      {selectedEnriched.matched.map((skill) => (
+                        <RequirementRow
+                          key={`m-${skill}`}
+                          skill={skill}
+                          status="MET"
+                          evidence="Matched on your active resume"
+                        />
+                      ))}
+                      {selectedEnriched.missing.map((skill) => (
+                        <RequirementRow
+                          key={`gap-${skill}`}
+                          skill={skill}
+                          status="MISSING"
+                          priority="high"
+                          evidence="Missing from active resume"
+                        />
+                      ))}
+                    </div>
+                  ),
+                },
+                {
+                  id: "description",
+                  label: "Full Description",
+                  content: (
+                    <Card padding="md">
+                      <div
+                        className="prose prose-slate max-w-none text-sm leading-relaxed text-content-body"
+                        dangerouslySetInnerHTML={{
+                          __html: decodeHtml(selectedJob.description),
+                        }}
+                      />
+                    </Card>
+                  ),
+                },
+              ]}
+            />
           </div>
         )}
-      </main>
-    </div>
+      </Drawer>
+    </ContentContainer>
   );
 };
 

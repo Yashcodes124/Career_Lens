@@ -1,344 +1,675 @@
-import React, { useEffect, useState } from "react";
-import { Link, useParams, useSearchParams } from "react-router-dom";
-import { ArrowLeft, Check, Copy, Download } from "lucide-react";
-import { Navbar } from "../../components/NavBar";
+import React, { useEffect, useMemo, useState } from "react";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
+import {
+  AlertTriangle,
+  ArrowRight,
+  Check,
+  CheckCircle2,
+  Copy,
+  Download,
+  FileText,
+  ShieldCheck,
+  Sparkles,
+  X,
+} from "lucide-react";
 import { useResumes } from "../resume/useResumes";
-import { fetchTailoring, type TailoringSuggestions } from "./tailoringApi";
+import { useReadiness } from "../readiness/useReadiness";
+import { calculateJobMatch } from "../matching/matchingApi";
+import type { MatchResult } from "../matching/types";
+import type { Job } from "../jobs/types";
+import { apiClient } from "../../lib/api-client";
+import { ContentContainer, PageHeader } from "../../components/layout";
+import {
+  Badge,
+  Button,
+  Card,
+  EmptyState,
+  ErrorState,
+  SectionCard,
+  Skeleton,
+  SkillBadge,
+  Tabs,
+  Toast,
+} from "../../components/ui";
 
-const PRIORITY_CLASSES = {
-  high: "border-red-200 bg-red-50 text-red-700",
-  medium: "border-amber-200 bg-amber-50 text-amber-800",
-  low: "border-blue-200 bg-blue-50 text-blue-700",
-} as const;
+interface TailoringSuggestion {
+  id: string;
+  section: string;
+  skill: string;
+  evidenceSource: "INTERVIEW_VERIFIED" | "RESUME_EXTRACTED";
+  originalText: string;
+  suggestedText: string;
+  rationale: string;
+}
 
-const CARD = "rounded-xl border border-slate-200 bg-white p-6 shadow-sm";
+interface TailoringApiResponse {
+  tailoredSummary?: string;
+  suggestions?: Array<{
+    section?: string;
+    skill?: string;
+    original?: string;
+    originalText?: string;
+    suggested?: string;
+    suggestedText?: string;
+    reason?: string;
+    rationale?: string;
+  }>;
+  matchedSkills?: string[];
+  excludedMissingSkills?: string[];
+}
+
+// Deterministic, truthful fallback builder bounded strictly by the user's real resume lines and verified skills
+function buildTruthfulSuggestions(
+  rawText: string,
+  matchedSkills: string[],
+  verifiedSet: Set<string>,
+  roleTitle: string,
+): TailoringSuggestion[] {
+  const resumeLines = rawText
+    .split(/\r?\n/)
+    .map((l) => l.trim())
+    .filter((l) => l.length > 25);
+
+  return matchedSkills.map((skill, idx) => {
+    const isVerified = verifiedSet.has(skill.toLowerCase().trim());
+    const matchingLine =
+      resumeLines.find((line) =>
+        line.toLowerCase().includes(skill.toLowerCase()),
+      ) ??
+      `Existing resume lists ${skill} in technical skills and project experience.`;
+
+    const suggestedText = isVerified
+      ? `${matchingLine.replace(/\.$/, "")} — demonstrated production trade-offs and implementation depth in ${skill} aligned with ${roleTitle} requirements.`
+      : `Highlight existing ${skill} implementation from your resume in the top summary and relevant project bullet for ${roleTitle}, specifying concrete scope and measurable outcomes from your actual work.`;
+
+    return {
+      id: `truthful-${idx}-${skill}`,
+      section: idx === 0 ? "Summary & Core Stack" : "Experience & Projects",
+      skill,
+      evidenceSource: isVerified ? "INTERVIEW_VERIFIED" : "RESUME_EXTRACTED",
+      originalText: matchingLine,
+      suggestedText,
+      rationale: isVerified
+        ? `You both listed ${skill} on your resume and verified it in a mock interview evaluation.`
+        : `${skill} is already present on your uploaded resume and explicitly required by ${roleTitle}.`,
+    };
+  });
+}
 
 export const TailoringPage: React.FC = () => {
   const { jobId } = useParams<{ jobId: string }>();
   const [searchParams] = useSearchParams();
-  const { data: resumes, isLoading: resumesLoading } = useResumes();
-  const resumeId = searchParams.get("resumeId") ?? resumes?.[0]?.id ?? null;
+  const navigate = useNavigate();
+  const queryResumeId = searchParams.get("resumeId");
 
-  const [data, setData] = useState<TailoringSuggestions | null>(null);
-  const [loading, setLoading] = useState(false);
+  const { data: resumes, isLoading: resumesLoading } = useResumes();
+  const { data: readiness } = useReadiness();
+
+  const activeResume = useMemo(
+    () => resumes?.find((r) => r.id === queryResumeId) ?? resumes?.[0] ?? null,
+    [resumes, queryResumeId],
+  );
+  const activeResumeId = activeResume?.id ?? null;
+
+  const [job, setJob] = useState<Job | null>(null);
+  const [matchResult, setMatchResult] = useState<MatchResult | null>(null);
+  const [suggestions, setSuggestions] = useState<TailoringSuggestion[]>([]);
+  const [acceptedIds, setAcceptedIds] = useState<Set<string>>(new Set());
+  const [activeTab, setActiveTab] = useState<string>("workbench");
+
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [attempt, setAttempt] = useState(0);
-  const [accepted, setAccepted] = useState<Set<string>>(new Set());
-  const [copied, setCopied] = useState(false);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  const verifiedSkillSet = useMemo(() => {
+    const set = new Set<string>();
+    for (const s of readiness?.skills ?? []) {
+      if (s.status === "STRONG") {
+        set.add(s.skill.toLowerCase().trim());
+      }
+    }
+    return set;
+  }, [readiness]);
+
+  const loadTailoringData = async () => {
+    if (!jobId || !activeResumeId) {
+      setLoading(false);
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setError(null);
+
+      const [jobRes, matchRes] = await Promise.all([
+        apiClient.get<{ data?: Job } | Job>(`/jobs/${jobId}`).catch(() => null),
+        calculateJobMatch({ resumeId: activeResumeId, jobId }),
+      ]);
+
+      let resolvedJob: Job | null = null;
+      if (jobRes) {
+        resolvedJob =
+          "data" in jobRes && jobRes.data ? jobRes.data : (jobRes as Job);
+        setJob(resolvedJob);
+      }
+
+      const matchData = matchRes.data;
+      setMatchResult(matchData);
+
+      const roleTitle = resolvedJob?.title ?? "Target Engineering Role";
+      const rawResumeText =
+        (activeResume as { rawText?: string; content?: string })?.rawText ||
+        (activeResume as { content?: string })?.content ||
+        "";
+
+      // Try backend tailoring endpoint if available; strictly filter any output to matched skills only
+      let generatedSuggestions: TailoringSuggestion[] = [];
+      try {
+        const apiTailor = await apiClient.post<
+          { data?: TailoringApiResponse } | TailoringApiResponse
+        >("/tailoring", {
+          resumeId: activeResumeId,
+          jobId,
+        });
+        const payload =
+          apiTailor && "data" in apiTailor && apiTailor.data
+            ? apiTailor.data
+            : (apiTailor as TailoringApiResponse);
+
+        if (
+          Array.isArray(payload?.suggestions) &&
+          payload.suggestions.length > 0
+        ) {
+          const allowedSet = new Set(
+            matchData.matchedSkills.map((s) => s.toLowerCase().trim()),
+          );
+          generatedSuggestions = payload.suggestions
+            .filter(
+              (item) =>
+                !item.skill || allowedSet.has(item.skill.toLowerCase().trim()),
+            )
+            .map((item, idx) => {
+              const skillName =
+                item.skill || matchData.matchedSkills[idx] || "Verified Skill";
+              const isVerified = verifiedSkillSet.has(
+                skillName.toLowerCase().trim(),
+              );
+              return {
+                id: `api-sug-${idx}`,
+                section: item.section || "Experience & Summary",
+                skill: skillName,
+                evidenceSource: isVerified
+                  ? "INTERVIEW_VERIFIED"
+                  : "RESUME_EXTRACTED",
+                originalText:
+                  item.originalText ||
+                  item.original ||
+                  `Resume evidence for ${skillName}`,
+                suggestedText:
+                  item.suggestedText ||
+                  item.suggested ||
+                  `Emphasize your verified ${skillName} experience.`,
+                rationale:
+                  item.rationale ||
+                  item.reason ||
+                  `Grounded in your existing ${skillName} evidence.`,
+              };
+            });
+        }
+      } catch {
+        // Fallback to deterministic evidence-bounded builder below
+      }
+
+      if (generatedSuggestions.length === 0) {
+        generatedSuggestions = buildTruthfulSuggestions(
+          rawResumeText,
+          matchData.matchedSkills,
+          verifiedSkillSet,
+          roleTitle,
+        );
+      }
+
+      setSuggestions(generatedSuggestions);
+      setAcceptedIds(new Set(generatedSuggestions.map((s) => s.id)));
+    } catch (err: unknown) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Could not generate evidence-bounded tailoring suggestions.",
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    if (!jobId || !resumeId) return;
+    if (resumesLoading) return;
+    void loadTailoringData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [jobId, activeResumeId, resumesLoading]);
 
-    let cancelled = false;
-    setLoading(true);
-    setError(null);
-
-    fetchTailoring(resumeId, jobId)
-      .then((result) => {
-        if (!cancelled) {
-          setData(result);
-          setAccepted(new Set());
-        }
-      })
-      .catch((err: unknown) => {
-        if (!cancelled) {
-          setError(
-            err instanceof Error ? err.message : "Could not load suggestions",
-          );
-        }
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [jobId, resumeId, attempt]);
-
-  const toggle = (skill: string) =>
-    setAccepted((prev) => {
+  const toggleSuggestion = (id: string) => {
+    setAcceptedIds((prev) => {
       const next = new Set(prev);
-      if (next.has(skill)) next.delete(skill);
-      else next.add(skill);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
       return next;
     });
-
-  const acceptAll = () => {
-    if (!data) return;
-    if (accepted.size === data.addToSkills.length) {
-      setAccepted(new Set());
-    } else {
-      setAccepted(new Set(data.addToSkills.map((s) => s.skill)));
-    }
   };
 
-  const exportList = data
-    ? [
-        ...data.currentSkills,
-        ...data.addToSkills
-          .filter((s) => accepted.has(s.skill))
-          .map((s) => s.skill),
-      ]
-    : [];
+  const handleAcceptAll = () => {
+    setAcceptedIds(new Set(suggestions.map((s) => s.id)));
+  };
 
-  const copyList = async () => {
+  const handleRejectAll = () => {
+    setAcceptedIds(new Set());
+  };
+
+  const acceptedSuggestions = useMemo(
+    () => suggestions.filter((s) => acceptedIds.has(s.id)),
+    [suggestions, acceptedIds],
+  );
+
+  const roleTitle = job?.title ?? "Target Engineering Role";
+  const companyName = job?.company ?? "Verified Employer";
+
+  const compiledTailoredDocument = useMemo(() => {
+    const header = [
+      `# Evidence-Bounded Tailoring Plan: ${roleTitle} at ${companyName}`,
+      `Source Resume: ${activeResume?.fileName || activeResume?.title || "Active Resume"}`,
+      `Generated: ${new Date().toLocaleDateString()}`,
+      `Policy: Strictly bounded by existing resume facts and verified interview evaluations. Zero fabricated skills.`,
+      "",
+      "## Emphasized Qualifications (Backed by Evidence)",
+      ...acceptedSuggestions.map(
+        (s, idx) =>
+          `${idx + 1}. [${s.skill} — ${
+            s.evidenceSource === "INTERVIEW_VERIFIED"
+              ? "Interview Verified"
+              : "Resume Extracted"
+          }]\n   Original: ${s.originalText}\n   Tailored: ${s.suggestedText}`,
+      ),
+      "",
+      "## Excluded Missing Requirements (Never Added Until Proven)",
+      ...(matchResult?.missingSkills ?? []).map(
+        (m) =>
+          `- ${m} (Not on active resume — complete a targeted interview first)`,
+      ),
+    ];
+    return header.join("\n");
+  }, [roleTitle, companyName, activeResume, acceptedSuggestions, matchResult]);
+
+  const handleCopyTailored = async () => {
     try {
-      await navigator.clipboard.writeText(exportList.join("\n"));
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      await navigator.clipboard.writeText(compiledTailoredDocument);
+      setToastMessage("Copied evidence-bounded tailoring notes to clipboard.");
     } catch {
-      setError(
-        "Copying is not available in this browser. Use Download instead.",
-      );
+      setToastMessage("Could not copy to clipboard.");
     }
   };
 
-  const downloadList = () => {
-    const blob = new Blob([exportList.join("\n") + "\n"], {
-      type: "text/plain",
+  const handleDownloadTailored = () => {
+    const blob = new Blob([compiledTailoredDocument], {
+      type: "text/markdown;charset=utf-8",
     });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = "skills-list.txt";
+    link.download = `TrueHire-Tailored-${roleTitle.replace(/\s+/g, "-")}.md`;
+    document.body.appendChild(link);
     link.click();
+    document.body.removeChild(link);
     URL.revokeObjectURL(url);
+    setToastMessage("Downloaded tailored resume guide.");
   };
 
-  const noSuggestions =
-    data && data.addToSkills.length === 0 && data.notOnResume.length === 0;
-
   return (
-    <div className="min-h-screen bg-[#f8fafc] text-slate-900">
-      <Navbar />
-
-      <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
-        <header className="mb-8 flex flex-wrap items-end justify-between gap-4 border-b border-slate-200 pb-6">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-wider text-blue-600">
-              Evidence-Based Resume Tailoring
-            </p>
-            <h1 className="mt-1 text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl">
-              {data
-                ? `Tailor your skills for ${data.jobTitle}`
-                : "Tailor your skills"}
-            </h1>
-            <p className="mt-1.5 max-w-2xl text-sm text-slate-600">
-              Suggestions come strictly from your existing resume text and the
-              job posting. Nothing is fabricated or added unless you confirm it.
-            </p>
-          </div>
-          {jobId && resumeId && (
-            <Link
-              to={`/matches/${jobId}?resumeId=${resumeId}`}
-              className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-600 hover:text-blue-600"
-            >
-              <ArrowLeft className="h-3.5 w-3.5" />
-              <span>Back to match details</span>
-            </Link>
-          )}
-        </header>
-
-        {resumesLoading && (
-          <div className={CARD}>
-            <p className="text-sm text-slate-600">Loading your resumes...</p>
-          </div>
-        )}
-
-        {!resumesLoading && !resumeId && (
-          <div className={CARD}>
-            <p className="text-sm text-slate-600">
-              Upload a resume before tailoring it to a job.
-            </p>
-            <Link
-              to="/resume"
-              className="mt-3 inline-block rounded-lg bg-blue-600 px-4 py-2 text-xs font-medium text-white hover:bg-blue-700"
-            >
-              Upload a resume
-            </Link>
-          </div>
-        )}
-
-        {loading && (
-          <div className={CARD}>
-            <p className="text-sm text-slate-600">
-              Checking your resume text against this job’s requirements...
-            </p>
-          </div>
-        )}
-
-        {error && (
-          <div
-            role="alert"
-            className="mb-6 rounded-xl border border-red-200 bg-red-50 p-5 text-sm text-red-700"
+    <ContentContainer size="xl" className="space-y-6">
+      <PageHeader
+        breadcrumbs={[
+          { label: "Explore Jobs", href: "/jobs" },
+          ...(jobId ? [{ label: roleTitle, href: `/matches/${jobId}` }] : []),
+          { label: "Evidence-Bounded Tailoring" },
+        ]}
+        eyebrow={`Truthful Resume Alignment · ${companyName}`}
+        title={`Tailor Resume for ${roleTitle}`}
+        description="Highlight the skills and project outcomes you already possess that match this role. TrueHire never fabricates unverified skills or experience."
+        primaryAction={
+          <Button
+            variant="primary"
+            onClick={() => void handleCopyTailored()}
+            disabled={acceptedSuggestions.length === 0}
+            leftIcon={<Copy className="h-4 w-4" />}
           >
-            <p>{error}</p>
-            <button
-              type="button"
-              onClick={() => setAttempt((n) => n + 1)}
-              className="mt-3 rounded-lg border border-red-300 bg-white px-3 py-1.5 text-xs font-medium text-red-700 hover:bg-red-50"
+            Copy accepted changes ({acceptedSuggestions.length})
+          </Button>
+        }
+        secondaryActions={
+          <>
+            <Button
+              variant="outline"
+              onClick={handleDownloadTailored}
+              disabled={acceptedSuggestions.length === 0}
+              leftIcon={<Download className="h-4 w-4" />}
             >
-              Try again
-            </button>
+              Export (.md)
+            </Button>
+            {jobId && (
+              <Button
+                variant="outline"
+                onClick={() =>
+                  navigate(
+                    `/skill-gaps/${jobId}${
+                      activeResumeId ? `?resumeId=${activeResumeId}` : ""
+                    }`,
+                  )
+                }
+                rightIcon={<ArrowRight className="h-4 w-4" />}
+              >
+                Practice missing skills
+              </Button>
+            )}
+          </>
+        }
+      />
+
+      {toastMessage && (
+        <Toast
+          tone="success"
+          title="Tailoring updated"
+          description={toastMessage}
+          onDismiss={() => setToastMessage(null)}
+        />
+      )}
+
+      {/* Non-Fabrication Truthfulness Guardrail Notice */}
+      <Card
+        padding="md"
+        className="border-primary/25 bg-primary-soft/60 space-y-2"
+      >
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <ShieldCheck className="h-4 w-4 text-primary" />
+            <h2 className="text-sm font-semibold text-content-heading">
+              Non-Fabrication Guarantee: Truthful Evidence Only
+            </h2>
           </div>
-        )}
+          <Badge tone="primary" size="sm">
+            Evidence-Bounded
+          </Badge>
+        </div>
+        <p className="text-xs leading-relaxed text-content-body">
+          Suggestions below only reframe skills and experience already present
+          on{" "}
+          <strong className="font-semibold text-content-heading">
+            {activeResume?.fileName ||
+              activeResume?.title ||
+              "your active resume"}
+          </strong>{" "}
+          or verified in your mock interviews. The{" "}
+          <strong className="font-semibold text-content-heading">
+            {matchResult?.missingSkills.length ?? 0} missing requirements
+          </strong>{" "}
+          for this role are intentionally excluded so you never claim unverified
+          experience.
+        </p>
+      </Card>
 
-        {data && !loading && (
-          <div className="grid gap-6 lg:grid-cols-2">
-            <section className={CARD} aria-labelledby="current-heading">
-              <div className="flex items-center justify-between border-b border-slate-200 pb-4">
-                <h2
-                  id="current-heading"
-                  className="text-base font-semibold text-slate-900"
-                >
-                  Your Current Skills List
-                </h2>
-                <span className="text-xs font-medium text-slate-500 tabular-nums">
-                  {data.currentSkills.length} extracted
+      {loading || resumesLoading ? (
+        <div className="space-y-4" aria-busy="true">
+          <Skeleton className="h-32 w-full" />
+          <Skeleton className="h-72 w-full" />
+        </div>
+      ) : !activeResumeId ? (
+        <EmptyState
+          title="No active resume selected"
+          description="Upload a PDF or DOCX resume first so TrueHire can generate truthful, evidence-bounded tailoring suggestions."
+          icon={<FileText className="h-5 w-5" />}
+          action={
+            <Button variant="primary" onClick={() => navigate("/resume")}>
+              Upload resume
+            </Button>
+          }
+        />
+      ) : error ? (
+        <ErrorState
+          title="Could not load tailoring workbench"
+          message={error}
+          onRetry={() => void loadTailoringData()}
+        />
+      ) : (
+        <>
+          {/* Evidence Boundary Matrix: Allowed vs. Excluded Skills */}
+          <div className="grid gap-4 lg:grid-cols-2">
+            <Card padding="md" className="space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-status-success">
+                  <CheckCircle2 className="h-4 w-4" />
+                  <span>
+                    Truthful Skills Safe to Emphasize (
+                    {matchResult?.matchedSkills.length ?? 0})
+                  </span>
                 </span>
+                <Badge tone="success" size="sm">
+                  Backed by Evidence
+                </Badge>
               </div>
-
-              {data.currentSkills.length === 0 ? (
-                <p className="mt-4 text-sm text-slate-600">
-                  Your resume has no skills listed yet.
-                </p>
-              ) : (
-                <ul className="mt-4 flex flex-wrap gap-2">
-                  {data.currentSkills.map((skill) => (
-                    <li
-                      key={skill}
-                      className="rounded-md border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-800"
-                    >
-                      {skill}
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </section>
-
-            <section className={CARD} aria-labelledby="suggested-heading">
-              <div className="flex items-center justify-between border-b border-slate-200 pb-4">
-                <h2
-                  id="suggested-heading"
-                  className="text-base font-semibold text-slate-900"
-                >
-                  Backed by Your Resume Text
-                </h2>
-                {data.addToSkills.length > 1 && (
-                  <button
-                    type="button"
-                    onClick={acceptAll}
-                    className="text-xs font-medium text-blue-600 hover:text-blue-700"
-                  >
-                    {accepted.size === data.addToSkills.length
-                      ? "Clear selection"
-                      : "Select all"}
-                  </button>
+              <p className="text-xs text-content-secondary">
+                Present on your active resume or verified in mock interviews:
+              </p>
+              <div className="flex flex-wrap gap-1.5">
+                {(matchResult?.matchedSkills ?? []).length === 0 ? (
+                  <span className="text-xs text-content-secondary">
+                    No matched skills found on active resume.
+                  </span>
+                ) : (
+                  (matchResult?.matchedSkills ?? []).map((skill) => {
+                    const isVerified = verifiedSkillSet.has(
+                      skill.toLowerCase().trim(),
+                    );
+                    return (
+                      <SkillBadge
+                        key={skill}
+                        skill={skill}
+                        level={isVerified ? "VERIFIED" : "EXTRACTED"}
+                      />
+                    );
+                  })
                 )}
               </div>
+            </Card>
 
-              {noSuggestions && (
-                <p className="mt-4 text-sm text-slate-600">
-                  Your structured skills list already includes every requirement
-                  mentioned in your resume text.
-                </p>
-              )}
-
-              {data.addToSkills.length > 0 && (
-                <ul className="mt-4 space-y-2.5">
-                  {data.addToSkills.map((item) => {
-                    const isChecked = accepted.has(item.skill);
-                    return (
-                      <li key={item.skill}>
-                        <label
-                          className={`flex cursor-pointer items-start gap-3 rounded-lg border p-3.5 transition ${
-                            isChecked
-                              ? "border-blue-300 bg-blue-50/60"
-                              : "border-slate-200 bg-slate-50/50 hover:bg-slate-100"
-                          }`}
-                        >
-                          <input
-                            type="checkbox"
-                            checked={isChecked}
-                            onChange={() => toggle(item.skill)}
-                            className="mt-0.5 h-4 w-4 accent-blue-600"
-                          />
-                          <span className="min-w-0 flex-1">
-                            <span className="block text-sm font-semibold text-slate-900">
-                              {item.skill}
-                            </span>
-                            <span className="mt-1 block text-xs leading-relaxed text-slate-600">
-                              {item.evidence}
-                            </span>
-                          </span>
-                        </label>
-                      </li>
-                    );
-                  })}
-                </ul>
-              )}
-
-              {data.notOnResume.length > 0 && (
-                <div className="mt-6 border-t border-slate-200 pt-5">
-                  <h3 className="text-sm font-semibold text-slate-900">
-                    Not Found on Your Resume (Excluded)
-                  </h3>
-                  <p className="mt-1 text-xs leading-relaxed text-slate-600">
-                    These job requirements do not appear in your resume text, so
-                    TrueHire will not fabricate them. If you have experience
-                    with them, add a real project example to your resume.
-                  </p>
-                  <ul className="mt-3 divide-y divide-slate-200 rounded-lg border border-slate-200 bg-slate-50/60 px-3.5">
-                    {data.notOnResume.map((gap) => (
-                      <li
-                        key={gap.skill}
-                        className="flex items-center justify-between gap-3 py-2.5"
-                      >
-                        <span className="text-xs font-medium text-slate-800">
-                          {gap.skill}
-                        </span>
-                        <span
-                          className={`rounded-md border px-2 py-0.5 text-xs font-medium capitalize ${PRIORITY_CLASSES[gap.priority]}`}
-                        >
-                          {gap.priority} priority
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-
-              <div className="mt-6 flex flex-wrap items-center gap-3 border-t border-slate-200 pt-5">
-                <button
-                  type="button"
-                  onClick={() => void copyList()}
-                  className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-xs font-medium text-white shadow-sm transition hover:bg-blue-700"
-                >
-                  {copied ? (
-                    <Check className="h-3.5 w-3.5" />
-                  ) : (
-                    <Copy className="h-3.5 w-3.5" />
-                  )}
-                  <span>{copied ? "Copied" : "Copy skills list"}</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={downloadList}
-                  className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-4 py-2 text-xs font-medium text-slate-700 transition hover:bg-slate-50"
-                >
-                  <Download className="h-3.5 w-3.5" />
-                  <span>Download .txt</span>
-                </button>
-                <span className="ml-auto text-xs font-medium text-slate-500 tabular-nums">
-                  {exportList.length} skills in list
+            <Card padding="md" className="space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-status-warning">
+                  <AlertTriangle className="h-4 w-4" />
+                  <span>
+                    Missing Skills Excluded from Fabrication (
+                    {matchResult?.missingSkills.length ?? 0})
+                  </span>
                 </span>
+                <Badge tone="warning" size="sm">
+                  Do Not Fabricate
+                </Badge>
               </div>
-            </section>
+              <p className="text-xs text-content-secondary">
+                Required by the job, but omitted from tailoring until you prove
+                them in an interview or project:
+              </p>
+              <div className="flex flex-wrap gap-1.5">
+                {(matchResult?.missingSkills ?? []).length === 0 ? (
+                  <span className="text-xs text-status-success">
+                    Zero missing skills — all requirements are backed by
+                    evidence.
+                  </span>
+                ) : (
+                  (matchResult?.missingSkills ?? []).map((skill) => (
+                    <SkillBadge key={skill} skill={skill} level="MISSING" />
+                  ))
+                )}
+              </div>
+            </Card>
           </div>
-        )}
-      </main>
-    </div>
+
+          {/* Interactive Workbench Tabs */}
+          <SectionCard
+            eyebrow="Split-View Diff Workbench"
+            title={`Evidence-Bounded Suggestions (${acceptedSuggestions.length} of ${suggestions.length} accepted)`}
+            description="Review each side-by-side comparison between your current resume evidence and the role-aligned phrasing."
+            action={
+              suggestions.length > 0 ? (
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={handleAcceptAll}
+                    leftIcon={<Check className="h-3.5 w-3.5" />}
+                  >
+                    Accept all ({suggestions.length})
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleRejectAll}
+                    leftIcon={<X className="h-3.5 w-3.5" />}
+                  >
+                    Clear selection
+                  </Button>
+                </div>
+              ) : undefined
+            }
+          >
+            <Tabs
+              activeTab={activeTab}
+              onChange={setActiveTab}
+              items={[
+                {
+                  id: "workbench",
+                  label: "Side-by-Side Diff",
+                  count: suggestions.length,
+                  content:
+                    suggestions.length === 0 ? (
+                      <EmptyState
+                        title="No matched skills to tailor yet"
+                        description="Your current resume does not share extracted skills with this job posting. Practice the missing skills in a targeted interview first."
+                        icon={<Sparkles className="h-5 w-5" />}
+                        action={
+                          jobId ? (
+                            <Button
+                              variant="primary"
+                              size="sm"
+                              onClick={() =>
+                                navigate(
+                                  `/skill-gaps/${jobId}${
+                                    activeResumeId
+                                      ? `?resumeId=${activeResumeId}`
+                                      : ""
+                                  }`,
+                                )
+                              }
+                            >
+                              Practice missing skills
+                            </Button>
+                          ) : undefined
+                        }
+                      />
+                    ) : (
+                      <ul className="space-y-4">
+                        {suggestions.map((item) => {
+                          const isAccepted = acceptedIds.has(item.id);
+                          return (
+                            <li key={item.id}>
+                              <Card
+                                padding="md"
+                                className={`space-y-4 transition-colors ${
+                                  isAccepted
+                                    ? "border-primary/40 bg-surface"
+                                    : "opacity-75 bg-muted/30"
+                                }`}
+                              >
+                                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border pb-3">
+                                  <div className="flex flex-wrap items-center gap-2">
+                                    <Badge tone="neutral" size="sm">
+                                      {item.section}
+                                    </Badge>
+                                    <SkillBadge
+                                      skill={item.skill}
+                                      level={
+                                        item.evidenceSource ===
+                                        "INTERVIEW_VERIFIED"
+                                          ? "VERIFIED"
+                                          : "EXTRACTED"
+                                      }
+                                      meta={
+                                        item.evidenceSource ===
+                                        "INTERVIEW_VERIFIED"
+                                          ? "Interview Verified"
+                                          : "On Resume"
+                                      }
+                                    />
+                                    <span className="text-xs text-content-secondary">
+                                      {item.rationale}
+                                    </span>
+                                  </div>
+
+                                  <Button
+                                    variant={isAccepted ? "primary" : "outline"}
+                                    size="sm"
+                                    onClick={() => toggleSuggestion(item.id)}
+                                    leftIcon={
+                                      isAccepted ? (
+                                        <Check className="h-3.5 w-3.5" />
+                                      ) : undefined
+                                    }
+                                  >
+                                    {isAccepted ? "Accepted" : "Accept"}
+                                  </Button>
+                                </div>
+
+                                <div className="grid gap-4 lg:grid-cols-2">
+                                  <div className="rounded-input border border-border bg-muted/50 p-3.5 space-y-1.5">
+                                    <p className="text-[11px] font-semibold uppercase tracking-wider text-content-secondary">
+                                      Current Resume Evidence
+                                    </p>
+                                    <p className="text-xs leading-relaxed text-content-body">
+                                      {item.originalText}
+                                    </p>
+                                  </div>
+
+                                  <div className="rounded-input border border-status-success-border bg-status-success-soft/50 p-3.5 space-y-1.5">
+                                    <p className="text-[11px] font-semibold uppercase tracking-wider text-status-success">
+                                      Suggested Truthful Alignment
+                                    </p>
+                                    <p className="text-xs leading-relaxed text-content-heading">
+                                      {item.suggestedText}
+                                    </p>
+                                  </div>
+                                </div>
+                              </Card>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    ),
+                },
+                {
+                  id: "preview",
+                  label: "Export Preview",
+                  count: acceptedSuggestions.length,
+                  content: (
+                    <div className="space-y-3">
+                      <pre className="max-h-96 overflow-y-auto whitespace-pre-wrap rounded-input border border-border bg-muted/50 p-4 font-mono text-xs leading-relaxed text-content-body">
+                        {compiledTailoredDocument}
+                      </pre>
+                    </div>
+                  ),
+                },
+              ]}
+            />
+          </SectionCard>
+        </>
+      )}
+    </ContentContainer>
   );
 };
 

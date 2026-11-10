@@ -1,21 +1,35 @@
 import React, { useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import {
-  ArrowUpRight,
-  CheckCircle2,
   AlertTriangle,
-  FileText,
-  Crosshair,
-  Clock,
-  RotateCw,
+  ArrowRight,
+  Award,
   Check,
+  CheckCircle2,
+  Clock,
+  Crosshair,
+  FileText,
   X,
 } from "lucide-react";
-import { Navbar } from "../../components/NavBar";
 import { useReadiness } from "./useReadiness";
 import { useResumes } from "../resume/useResumes";
 import { useApplications } from "../tracker/useApplications";
 import type { Application } from "../tracker/types";
+import { ContentContainer, PageHeader } from "../../components/layout";
+import {
+  Badge,
+  Button,
+  Card,
+  EmptyState,
+  ErrorState,
+  Input,
+  ProgressBar,
+  ScoreRing,
+  SectionCard,
+  Skeleton,
+  SkillBadge,
+  type SkillReadinessLevel,
+} from "../../components/ui";
 
 type SkillStatusFilter =
   "ALL" | "VERIFIED" | "NEEDS_PRACTICE" | "RESUME_EXTRACTED" | "MISSING_GAP";
@@ -23,10 +37,13 @@ type SkillStatusFilter =
 interface UnifiedSkillEntry {
   skill: string;
   level: "VERIFIED" | "NEEDS_PRACTICE" | "RESUME_EXTRACTED" | "MISSING_GAP";
+  badgeLevel: SkillReadinessLevel;
   statusLabel: string;
-  evidence: string;
+  evidenceSource: string;
+  evidenceDetail: string;
   relatedJobsCount: number;
   updatedAt: string | null;
+  recommendedAction: string;
 }
 
 const AREA_KEYWORDS: Record<string, string[]> = {
@@ -68,7 +85,7 @@ const AREA_KEYWORDS: Record<string, string[]> = {
     "sql",
     "dynamodb",
   ],
-  "System Design": [
+  "System Design & Cloud": [
     "system design",
     "aws",
     "gcp",
@@ -80,7 +97,7 @@ const AREA_KEYWORDS: Record<string, string[]> = {
     "distributed systems",
     "linux",
   ],
-  Testing: [
+  "Testing & Quality": [
     "testing",
     "jest",
     "vitest",
@@ -117,6 +134,10 @@ const writeStoredSet = (key: string, values: Set<string>): void => {
 };
 
 export const ReadinessPage: React.FC = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const isSkillsRoute = location.pathname === "/skills";
+
   const {
     data: readiness,
     isLoading: readinessLoading,
@@ -127,6 +148,7 @@ export const ReadinessPage: React.FC = () => {
   const { data: applications, isLoading: appsLoading } = useApplications();
 
   const [filter, setFilter] = useState<SkillStatusFilter>("ALL");
+  const [searchQuery, setSearchQuery] = useState("");
   const [dismissedSkills, setDismissedSkills] = useState<Set<string>>(() =>
     readStoredSet(DISMISSED_SKILLS_KEY),
   );
@@ -178,6 +200,7 @@ export const ReadinessPage: React.FC = () => {
       }
     }
 
+    // 1. Interview-evaluated skills (STRONG / WEAK)
     for (const item of readiness?.skills ?? []) {
       const key = item.skill.toLowerCase().trim();
       const relatedCount = gapCounts.get(key) ?? 0;
@@ -186,55 +209,78 @@ export const ReadinessPage: React.FC = () => {
         map.set(key, {
           skill: item.skill,
           level: "VERIFIED",
-          statusLabel: "Verified",
-          evidence:
-            item.evidence || "Demonstrated in a targeted mock interview",
+          badgeLevel: "VERIFIED",
+          statusLabel: "Verified in interview",
+          evidenceSource: "Mock Interview Evaluation",
+          evidenceDetail:
+            item.evidence ||
+            "Demonstrated strong competency in a rubric-scored mock interview.",
           relatedJobsCount: relatedCount,
           updatedAt: item.updatedAt,
+          recommendedAction: "Verified — ready for technical screens",
         });
       } else {
         map.set(key, {
           skill: item.skill,
           level: "NEEDS_PRACTICE",
-          statusLabel: "Weak · Needs practice",
-          evidence:
-            item.evidence || "Flagged for improvement in a mock interview",
+          badgeLevel: "WEAK",
+          statusLabel: "Needs practice",
+          evidenceSource: "Mock Interview Evaluation",
+          evidenceDetail:
+            item.evidence ||
+            "Flagged for deeper practice during a mock interview assessment.",
           relatedJobsCount: relatedCount,
           updatedAt: item.updatedAt,
+          recommendedAction: "Practice in a 15-minute targeted mock interview",
         });
       }
     }
 
+    // 2. Resume-extracted skills (not yet interview-tested)
     for (const rawSkill of latestResume?.skills ?? []) {
       const key = rawSkill.toLowerCase().trim();
       if (!key || dismissedSkills.has(key) || map.has(key)) continue;
 
       const isConfirmed = confirmedSkills.has(key);
+      const resumeTitle =
+        latestResume?.fileName ?? latestResume?.title ?? "active resume";
+
       map.set(key, {
         skill: rawSkill,
         level: "RESUME_EXTRACTED",
+        badgeLevel: isConfirmed ? "PRACTICED" : "EXTRACTED",
         statusLabel: isConfirmed
-          ? "Practiced (Confirmed)"
+          ? "Confirmed on resume"
           : "Extracted from resume",
-        evidence: isConfirmed
-          ? `Confirmed on ${latestResume?.fileName ?? "active resume"}`
-          : `Extracted from ${latestResume?.fileName ?? "active resume"} — not yet tested in an interview`,
+        evidenceSource: isConfirmed
+          ? `Candidate Confirmed · ${resumeTitle}`
+          : `Resume Parser · ${resumeTitle}`,
+        evidenceDetail: isConfirmed
+          ? `Confirmed by you from ${resumeTitle}. Complete a mock interview to upgrade to Verified.`
+          : `Extracted from ${resumeTitle}. Confirm accuracy or test in a mock interview.`,
         relatedJobsCount: gapCounts.get(key) ?? 0,
         updatedAt: latestResume?.createdAt ?? null,
+        recommendedAction: isConfirmed
+          ? "Verify in a mock interview"
+          : "Confirm skill or verify in interview",
       });
     }
 
+    // 3. Missing skills across tracked job applications
     for (const [gapKey, count] of gapCounts.entries()) {
       if (map.has(gapKey)) continue;
       map.set(gapKey, {
         skill: gapKey,
         level: "MISSING_GAP",
-        statusLabel: "Not started",
-        evidence: `Required in ${count} tracked ${
+        badgeLevel: "MISSING",
+        statusLabel: "Missing requirement",
+        evidenceSource: "Job Requirement Comparison",
+        evidenceDetail: `Required in ${count} tracked ${
           count === 1 ? "application" : "applications"
-        }`,
+        } but not found on your active resume or interview history.`,
         relatedJobsCount: count,
         updatedAt: null,
+        recommendedAction: "Practice skill in a targeted interview",
       });
     }
 
@@ -278,10 +324,10 @@ export const ReadinessPage: React.FC = () => {
       score >= 75
         ? "Interview-Ready"
         : score >= 45
-          ? "Practiced"
+          ? "Building Evidence"
           : totalCandidateSkills > 0
-            ? "Learning"
-            : "Not Started";
+            ? "Early Preparation"
+            : "No Evidence Yet";
 
     return {
       verified,
@@ -329,26 +375,29 @@ export const ReadinessPage: React.FC = () => {
       title: string;
       detail: string;
       date: string;
+      tone: "success" | "warning" | "primary";
     }[] = [];
 
     if (latestResume) {
       events.push({
         id: `resume-${latestResume.id}`,
-        title: "Resume uploaded",
+        title: "Resume uploaded & parsed",
         detail: `${latestResume.fileName ?? latestResume.title} (${latestResume.skills.length} skills extracted)`,
         date: latestResume.createdAt,
+        tone: "primary",
       });
     }
 
     for (const s of readiness?.skills ?? []) {
       events.push({
-        id: `skill-${s.skill}`,
+        id: `skill-${s.skill}-${s.updatedAt}`,
         title:
           s.status === "STRONG"
             ? `Verified ${s.skill} in interview`
-            : `Marked ${s.skill} for practice`,
+            : `Flagged ${s.skill} for practice`,
         detail: s.evidence,
         date: s.updatedAt,
+        tone: s.status === "STRONG" ? "success" : "warning",
       });
     }
 
@@ -361,6 +410,7 @@ export const ReadinessPage: React.FC = () => {
             app.skillGaps?.length ?? 0
           } gaps identified)`,
           date: app.updatedAt,
+          tone: "primary",
         });
       }
     }
@@ -370,222 +420,273 @@ export const ReadinessPage: React.FC = () => {
       .slice(0, 6);
   }, [latestResume, readiness, applications]);
 
-  const filteredSkills =
-    filter === "ALL"
-      ? unifiedSkills
-      : unifiedSkills.filter((s) => s.level === filter);
+  const filteredSkills = useMemo(() => {
+    return unifiedSkills.filter((item) => {
+      const matchesFilter = filter === "ALL" || item.level === filter;
+      const matchesSearch =
+        !searchQuery.trim() ||
+        item.skill.toLowerCase().includes(searchQuery.trim().toLowerCase()) ||
+        item.evidenceDetail
+          .toLowerCase()
+          .includes(searchQuery.trim().toLowerCase());
+      return matchesFilter && matchesSearch;
+    });
+  }, [unifiedSkills, filter, searchQuery]);
 
   const isLoading = readinessLoading || resumesLoading || appsLoading;
 
+  const summaryMetrics = [
+    {
+      key: "VERIFIED" as SkillStatusFilter,
+      label: "Verified Skills",
+      value: counts.verified,
+      explanation: "Proven through rubric-scored mock interview answers.",
+      actionLabel: "Filter verified",
+      tone: "text-status-success",
+    },
+    {
+      key: "NEEDS_PRACTICE" as SkillStatusFilter,
+      label: "Needs Practice",
+      value: counts.needsPractice,
+      explanation:
+        "Flagged weak in mock interviews — highest priority to review.",
+      actionLabel: "Filter weak skills",
+      tone: "text-status-warning",
+    },
+    {
+      key: "RESUME_EXTRACTED" as SkillStatusFilter,
+      label: "Resume Extracted",
+      value: counts.extracted,
+      explanation: "Listed on your active resume awaiting interview proof.",
+      actionLabel: "Review & confirm",
+      tone: "text-primary",
+    },
+    {
+      key: "MISSING_GAP" as SkillStatusFilter,
+      label: "Target Role Gaps",
+      value: counts.missing,
+      explanation:
+        "Required by your tracked jobs but missing from your profile.",
+      actionLabel: "Inspect missing gaps",
+      tone: "text-status-danger",
+    },
+  ];
+
   return (
-    <div className="min-h-screen bg-[#f8fafc] text-slate-900">
-      <Navbar />
-
-      <main className="mx-auto max-w-7xl space-y-6 px-4 py-8 sm:px-6 lg:px-8">
-        <header className="flex flex-wrap items-end justify-between gap-4 border-b border-slate-200 pb-6">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-wider text-blue-600">
-              Readiness
-            </p>
-            <h1 className="mt-1 text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl">
-              Skill Profile & Readiness
-            </h1>
-            <p className="mt-1 text-sm text-slate-600">
-              See how your skills and interview performance are improving over
-              time.
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-2.5">
-            <Link
-              to="/jobs"
-              className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-blue-700"
-            >
-              Practice with a target role
-            </Link>
-            <Link
-              to="/resume"
-              className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
-            >
-              Manage resume
-            </Link>
-          </div>
-        </header>
-
-        {readinessError && (
-          <div
-            role="alert"
-            className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800"
+    <ContentContainer size="xl" className="space-y-6">
+      <PageHeader
+        eyebrow={
+          isSkillsRoute
+            ? "Skills & Verification Ledger"
+            : "Evidence-Based Readiness Profile"
+        }
+        title={
+          isSkillsRoute
+            ? "Skills & Evidence Ledger"
+            : "Readiness & Skill Evidence"
+        }
+        description="Inspect the exact evidence behind every skill on your profile, confirm or remove extracted resume skills, and see which gaps appear across your target roles."
+        primaryAction={
+          <Button
+            variant="primary"
+            onClick={() => navigate("/jobs")}
+            rightIcon={<ArrowRight className="h-4 w-4" />}
           >
-            <span>We could not load your skill readiness profile.</span>
-            <button
-              type="button"
-              onClick={() => void refetch()}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-red-300 bg-white px-3 py-1 text-xs font-medium text-red-700 hover:bg-red-50"
-            >
-              <RotateCw className="h-3 w-3" />
-              Try again
-            </button>
-          </div>
-        )}
+            Practice with a target role
+          </Button>
+        }
+        secondaryActions={
+          <Button variant="outline" onClick={() => navigate("/resume")}>
+            Manage resume
+          </Button>
+        }
+      />
 
-        {/* Overall Readiness Summary */}
-        <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
-          <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm lg:col-span-2">
-            <div className="flex items-center justify-between">
-              <p className="text-xs font-medium text-slate-500">
-                Current Readiness Score
-              </p>
-              <span className="rounded-md border border-blue-200 bg-blue-50 px-2.5 py-0.5 text-xs font-medium text-blue-700">
+      {readinessError && (
+        <ErrorState
+          title="Could not load your skill readiness profile"
+          message="Please retry to fetch your latest interview and skill evidence."
+          onRetry={() => void refetch()}
+        />
+      )}
+
+      {/* 1. Overall Readiness Score + 4 Actionable Status Metric Cards */}
+      <section className="grid gap-4 lg:grid-cols-12">
+        <Card
+          padding="md"
+          className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center lg:col-span-4"
+        >
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <Award className="h-4 w-4 text-primary" />
+              <span className="text-xs font-semibold uppercase tracking-wider text-content-secondary">
+                Overall Readiness
+              </span>
+              <Badge tone="primary" size="sm">
                 {counts.levelLabel}
-              </span>
+              </Badge>
             </div>
-            <div className="mt-2 flex items-baseline gap-3">
-              <span className="text-3xl font-semibold text-slate-900 tabular-nums">
-                {counts.score}%
-              </span>
-              <span className="text-xs text-slate-500">
-                Weighted across verified and extracted skills
-              </span>
-            </div>
-            <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-slate-200">
-              <div
-                className="h-full rounded-full bg-blue-600 transition-all duration-500"
-                style={{
-                  width: `${Math.min(100, Math.max(0, counts.score))}%`,
-                }}
-              />
-            </div>
-          </div>
-
-          <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-            <p className="text-xs font-medium text-slate-500">
-              Verified Skills
+            <p className="text-xs leading-relaxed text-content-secondary">
+              {readiness?.nextAction?.reason ||
+                "Weighted across interview-verified skills and confirmed resume claims."}
             </p>
-            <p className="mt-1.5 text-2xl font-semibold text-emerald-600 tabular-nums">
-              {counts.verified}
-            </p>
-            <p className="mt-1 text-xs text-slate-500">
-              Proven in mock interviews
-            </p>
-          </div>
-
-          <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-            <p className="text-xs font-medium text-slate-500">Weak Skills</p>
-            <p className="mt-1.5 text-2xl font-semibold text-amber-600 tabular-nums">
-              {counts.needsPractice}
-            </p>
-            <p className="mt-1 text-xs text-slate-500">
-              Need targeted practice
-            </p>
-          </div>
-
-          <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-            <p className="text-xs font-medium text-slate-500">
-              Practiced / Resume
-            </p>
-            <p className="mt-1.5 text-2xl font-semibold text-slate-900 tabular-nums">
-              {counts.extracted}
-            </p>
-            <p className="mt-1 text-xs text-slate-500">
-              Extracted from active resume
-            </p>
-          </div>
-        </section>
-
-        {/* Recommended Plan */}
-        {readiness?.nextAction && (
-          <section className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-blue-200 bg-blue-50/60 p-5">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wider text-blue-700">
-                Recommended Focus This Week
-              </p>
-              <p className="mt-1 text-sm font-medium text-slate-900">
-                {readiness.nextAction.reason}
-              </p>
-            </div>
-            <Link
-              to="/jobs"
-              className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-xs font-medium text-white shadow-sm transition hover:bg-blue-700"
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => navigate("/interviews")}
             >
-              <span>Start targeted practice</span>
-              <ArrowUpRight className="h-3.5 w-3.5" />
-            </Link>
-          </section>
-        )}
+              Open interview hub
+            </Button>
+          </div>
+          <ScoreRing score={counts.score} size={84} label="Readiness" />
+        </Card>
 
-        {/* Skill Profile Table */}
-        <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-          <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-200 pb-4">
-            <div>
-              <h2 className="text-base font-semibold text-slate-900">
-                Skill Profile
-              </h2>
-              <p className="mt-0.5 text-xs text-slate-500">
-                Confirm or remove AI-extracted skills and review evidence from
-                your interviews.
-              </p>
-            </div>
+        <div className="grid gap-4 sm:grid-cols-2 lg:col-span-8 lg:grid-cols-4">
+          {summaryMetrics.map((metric) => (
+            <Card
+              key={metric.key}
+              padding="sm"
+              className="flex flex-col justify-between space-y-2.5"
+            >
+              <div className="space-y-1">
+                <p className="text-xs font-medium text-content-secondary">
+                  {metric.label}
+                </p>
+                {isLoading ? (
+                  <Skeleton className="h-7 w-14" />
+                ) : (
+                  <p
+                    className={`text-2xl font-semibold tracking-tight tabular-nums ${metric.tone}`}
+                  >
+                    {metric.value}
+                  </p>
+                )}
+                <p className="text-xs leading-relaxed text-content-secondary">
+                  {metric.explanation}
+                </p>
+              </div>
+              <div className="border-t border-border pt-2">
+                <button
+                  type="button"
+                  onClick={() =>
+                    setFilter((prev) =>
+                      prev === metric.key ? "ALL" : metric.key,
+                    )
+                  }
+                  className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:text-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-sm"
+                >
+                  <span>
+                    {filter === metric.key
+                      ? "Show all skills"
+                      : metric.actionLabel}
+                  </span>
+                  <ArrowRight className="h-3 w-3" />
+                </button>
+              </div>
+            </Card>
+          ))}
+        </div>
+      </section>
 
+      {/* 2. Skill Profile & Evidence Ledger */}
+      <SectionCard
+        eyebrow="Traceable Skill Status"
+        title="Skill Profile & Evidence Ledger"
+        description="Every skill lists its status, where the evidence came from, how many saved jobs require it, and your next step."
+      >
+        <div className="space-y-4">
+          {/* Filter Pills & Search */}
+          <div className="flex flex-col justify-between gap-3 border-b border-border pb-4 sm:flex-row sm:items-center">
             <div className="flex flex-wrap items-center gap-1.5">
               {(
                 [
                   ["ALL", `All (${unifiedSkills.length})`],
                   ["VERIFIED", `Verified (${counts.verified})`],
-                  ["NEEDS_PRACTICE", `Weak (${counts.needsPractice})`],
+                  [
+                    "NEEDS_PRACTICE",
+                    `Needs Practice (${counts.needsPractice})`,
+                  ],
                   ["RESUME_EXTRACTED", `Resume (${counts.extracted})`],
-                  ["MISSING_GAP", `Not started (${counts.missing})`],
+                  ["MISSING_GAP", `Role Gaps (${counts.missing})`],
                 ] as [SkillStatusFilter, string][]
               ).map(([key, label]) => (
-                <button
+                <Button
                   key={key}
-                  type="button"
+                  variant={filter === key ? "primary" : "outline"}
+                  size="sm"
                   onClick={() => setFilter(key)}
-                  className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${
-                    filter === key
-                      ? "bg-blue-600 text-white"
-                      : "border border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100 hover:text-slate-900"
-                  }`}
                 >
                   {label}
-                </button>
+                </Button>
               ))}
+            </div>
+
+            <div className="w-full sm:w-64">
+              <Input
+                placeholder="Search skill or evidence..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                aria-label="Filter skills by name or evidence"
+              />
             </div>
           </div>
 
           {dismissedSkills.size > 0 && (
-            <div className="mt-3 flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50 px-3.5 py-2 text-xs text-slate-600">
-              <span>
-                Removed {dismissedSkills.size} extracted{" "}
-                {dismissedSkills.size === 1 ? "skill" : "skills"} from view.
+            <Card
+              muted
+              padding="sm"
+              className="flex flex-wrap items-center justify-between gap-2"
+            >
+              <span className="text-xs text-content-secondary">
+                You removed {dismissedSkills.size} extracted{" "}
+                {dismissedSkills.size === 1 ? "skill" : "skills"} from your
+                active profile.
               </span>
-              <button
-                type="button"
+              <Button
+                variant="outline"
+                size="sm"
                 onClick={handleRestoreDismissed}
-                className="font-medium text-blue-600 hover:text-blue-700"
               >
-                Restore all
-              </button>
-            </div>
+                Restore removed skills
+              </Button>
+            </Card>
           )}
 
           {isLoading ? (
-            <div className="mt-4 space-y-2.5">
-              <div className="h-14 animate-pulse rounded-lg bg-slate-100" />
-              <div className="h-14 animate-pulse rounded-lg bg-slate-100" />
-              <div className="h-14 animate-pulse rounded-lg bg-slate-100" />
+            <div className="space-y-3" aria-busy="true">
+              <Skeleton className="h-16 w-full" />
+              <Skeleton className="h-16 w-full" />
+              <Skeleton className="h-16 w-full" />
             </div>
           ) : filteredSkills.length === 0 ? (
-            <div className="mt-5 rounded-xl border border-dashed border-slate-300 bg-slate-50/60 p-8 text-center">
-              <p className="text-sm font-medium text-slate-900">
-                No skills in this category yet
-              </p>
-              <p className="mt-1 text-xs text-slate-600">
-                Upload your resume or complete a targeted mock interview to
-                build your skill profile.
-              </p>
-            </div>
+            <EmptyState
+              title="No skills match this filter"
+              description="Upload a resume or complete a targeted mock interview to populate your skill evidence ledger."
+              action={
+                filter !== "ALL" || searchQuery ? (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setFilter("ALL");
+                      setSearchQuery("");
+                    }}
+                  >
+                    Reset filters
+                  </Button>
+                ) : (
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    onClick={() => navigate("/resume")}
+                  >
+                    Upload resume
+                  </Button>
+                )
+              }
+            />
           ) : (
-            <ul className="mt-4 divide-y divide-slate-200">
+            <ul className="divide-y divide-border">
               {filteredSkills.map((item) => {
                 const isConfirmed = confirmedSkills.has(
                   item.skill.toLowerCase(),
@@ -593,86 +694,94 @@ export const ReadinessPage: React.FC = () => {
                 return (
                   <li
                     key={item.skill}
-                    className="flex flex-wrap items-center justify-between gap-4 py-3.5 first:pt-1 last:pb-0"
+                    className="flex flex-col justify-between gap-4 py-4 first:pt-1 last:pb-0 sm:flex-row sm:items-center"
                   >
-                    <div className="min-w-0 flex-1">
-                      <div className="flex flex-wrap items-center gap-2.5">
+                    <div className="space-y-1.5 min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
                         {item.level === "VERIFIED" && (
-                          <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />
+                          <CheckCircle2 className="h-4 w-4 shrink-0 text-status-success" />
                         )}
                         {item.level === "NEEDS_PRACTICE" && (
-                          <AlertTriangle className="h-4 w-4 shrink-0 text-amber-600" />
+                          <AlertTriangle className="h-4 w-4 shrink-0 text-status-warning" />
                         )}
                         {item.level === "RESUME_EXTRACTED" && (
-                          <FileText className="h-4 w-4 shrink-0 text-blue-600" />
+                          <FileText className="h-4 w-4 shrink-0 text-primary" />
                         )}
                         {item.level === "MISSING_GAP" && (
-                          <Crosshair className="h-4 w-4 shrink-0 text-red-600" />
+                          <Crosshair className="h-4 w-4 shrink-0 text-status-danger" />
                         )}
 
-                        <span className="text-sm font-semibold text-slate-900">
+                        <span className="text-sm font-semibold text-content-heading">
                           {item.skill}
                         </span>
 
-                        <span
-                          className={`rounded-md border px-2 py-0.5 text-xs font-medium ${
-                            item.level === "VERIFIED"
-                              ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-                              : item.level === "NEEDS_PRACTICE"
-                                ? "border-amber-200 bg-amber-50 text-amber-800"
-                                : item.level === "RESUME_EXTRACTED"
-                                  ? "border-slate-200 bg-slate-100 text-slate-700"
-                                  : "border-red-200 bg-red-50 text-red-700"
-                          }`}
-                        >
-                          {item.statusLabel}
-                        </span>
+                        <SkillBadge
+                          skill={item.skill}
+                          level={item.badgeLevel}
+                          meta={item.statusLabel}
+                        />
+
+                        <Badge tone="neutral" size="sm">
+                          Source: {item.evidenceSource}
+                        </Badge>
 
                         {item.relatedJobsCount > 0 && (
-                          <span className="text-xs text-slate-500 tabular-nums">
-                            · Appears in {item.relatedJobsCount} saved{" "}
-                            {item.relatedJobsCount === 1 ? "job" : "jobs"}
-                          </span>
+                          <Badge tone="primary" size="sm">
+                            Required in {item.relatedJobsCount} saved{" "}
+                            {item.relatedJobsCount === 1 ? "role" : "roles"}
+                          </Badge>
                         )}
                       </div>
 
-                      <p className="mt-1 text-xs text-slate-600">
-                        {item.evidence}
+                      <p className="text-xs leading-relaxed text-content-body">
+                        <strong className="font-medium text-content-heading">
+                          Evidence:{" "}
+                        </strong>
+                        {item.evidenceDetail}
                       </p>
+
+                      {item.updatedAt && (
+                        <p className="text-[11px] text-content-secondary tabular-nums">
+                          Recorded{" "}
+                          {new Date(item.updatedAt).toLocaleDateString()} ·{" "}
+                          {item.recommendedAction}
+                        </p>
+                      )}
                     </div>
 
                     <div className="flex flex-wrap items-center gap-2 shrink-0">
                       {item.level === "RESUME_EXTRACTED" && (
                         <>
                           {!isConfirmed && (
-                            <button
-                              type="button"
+                            <Button
+                              variant="outline"
+                              size="sm"
                               onClick={() => handleConfirmSkill(item.skill)}
-                              className="inline-flex items-center gap-1 rounded-md border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700 transition hover:bg-emerald-100"
+                              leftIcon={<Check className="h-3.5 w-3.5" />}
                             >
-                              <Check className="h-3 w-3" />
-                              <span>Confirm</span>
-                            </button>
+                              Confirm skill
+                            </Button>
                           )}
-                          <button
-                            type="button"
+                          <Button
+                            variant="ghost"
+                            size="sm"
                             onClick={() => handleDismissSkill(item.skill)}
-                            className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-600 transition hover:border-red-200 hover:bg-red-50 hover:text-red-700"
+                            leftIcon={<X className="h-3.5 w-3.5" />}
                           >
-                            <X className="h-3 w-3" />
-                            <span>Reject</span>
-                          </button>
+                            Remove
+                          </Button>
                         </>
                       )}
 
                       {item.level !== "VERIFIED" && (
-                        <Link
-                          to="/jobs"
-                          className="inline-flex items-center gap-1 rounded-md border border-slate-300 bg-white px-3 py-1 text-xs font-medium text-slate-700 transition hover:bg-slate-50 hover:text-slate-900"
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          onClick={() => navigate("/jobs")}
+                          rightIcon={<ArrowRight className="h-3.5 w-3.5" />}
                         >
-                          <span>Practice skill</span>
-                          <ArrowUpRight className="h-3 w-3" />
-                        </Link>
+                          Practice skill
+                        </Button>
                       )}
                     </div>
                   </li>
@@ -680,87 +789,70 @@ export const ReadinessPage: React.FC = () => {
               })}
             </ul>
           )}
-        </section>
-
-        {/* Bottom Grid: Readiness by Area + Evidence Timeline */}
-        <div className="grid gap-6 lg:grid-cols-2">
-          <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-            <h2 className="text-base font-semibold text-slate-900">
-              Readiness by Area
-            </h2>
-            <p className="mt-0.5 text-xs text-slate-500">
-              Coverage across core software engineering domains
-            </p>
-
-            <div className="mt-4 space-y-4">
-              {areaReadiness.map((item) => (
-                <div key={item.area} className="space-y-1.5">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="font-medium text-slate-800">
-                      {item.area}
-                    </span>
-                    <span className="text-slate-500 tabular-nums">
-                      {item.verifiedCount} verified / {item.totalTracked}{" "}
-                      tracked
-                      {" · "}
-                      <strong className="text-slate-900">{item.pct}%</strong>
-                    </span>
-                  </div>
-                  <div className="h-2 w-full overflow-hidden rounded-full bg-slate-200">
-                    <div
-                      className="h-full rounded-full bg-blue-600 transition-all duration-500"
-                      style={{ width: `${item.pct}%` }}
-                    />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </section>
-
-          <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-base font-semibold text-slate-900">
-                  Evidence Timeline
-                </h2>
-                <p className="mt-0.5 text-xs text-slate-500">
-                  Recent updates to your readiness profile
-                </p>
-              </div>
-              <Clock className="h-4 w-4 text-slate-400" />
-            </div>
-
-            {timelineEvents.length === 0 ? (
-              <p className="mt-4 text-xs text-slate-500">
-                Upload a resume or complete a mock interview to start recording
-                readiness milestones.
-              </p>
-            ) : (
-              <ul className="mt-4 space-y-3">
-                {timelineEvents.map((ev) => (
-                  <li
-                    key={ev.id}
-                    className="flex items-start justify-between gap-3 rounded-lg border border-slate-200 bg-slate-50/60 p-3"
-                  >
-                    <div className="min-w-0">
-                      <p className="text-xs font-semibold text-slate-900">
-                        {ev.title}
-                      </p>
-                      <p className="mt-0.5 truncate text-xs text-slate-600">
-                        {ev.detail}
-                      </p>
-                    </div>
-                    <span className="shrink-0 text-xs text-slate-500 tabular-nums">
-                      {new Date(ev.date).toLocaleDateString()}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </section>
         </div>
-      </main>
-    </div>
+      </SectionCard>
+
+      {/* 3. Domain Readiness & Evidence Timeline */}
+      <div className="grid gap-6 lg:grid-cols-2">
+        <SectionCard
+          eyebrow="Engineering Domains"
+          title="Readiness by Technical Area"
+          description="Domain coverage across your verified interview skills and extracted resume profile."
+        >
+          <div className="space-y-4">
+            {areaReadiness.map((item) => (
+              <div key={item.area} className="space-y-1.5">
+                <ProgressBar
+                  label={`${item.area} (${item.verifiedCount} verified / ${item.totalTracked} tracked)`}
+                  value={item.pct}
+                  tone={
+                    item.pct >= 70
+                      ? "success"
+                      : item.pct >= 40
+                        ? "primary"
+                        : "warning"
+                  }
+                />
+              </div>
+            ))}
+          </div>
+        </SectionCard>
+
+        <SectionCard
+          eyebrow="Audit Trail"
+          title="Evidence Timeline"
+          description="Chronological log of resume extractions, job matches, and interview skill updates."
+          empty={timelineEvents.length === 0}
+          emptyTitle="No readiness milestones yet"
+          emptyDescription="Upload a resume or complete a mock interview to record your first evidence milestone."
+        >
+          <ul className="space-y-3">
+            {timelineEvents.map((ev) => (
+              <li
+                key={ev.id}
+                className="flex items-start justify-between gap-3 rounded-card border border-border bg-muted/40 p-3.5"
+              >
+                <div className="space-y-1 min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Badge tone={ev.tone} size="sm">
+                      Evidence
+                    </Badge>
+                    <p className="text-xs font-semibold text-content-heading">
+                      {ev.title}
+                    </p>
+                  </div>
+                  <p className="text-xs text-content-secondary">{ev.detail}</p>
+                </div>
+                <span className="inline-flex shrink-0 items-center gap-1 text-[11px] text-content-secondary tabular-nums">
+                  <Clock className="h-3 w-3" />
+                  {new Date(ev.date).toLocaleDateString()}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </SectionCard>
+      </div>
+    </ContentContainer>
   );
 };
 

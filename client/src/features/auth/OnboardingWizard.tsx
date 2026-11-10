@@ -1,503 +1,677 @@
-import React, { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import React, { useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import {
+  ArrowLeft,
+  ArrowRight,
+  Check,
+  FileText,
+  MapPin,
+  Plus,
+  Upload,
+} from "lucide-react";
 import { useAuth } from "./useAuth";
-import { ArrowRight, ArrowLeft, Loader2, Check, X } from "lucide-react";
-import { ResumeUploader } from "../resume/ResumeUploader";
-import { useResumes } from "../resume/useResumes";
+import * as apiModule from "../../lib/api-client";
+import { ContentContainer, PageHeader } from "../../components/layout";
+import {
+  Badge,
+  Button,
+  Card,
+  EmptyState,
+  ErrorState,
+  Input,
+  ProgressBar,
+  SectionCard,
+  Select,
+  Skeleton,
+  SkillBadge,
+  Toast,
+} from "../../components/ui";
 
-const EXPERIENCE_LEVELS = [
-  "Student",
-  "Fresher",
-  "Junior",
-  "Mid-level",
-  "Senior",
-];
+export interface OnboardingWizardProps {
+  onComplete?: () => void;
+}
 
 const SUGGESTED_ROLES = [
-  "Frontend Engineer",
   "Backend Engineer",
-  "Full-Stack Developer",
+  "Full-Stack Engineer",
+  "Frontend Engineer",
   "Software Engineer",
   "DevOps / Cloud Engineer",
   "Data Engineer",
 ];
 
-const COMMON_LOCATIONS = [
-  "Remote",
+const EXPERIENCE_OPTIONS = [
+  { value: "Entry-Level (0-1 years)", label: "Entry-Level (0–1 years)" },
+  { value: "Junior (1-2 years)", label: "Junior (1–2 years)" },
+  { value: "Mid-Level (2-5 years)", label: "Mid-Level (2–5 years)" },
+  { value: "Senior (5+ years)", label: "Senior (5+ years)" },
+];
+
+const SUGGESTED_LOCATIONS = [
   "Bengaluru",
   "Hyderabad",
   "Pune",
   "Mumbai",
   "Delhi NCR",
   "Chennai",
-  "San Francisco",
+  "Remote",
 ];
 
-const DISMISSED_SKILLS_KEY = "truehire_dismissed_resume_skills";
+const DEFAULT_ROLE_SKILLS: Record<string, string[]> = {
+  "Backend Engineer": [
+    "Node.js",
+    "TypeScript",
+    "PostgreSQL",
+    "REST APIs",
+    "Docker",
+  ],
+  "Full-Stack Engineer": [
+    "React",
+    "TypeScript",
+    "Node.js",
+    "PostgreSQL",
+    "Tailwind CSS",
+  ],
+  "Frontend Engineer": [
+    "React",
+    "TypeScript",
+    "JavaScript",
+    "HTML/CSS",
+    "Testing",
+  ],
+  "Software Engineer": [
+    "TypeScript",
+    "Python",
+    "SQL",
+    "Git",
+    "Data Structures",
+  ],
+  "DevOps / Cloud Engineer": ["Docker", "Kubernetes", "AWS", "CI/CD", "Linux"],
+  "Data Engineer": ["Python", "SQL", "PostgreSQL", "Data Modeling", "ETL"],
+};
 
-export const OnboardingWizard: React.FC = () => {
-  const { user, updateProfile } = useAuth();
+export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
+  onComplete,
+}) => {
   const navigate = useNavigate();
+  const auth = useAuth();
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-  const [currentStep, setCurrentStep] = useState<number>(1);
-  const { data: resumes } = useResumes();
-  const latestResume = resumes?.[0];
+  const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
 
-  const [targetRole, setTargetRole] = useState<string>(user?.targetRole || "");
+  // Step 1: Role & Experience
+  const [targetRole, setTargetRole] = useState<string>(
+    auth.user?.targetRole || "Backend Engineer",
+  );
   const [experienceLevel, setExperienceLevel] = useState<string>(
-    user?.experienceLevel || "",
+    auth.user?.experienceLevel || "Mid-Level (2-5 years)",
   );
-  const [selectedLocations, setSelectedLocations] = useState<string[]>(
-    user?.preferredLocations || [],
+
+  // Step 2: Preferred Locations
+  const [locations, setLocations] = useState<string[]>(
+    auth.user?.preferredLocations?.length
+      ? auth.user.preferredLocations
+      : ["Bengaluru", "Remote"],
   );
-  const [customLocation, setCustomLocation] = useState<string>("");
-  const [removedSkills, setRemovedSkills] = useState<Set<string>>(new Set());
-  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
-  const [error, setError] = useState<string | null>(null);
+  const [customLocation, setCustomLocation] = useState("");
 
-  const steps = [
-    "Target Role",
-    "Experience",
-    "Locations",
-    "Resume",
-    "Confirmation",
-  ];
+  // Step 3: Resume Upload
+  const [uploadedFileName, setUploadedFileName] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [uploadSuccessMessage, setUploadSuccessMessage] = useState<
+    string | null
+  >(null);
 
-  const handleNext = () => {
-    setError(null);
-    setCurrentStep((prev) => Math.min(prev + 1, 5));
+  // Step 4: Confirmed Skills
+  const [skills, setSkills] = useState<string[]>([]);
+  const [newSkillInput, setNewSkillInput] = useState("");
+
+  // Final Submission State
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+
+  const finishOnboarding = () => {
+    if (onComplete) {
+      onComplete();
+    } else {
+      navigate("/dashboard", { replace: true });
+    }
   };
 
-  const handleBack = () => {
-    setError(null);
-    setCurrentStep((prev) => Math.max(prev - 1, 1));
-  };
-
-  const handleLocationToggle = (loc: string) => {
-    setSelectedLocations((prev) =>
-      prev.includes(loc) ? prev.filter((l) => l !== loc) : [...prev, loc],
+  const toggleLocation = (loc: string) => {
+    setLocations((prev) =>
+      prev.includes(loc) ? prev.filter((item) => item !== loc) : [...prev, loc],
     );
   };
 
   const handleAddCustomLocation = () => {
     const trimmed = customLocation.trim();
-    if (trimmed && !selectedLocations.includes(trimmed)) {
-      setSelectedLocations([...selectedLocations, trimmed]);
-      setCustomLocation("");
+    if (!trimmed) return;
+    if (!locations.includes(trimmed)) {
+      setLocations((prev) => [...prev, trimmed]);
     }
+    setCustomLocation("");
   };
 
-  const toggleRemoveSkill = (skill: string) => {
-    const key = skill.toLowerCase();
-    setRemovedSkills((prev) => {
-      const next = new Set(prev);
-      if (next.has(key)) next.delete(key);
-      else next.add(key);
-      return next;
-    });
-  };
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
 
-  const handleComplete = async () => {
-    setIsSubmitting(true);
-    setError(null);
+    setUploadError(null);
+    setUploadSuccessMessage(null);
+
+    const allowedExtensions = /\.(pdf|docx)$/i;
+    if (!allowedExtensions.test(file.name)) {
+      setUploadError("Please select a PDF or DOCX resume file.");
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      setUploadError("File size must be under 5 MB.");
+      return;
+    }
+
+    setIsUploading(true);
     try {
-      if (removedSkills.size > 0) {
-        try {
-          localStorage.setItem(
-            DISMISSED_SKILLS_KEY,
-            JSON.stringify([...removedSkills]),
-          );
-        } catch {
-          // Ignore storage errors
+      const formData = new FormData();
+      formData.append("resume", file);
+
+      let extracted: string[] = [];
+      const anyApi = apiModule as Record<string, any>;
+      const client = anyApi.apiClient || anyApi.default;
+
+      if (client && typeof client.post === "function") {
+        const res = await client.post("/resumes/upload", formData);
+        const payload = res?.data?.data || res?.data || res;
+        if (Array.isArray(payload?.parsedSkills)) {
+          extracted = payload.parsedSkills;
+        } else if (Array.isArray(payload?.skills)) {
+          extracted = payload.skills;
         }
+      } else {
+        const token = localStorage.getItem("token");
+        const response = await fetch("/api/resumes/upload", {
+          method: "POST",
+          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+          body: formData,
+        });
+        if (!response.ok) {
+          throw new Error("Could not parse resume file. Please try again.");
+        }
+        const json = await response.json();
+        const payload = json?.data || json;
+        extracted = payload?.parsedSkills || payload?.skills || [];
       }
 
-      await updateProfile({
-        targetRole: targetRole.trim() || undefined,
-        preferredLocations:
-          selectedLocations.length > 0 ? selectedLocations : undefined,
-        experienceLevel: experienceLevel || undefined,
-      });
-      navigate("/dashboard");
-    } catch (err: any) {
-      setError(err.message || "Failed to save preferences.");
+      setUploadedFileName(file.name);
+      if (extracted.length > 0) {
+        setSkills(Array.from(new Set(extracted)));
+        setUploadSuccessMessage(
+          `Extracted ${extracted.length} skills from ${file.name}.`,
+        );
+      } else {
+        const fallback =
+          DEFAULT_ROLE_SKILLS[targetRole] ||
+          DEFAULT_ROLE_SKILLS["Backend Engineer"];
+        setSkills(fallback);
+        setUploadSuccessMessage(
+          `Uploaded ${file.name}. Review your skills in the next step.`,
+        );
+      }
+    } catch (err: unknown) {
+      const message =
+        err instanceof Error
+          ? err.message
+          : "Resume upload failed. You can try again or continue and upload later.";
+      setUploadError(message);
     } finally {
-      setIsSubmitting(false);
+      setIsUploading(false);
     }
   };
 
-  const extractedSkills = latestResume?.skills ?? [];
+  const handleAddSkill = () => {
+    const trimmed = newSkillInput.trim();
+    if (!trimmed) return;
+    if (!skills.some((s) => s.toLowerCase() === trimmed.toLowerCase())) {
+      setSkills((prev) => [...prev, trimmed]);
+    }
+    setNewSkillInput("");
+  };
+
+  const handleRemoveSkill = (skillToRemove: string) => {
+    setSkills((prev) => prev.filter((s) => s !== skillToRemove));
+  };
+
+  const handleLoadRoleStarterSkills = () => {
+    const starter =
+      DEFAULT_ROLE_SKILLS[targetRole] ||
+      DEFAULT_ROLE_SKILLS["Backend Engineer"];
+    setSkills(starter);
+  };
+
+  const handleCompleteSetup = async () => {
+    setSaveError(null);
+    setIsSaving(true);
+
+    try {
+      if (typeof auth.updateProfile === "function") {
+        await auth.updateProfile({
+          targetRole: targetRole.trim() || "Software Engineer",
+          experienceLevel,
+          preferredLocations: locations,
+        });
+      }
+      finishOnboarding();
+    } catch (err: unknown) {
+      const message =
+        err instanceof Error
+          ? err.message
+          : "Could not save your onboarding preferences. Please try again.";
+      setSaveError(message);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const stepsMeta = [
+    { num: 1, label: "Target role" },
+    { num: 2, label: "Locations" },
+    { num: 3, label: "Resume" },
+    { num: 4, label: "Confirm skills" },
+  ];
 
   return (
-    <div className="flex min-h-screen flex-col bg-[#f8fafc] text-slate-900">
-      <header className="border-b border-slate-200 bg-white">
-        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-          <Link
-            to="/dashboard"
-            className="flex items-center gap-2.5 text-base font-semibold tracking-tight text-slate-900"
-          >
-            <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-600 text-xs font-bold text-white">
-              TH
-            </span>
-            <span>TrueHire</span>
-          </Link>
-          <button
-            type="button"
-            onClick={() => navigate("/dashboard")}
-            className="text-xs font-medium text-slate-600 hover:text-slate-900"
-          >
-            Skip for now →
-          </button>
-        </div>
-      </header>
+    <ContentContainer size="md" className="space-y-6">
+      <PageHeader
+        eyebrow={`Step ${step} of 4`}
+        title="Set up your readiness profile"
+        description="Tell TrueHire which roles you are targeting and upload your resume to see your initial skill coverage."
+        secondaryActions={
+          <Button variant="ghost" size="sm" onClick={finishOnboarding}>
+            Skip setup for now
+          </Button>
+        }
+      />
 
-      <div className="flex flex-1 items-center justify-center p-4 sm:p-6">
-        <div className="w-full max-w-xl rounded-xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
-          {/* Stepper Header */}
-          <div className="mb-8">
-            <div className="mb-3 flex items-center justify-between gap-1">
-              {steps.map((label, index) => {
-                const stepNum = index + 1;
-                const active = currentStep >= stepNum;
-                return (
-                  <div key={label} className="flex items-center gap-1.5">
-                    <span
-                      className={`flex h-6 w-6 items-center justify-center rounded-full text-xs font-semibold tabular-nums ${
-                        active
-                          ? "bg-blue-600 text-white"
-                          : "border border-slate-200 bg-slate-50 text-slate-400"
-                      }`}
-                    >
-                      {stepNum}
-                    </span>
-                    <span
-                      className={`hidden text-xs font-medium sm:inline ${
-                        active ? "text-slate-900" : "text-slate-400"
-                      }`}
-                    >
-                      {label}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-            <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-200">
+      {/* Step Progress Indicator */}
+      <Card padding="sm" className="space-y-3">
+        <ProgressBar
+          value={step * 25}
+          label={`Onboarding progress: ${stepsMeta[step - 1].label}`}
+          tone="primary"
+        />
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+          {stepsMeta.map((item) => {
+            const isCompleted = step > item.num;
+            const isCurrent = step === item.num;
+            return (
               <div
-                className="h-full bg-blue-600 transition-all duration-300"
-                style={{ width: `${((currentStep - 1) / 4) * 100}%` }}
-              />
-            </div>
-          </div>
-
-          {error && (
-            <div className="mb-6 rounded-lg border border-red-200 bg-red-50 p-3.5 text-xs font-medium text-red-700">
-              {error}
-            </div>
-          )}
-
-          {/* Step 1: Target Role */}
-          {currentStep === 1 && (
-            <div className="space-y-5">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-wider text-blue-600">
-                  Step 1 of 5
-                </p>
-                <h1 className="mt-1 text-xl font-semibold text-slate-900">
-                  What role are you preparing for?
-                </h1>
-                <p className="mt-1 text-xs text-slate-600">
-                  We use your target role to highlight relevant job listings and
-                  interview questions.
-                </p>
+                key={item.num}
+                className={`flex items-center gap-2 rounded-sm border px-3 py-2 text-xs font-medium ${
+                  isCurrent
+                    ? "border-primary bg-primary-soft text-primary"
+                    : isCompleted
+                      ? "border-status-success-border bg-status-success-soft text-status-success"
+                      : "border-border bg-muted/50 text-content-secondary"
+                }`}
+              >
+                <span className="tabular-nums font-semibold">
+                  {isCompleted ? "✓" : `0${item.num}`}
+                </span>
+                <span className="truncate">{item.label}</span>
               </div>
+            );
+          })}
+        </div>
+      </Card>
 
-              <div>
-                <label className="mb-1.5 block text-xs font-medium text-slate-700">
-                  Target role
-                </label>
-                <input
-                  type="text"
-                  value={targetRole}
-                  onChange={(e) => setTargetRole(e.target.value)}
-                  placeholder="e.g., Full-Stack Developer, Backend Engineer"
-                  className="w-full rounded-lg border border-slate-300 bg-white px-3.5 py-2.5 text-sm text-slate-900 placeholder-slate-400 outline-none focus:border-blue-600"
-                />
-              </div>
+      {saveError && (
+        <ErrorState
+          title="Could not save setup"
+          message={saveError}
+          onRetry={handleCompleteSetup}
+        />
+      )}
 
-              <div>
-                <p className="mb-2 text-xs font-medium text-slate-500">
-                  Common engineering roles
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  {SUGGESTED_ROLES.map((role) => (
-                    <button
+      {/* STEP 1: Target Role & Seniority */}
+      {step === 1 && (
+        <SectionCard
+          title="1. Choose your target role and experience level"
+          description="We use this to prioritize matching engineering jobs and calibrate mock interview difficulty."
+          footer={
+            <div className="flex items-center justify-end gap-2">
+              <Button
+                variant="primary"
+                onClick={() => setStep(2)}
+                disabled={!targetRole.trim()}
+                rightIcon={<ArrowRight className="h-4 w-4" />}
+              >
+                Continue to locations
+              </Button>
+            </div>
+          }
+        >
+          <div className="space-y-5">
+            <Input
+              label="Target role title"
+              placeholder="e.g., Backend Engineer"
+              value={targetRole}
+              onChange={(e) => setTargetRole(e.target.value)}
+              helperText="Pick a common engineering role below or type your own."
+            />
+
+            <div className="space-y-2">
+              <p className="text-xs font-medium text-content-secondary">
+                Common target roles
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {SUGGESTED_ROLES.map((role) => {
+                  const selected = targetRole === role;
+                  return (
+                    <Button
                       key={role}
-                      type="button"
+                      variant={selected ? "primary" : "outline"}
+                      size="sm"
                       onClick={() => setTargetRole(role)}
-                      className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition ${
-                        targetRole === role
-                          ? "border-blue-600 bg-blue-50 text-blue-700"
-                          : "border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100"
-                      }`}
                     >
                       {role}
-                    </button>
+                    </Button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <Select
+              label="Experience level"
+              value={experienceLevel}
+              options={EXPERIENCE_OPTIONS}
+              onChange={(e) => setExperienceLevel(e.target.value)}
+            />
+          </div>
+        </SectionCard>
+      )}
+
+      {/* STEP 2: Preferred Locations */}
+      {step === 2 && (
+        <SectionCard
+          title="2. Select your preferred work locations"
+          description="Filter verified ATS postings by tech hub or remote eligibility."
+          footer={
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <Button
+                variant="outline"
+                onClick={() => setStep(1)}
+                leftIcon={<ArrowLeft className="h-4 w-4" />}
+              >
+                Back
+              </Button>
+              <Button
+                variant="primary"
+                onClick={() => setStep(3)}
+                rightIcon={<ArrowRight className="h-4 w-4" />}
+              >
+                Continue to resume upload
+              </Button>
+            </div>
+          }
+        >
+          <div className="space-y-5">
+            <div className="space-y-2">
+              <p className="text-xs font-medium text-content-heading">
+                Select one or more locations
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {SUGGESTED_LOCATIONS.map((loc) => {
+                  const active = locations.includes(loc);
+                  return (
+                    <Button
+                      key={loc}
+                      variant={active ? "primary" : "outline"}
+                      size="sm"
+                      onClick={() => toggleLocation(loc)}
+                      leftIcon={<MapPin className="h-3.5 w-3.5" />}
+                    >
+                      {loc}
+                    </Button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
+              <Input
+                label="Add another city or region"
+                placeholder="e.g., Noida, Kochi, Hybrid"
+                value={customLocation}
+                onChange={(e) => setCustomLocation(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    handleAddCustomLocation();
+                  }
+                }}
+              />
+              <Button
+                variant="secondary"
+                onClick={handleAddCustomLocation}
+                leftIcon={<Plus className="h-4 w-4" />}
+              >
+                Add location
+              </Button>
+            </div>
+
+            {locations.length === 0 ? (
+              <EmptyState
+                title="No locations selected"
+                description="Select at least one location or Remote so we can surface relevant job openings."
+              />
+            ) : (
+              <div className="space-y-1.5">
+                <p className="text-xs font-medium text-content-secondary">
+                  Selected locations ({locations.length})
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {locations.map((loc) => (
+                    <Badge key={loc} tone="primary">
+                      <span>{loc}</span>
+                    </Badge>
                   ))}
                 </div>
               </div>
-            </div>
-          )}
+            )}
+          </div>
+        </SectionCard>
+      )}
 
-          {/* Step 2: Experience Level */}
-          {currentStep === 2 && (
-            <div className="space-y-5">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-wider text-blue-600">
-                  Step 2 of 5
-                </p>
-                <h1 className="mt-1 text-xl font-semibold text-slate-900">
-                  Select your experience level
-                </h1>
-                <p className="mt-1 text-xs text-slate-600">
-                  Helps calibrate mock interview difficulty and expected depth.
-                </p>
-              </div>
-
-              <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
-                {EXPERIENCE_LEVELS.map((level) => (
-                  <button
-                    key={level}
-                    type="button"
-                    onClick={() => setExperienceLevel(level)}
-                    className={`rounded-lg border px-4 py-3 text-left text-sm font-medium transition ${
-                      experienceLevel === level
-                        ? "border-blue-600 bg-blue-50 text-blue-800"
-                        : "border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100"
-                    }`}
-                  >
-                    {level}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Step 3: Preferred Locations */}
-          {currentStep === 3 && (
-            <div className="space-y-5">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-wider text-blue-600">
-                  Step 3 of 5
-                </p>
-                <h1 className="mt-1 text-xl font-semibold text-slate-900">
-                  Preferred job locations
-                </h1>
-                <p className="mt-1 text-xs text-slate-600">
-                  Select one or more locations, including Remote.
-                </p>
-              </div>
-
-              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                {COMMON_LOCATIONS.map((loc) => (
-                  <button
-                    key={loc}
-                    type="button"
-                    onClick={() => handleLocationToggle(loc)}
-                    className={`rounded-lg border px-3 py-2 text-xs font-medium transition ${
-                      selectedLocations.includes(loc)
-                        ? "border-blue-600 bg-blue-50 text-blue-700"
-                        : "border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100"
-                    }`}
-                  >
-                    {loc}
-                  </button>
-                ))}
-              </div>
-
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={customLocation}
-                  onChange={(e) => setCustomLocation(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault();
-                      handleAddCustomLocation();
-                    }
-                  }}
-                  placeholder="Add another city..."
-                  className="flex-1 rounded-lg border border-slate-300 bg-white px-3.5 py-2 text-xs text-slate-900 placeholder-slate-400 outline-none focus:border-blue-600"
-                />
-                <button
-                  type="button"
-                  onClick={handleAddCustomLocation}
-                  className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50"
+      {/* STEP 3: Resume Upload */}
+      {step === 3 && (
+        <SectionCard
+          title="3. Upload your resume to extract baseline skills"
+          description="Upload a PDF or DOCX resume (up to 5 MB) so TrueHire can compare your skills against job requirements."
+          footer={
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <Button
+                variant="outline"
+                onClick={() => setStep(2)}
+                leftIcon={<ArrowLeft className="h-4 w-4" />}
+              >
+                Back
+              </Button>
+              <div className="flex flex-wrap items-center gap-2">
+                <Button variant="ghost" onClick={() => setStep(4)}>
+                  Skip resume upload
+                </Button>
+                <Button
+                  variant="primary"
+                  onClick={() => setStep(4)}
+                  rightIcon={<ArrowRight className="h-4 w-4" />}
                 >
-                  Add
-                </button>
+                  Continue to skill review
+                </Button>
               </div>
             </div>
-          )}
+          }
+        >
+          <div className="space-y-4">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+              onChange={handleFileChange}
+              className="sr-only"
+              aria-label="Upload resume PDF or DOCX"
+            />
 
-          {/* Step 4: Resume Upload */}
-          {currentStep === 4 && (
-            <div className="space-y-5">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-wider text-blue-600">
-                  Step 4 of 5
-                </p>
-                <h1 className="mt-1 text-xl font-semibold text-slate-900">
-                  Upload your resume
-                </h1>
-                <p className="mt-1 text-xs text-slate-600">
-                  Upload a PDF or DOCX resume so TrueHire can extract your
-                  skills and compare them with target roles.
-                </p>
-              </div>
-              <ResumeUploader />
-            </div>
-          )}
-
-          {/* Step 5: Confirmation */}
-          {currentStep === 5 && (
-            <div className="space-y-5">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-wider text-blue-600">
-                  Step 5 of 5
-                </p>
-                <h1 className="mt-1 text-xl font-semibold text-slate-900">
-                  Confirm your extracted skills & preferences
-                </h1>
-                <p className="mt-1 text-xs text-slate-600">
-                  Review what we extracted from your resume. Click any skill to
-                  remove it if it does not belong in your profile.
-                </p>
-              </div>
-
-              <div className="divide-y divide-slate-200 rounded-xl border border-slate-200 bg-slate-50 px-4">
-                <div className="py-3">
-                  <span className="text-xs font-medium text-slate-500">
-                    Target Role & Level
-                  </span>
-                  <p className="mt-0.5 text-sm font-semibold text-slate-900">
-                    {targetRole || "Not specified"}{" "}
-                    {experienceLevel ? `· ${experienceLevel}` : ""}
-                  </p>
-                </div>
-                <div className="py-3">
-                  <span className="text-xs font-medium text-slate-500">
-                    Preferred Locations
-                  </span>
-                  <p className="mt-0.5 text-sm font-medium text-slate-800">
-                    {selectedLocations.length > 0
-                      ? selectedLocations.join(", ")
-                      : "Any location"}
-                  </p>
-                </div>
-              </div>
-
-              {extractedSkills.length > 0 ? (
-                <div>
-                  <p className="mb-2 text-xs font-medium text-slate-700">
-                    Extracted Skills (
-                    {extractedSkills.length - removedSkills.size} confirmed)
-                  </p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {extractedSkills.map((skill) => {
-                      const isRemoved = removedSkills.has(skill.toLowerCase());
-                      return (
-                        <button
-                          key={skill}
-                          type="button"
-                          onClick={() => toggleRemoveSkill(skill)}
-                          className={`inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs font-medium transition ${
-                            isRemoved
-                              ? "border-slate-200 bg-slate-100 text-slate-400 line-through"
-                              : "border-emerald-200 bg-emerald-50 text-emerald-800"
-                          }`}
-                        >
-                          {isRemoved ? (
-                            <X className="h-3 w-3" />
-                          ) : (
-                            <Check className="h-3 w-3 text-emerald-600" />
-                          )}
-                          <span>{skill}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              ) : (
-                <p className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs text-slate-600">
-                  No resume uploaded yet. You can upload one anytime from the
-                  Resumes page.
-                </p>
-              )}
-            </div>
-          )}
-
-          {/* Footer Navigation */}
-          <div className="mt-8 flex items-center justify-between border-t border-slate-200 pt-5">
-            {currentStep > 1 ? (
-              <button
-                type="button"
-                onClick={handleBack}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-4 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50"
-              >
-                <ArrowLeft className="h-3.5 w-3.5" />
-                <span>Back</span>
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={() => navigate("/dashboard")}
-                className="text-xs font-medium text-slate-500 hover:text-slate-800"
-              >
-                Skip for now
-              </button>
+            {uploadError && (
+              <ErrorState
+                title="Resume upload issue"
+                message={uploadError}
+                onRetry={() => fileInputRef.current?.click()}
+              />
             )}
 
-            <div className="flex items-center gap-2.5">
-              {currentStep < 5 && (
-                <button
-                  type="button"
-                  onClick={handleNext}
-                  className="text-xs font-medium text-slate-500 hover:text-slate-800 px-2 py-2"
-                >
-                  Skip step
-                </button>
-              )}
+            {uploadSuccessMessage && (
+              <Toast
+                tone="success"
+                title="Resume processed"
+                description={uploadSuccessMessage}
+              />
+            )}
 
-              {currentStep < 5 ? (
-                <button
-                  type="button"
-                  onClick={handleNext}
-                  className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-5 py-2 text-xs font-medium text-white shadow-sm transition hover:bg-blue-700"
-                >
-                  <span>Continue</span>
-                  <ArrowRight className="h-3.5 w-3.5" />
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => void handleComplete()}
-                  disabled={isSubmitting}
-                  className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-5 py-2 text-xs font-medium text-white shadow-sm transition hover:bg-blue-700 disabled:opacity-50"
-                >
-                  {isSubmitting ? (
-                    <>
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                      <span>Saving...</span>
-                    </>
+            {isUploading ? (
+              <Card muted padding="md" className="space-y-3">
+                <p className="text-xs font-medium text-content-heading">
+                  Extracting skills from your resume...
+                </p>
+                <Skeleton className="h-4 w-2/3" />
+                <Skeleton className="h-8 w-full" />
+              </Card>
+            ) : (
+              <Card
+                muted
+                padding="lg"
+                className="flex flex-col items-center justify-center text-center space-y-3"
+              >
+                <div className="flex h-10 w-10 items-center justify-center rounded-input border border-border bg-surface text-primary">
+                  {uploadedFileName ? (
+                    <FileText className="h-5 w-5" />
                   ) : (
-                    <span>Continue to Dashboard</span>
+                    <Upload className="h-5 w-5" />
                   )}
-                </button>
-              )}
-            </div>
+                </div>
+
+                <div className="space-y-1">
+                  <p className="text-sm font-semibold text-content-heading">
+                    {uploadedFileName
+                      ? `Uploaded: ${uploadedFileName}`
+                      : "Select a PDF or DOCX resume"}
+                  </p>
+                  <p className="text-xs text-content-secondary">
+                    We extract named technical skills so you can review and edit
+                    them before matching with jobs.
+                  </p>
+                </div>
+
+                <Button
+                  variant="outline"
+                  size="md"
+                  onClick={() => fileInputRef.current?.click()}
+                  leftIcon={<Upload className="h-4 w-4" />}
+                >
+                  {uploadedFileName ? "Replace resume file" : "Choose file"}
+                </Button>
+              </Card>
+            )}
           </div>
-        </div>
-      </div>
-    </div>
+        </SectionCard>
+      )}
+
+      {/* STEP 4: Confirm Extracted Skills */}
+      {step === 4 && (
+        <SectionCard
+          title="4. Confirm your technical skills"
+          description="Review the skills on your profile. You can remove any inaccurate items or add skills manually."
+          footer={
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <Button
+                variant="outline"
+                onClick={() => setStep(3)}
+                disabled={isSaving}
+                leftIcon={<ArrowLeft className="h-4 w-4" />}
+              >
+                Back
+              </Button>
+              <Button
+                variant="primary"
+                loading={isSaving}
+                onClick={handleCompleteSetup}
+                leftIcon={<Check className="h-4 w-4" />}
+              >
+                Save & open Dashboard
+              </Button>
+            </div>
+          }
+        >
+          <div className="space-y-5">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
+              <Input
+                label="Add a skill to your profile"
+                placeholder="e.g., PostgreSQL, TypeScript, Redis"
+                value={newSkillInput}
+                onChange={(e) => setNewSkillInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    handleAddSkill();
+                  }
+                }}
+              />
+              <Button
+                variant="secondary"
+                onClick={handleAddSkill}
+                leftIcon={<Plus className="h-4 w-4" />}
+              >
+                Add skill
+              </Button>
+            </div>
+
+            {skills.length === 0 ? (
+              <EmptyState
+                title="No skills added yet"
+                description={`Add skills manually above or load starter skills for ${targetRole}.`}
+                action={
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleLoadRoleStarterSkills}
+                  >
+                    Load common {targetRole} skills
+                  </Button>
+                }
+              />
+            ) : (
+              <div className="space-y-2">
+                <p className="text-xs font-medium text-content-secondary">
+                  Confirmed skills ({skills.length})
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {skills.map((skill) => (
+                    <SkillBadge
+                      key={skill}
+                      skill={skill}
+                      level="EXTRACTED"
+                      onRemove={() => handleRemoveSkill(skill)}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </SectionCard>
+      )}
+    </ContentContainer>
   );
 };
+
+export default OnboardingWizard;
