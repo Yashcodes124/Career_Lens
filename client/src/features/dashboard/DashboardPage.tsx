@@ -17,7 +17,7 @@ import type { ReadinessSkill } from "../readiness/readinessApi";
 import { useResumes } from "../resume/useResumes";
 import { useApplications } from "../tracker/useApplications";
 import type { Application } from "../tracker/types";
-import { apiClient } from "../../lib/api-client";
+import { fetchJobs } from "../jobs/jobsApi";
 import { ContentContainer, PageHeader } from "../../components/layout";
 import {
   Badge,
@@ -61,17 +61,8 @@ export const DashboardPage: React.FC = () => {
   const { data: publicJobs } = useQuery<JobSummary[]>({
     queryKey: ["dashboard-recommended-jobs"],
     queryFn: async () => {
-      const res = await apiClient.get<
-        { data?: JobSummary[] | { jobs?: JobSummary[] } } | JobSummary[]
-      >("/jobs");
-      if (Array.isArray(res)) return res.slice(0, 4);
-      if (res && typeof res === "object" && "data" in res) {
-        if (Array.isArray(res.data)) return res.data.slice(0, 4);
-        if (res.data && Array.isArray(res.data.jobs)) {
-          return res.data.jobs.slice(0, 4);
-        }
-      }
-      return [];
+      const list = await fetchJobs();
+      return list.slice(0, 4);
     },
     staleTime: 60_000,
   });

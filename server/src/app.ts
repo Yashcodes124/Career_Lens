@@ -31,7 +31,13 @@ app.use(
       ) {
         callback(null, true);
       } else {
-        callback(null, true);
+        callback(
+          new AppError(
+            403,
+            `Origin ${origin} not allowed by CORS`,
+            "CORS_FORBIDDEN",
+          ),
+        );
       }
     },
     credentials: true,

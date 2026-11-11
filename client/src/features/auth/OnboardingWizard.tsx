@@ -10,7 +10,7 @@ import {
   Upload,
 } from "lucide-react";
 import { useAuth } from "./useAuth";
-import * as apiModule from "../../lib/api-client";
+import { uploadResume } from "../resume/resumeApi";
 import { ContentContainer, PageHeader } from "../../components/layout";
 import {
   Badge,
@@ -174,35 +174,8 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
 
     setIsUploading(true);
     try {
-      const formData = new FormData();
-      formData.append("resume", file);
-
-      let extracted: string[] = [];
-      const anyApi = apiModule as Record<string, any>;
-      const client = anyApi.apiClient || anyApi.default;
-
-      if (client && typeof client.post === "function") {
-        const res = await client.post("/resumes/upload", formData);
-        const payload = res?.data?.data || res?.data || res;
-        if (Array.isArray(payload?.parsedSkills)) {
-          extracted = payload.parsedSkills;
-        } else if (Array.isArray(payload?.skills)) {
-          extracted = payload.skills;
-        }
-      } else {
-        const token = localStorage.getItem("token");
-        const response = await fetch("/api/resumes/upload", {
-          method: "POST",
-          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-          body: formData,
-        });
-        if (!response.ok) {
-          throw new Error("Could not parse resume file. Please try again.");
-        }
-        const json = await response.json();
-        const payload = json?.data || json;
-        extracted = payload?.parsedSkills || payload?.skills || [];
-      }
+      const uploaded = await uploadResume(file);
+      const extracted = Array.isArray(uploaded?.skills) ? uploaded.skills : [];
 
       setUploadedFileName(file.name);
       if (extracted.length > 0) {

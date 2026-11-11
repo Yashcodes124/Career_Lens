@@ -1,7 +1,7 @@
 import React, { useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { FileText, Upload } from "lucide-react";
-import { apiClient } from "../../lib/api-client";
+import { uploadResume } from "./resumeApi";
 import {
   Badge,
   Button,
@@ -61,32 +61,20 @@ export const ResumeUploader: React.FC<ResumeUploaderProps> = ({
     setProgress(35);
 
     try {
-      const formData = new FormData();
-      formData.append("resume", file);
-
       const progressTimer = window.setTimeout(() => {
         setUploadStage("PARSING");
         setProgress(75);
       }, 350);
 
-      const response = await apiClient.post("/resumes/upload", formData);
+      const resume = await uploadResume(file);
       window.clearTimeout(progressTimer);
 
       setProgress(100);
       setUploadStage("SUCCESS");
 
-      const payload =
-        (response as { data?: { data?: unknown } })?.data?.data ??
-        (response as { data?: unknown })?.data ??
-        response;
-
-      const skillsCount = Array.isArray(
-        (payload as { skills?: unknown[]; parsedSkills?: unknown[] })?.skills,
-      )
-        ? (payload as { skills: unknown[] }).skills.length
-        : Array.isArray((payload as { parsedSkills?: unknown[] })?.parsedSkills)
-          ? (payload as { parsedSkills: unknown[] }).parsedSkills.length
-          : null;
+      const skillsCount = Array.isArray(resume?.skills)
+        ? resume.skills.length
+        : null;
 
       setSuccessMessage(
         skillsCount !== null
@@ -99,7 +87,7 @@ export const ResumeUploader: React.FC<ResumeUploaderProps> = ({
         queryClient.invalidateQueries({ queryKey: ["readiness"] }),
       ]);
 
-      onUploadSuccess?.(payload);
+      onUploadSuccess?.(resume);
     } catch (err: unknown) {
       setUploadStage("IDLE");
       setProgress(0);

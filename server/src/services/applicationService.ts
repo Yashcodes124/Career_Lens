@@ -4,6 +4,7 @@ import { prisma } from "../config/db";
 import {
   createApplication,
   getApplication,
+  deleteApplication,
   getApplicationById,
   updatedApplicationStatus,
 } from "../repositories/applicationRepository";
@@ -57,4 +58,17 @@ export const updateApplicationStatusService = async (
 
   //once updated then return application to requested id
   return await getApplicationById(userId, applicationId);
+};
+
+export const deleteApplicationService = async (
+  userId: string,
+  applicationId: string,
+) => {
+  const application = await getApplicationById(userId, applicationId);
+
+  if (!application) {
+    throw new Error("Application not found");
+  }
+
+  await deleteApplication(userId, applicationId);
 };

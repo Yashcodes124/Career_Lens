@@ -25,6 +25,8 @@ out/
 ui-screenshots/
 test-results/
 playwright-report/
+CURRENT_STATE.md/
+
 
 # IDE
 .vscode/

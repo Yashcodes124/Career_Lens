@@ -19,7 +19,13 @@ import {
   CheckCircle2,
 } from "lucide-react";
 import { Navbar } from "../../components/NavBar";
-import { fetchJobs, fetchSavedJobs, unsaveJob, saveJob } from "./jobsApi";
+import {
+  fetchJobs,
+  fetchSavedJobs,
+  unsaveJob,
+  saveJob,
+  syncVerifiedJobs,
+} from "./jobsApi";
 import { JobCard } from "./JobCard";
 import type { Job } from "./types";
 import { createApplication } from "../tracker/trackerApi";
@@ -94,11 +100,10 @@ export const JobsPage: React.FC = () => {
     try {
       setIsSyncing(true);
       setError(null);
-      await apiClient.post("/jobs/sync");
-      const refreshed = await fetchJobs();
-      setJobs(refreshed);
+      await syncVerifiedJobs();
+      await loadJobs();
       setSyncBanner(
-        `Synchronized ${refreshed.length} active engineering roles from public job boards.`,
+        "Synchronized active engineering roles from public job boards.",
       );
       setTimeout(() => setSyncBanner(null), 6000);
     } catch (err) {
@@ -362,17 +367,33 @@ export const JobsPage: React.FC = () => {
           <div className="flex flex-wrap items-center gap-2.5">
             <button
               type="button"
-              onClick={() => void handleSyncVerifiedJobs()}
-              disabled={isSyncing}
+              onClick={() => void loadJobs()}
+              disabled={isLoading}
               className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3.5 py-2 text-xs font-medium text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
             >
               <RefreshCw
                 className={`h-3.5 w-3.5 text-blue-600 ${
-                  isSyncing ? "animate-spin" : ""
+                  isLoading ? "animate-spin" : ""
                 }`}
               />
-              <span>{isSyncing ? "Syncing..." : "Refresh jobs"}</span>
+              <span>{isLoading ? "Refreshing..." : "Refresh listings"}</span>
             </button>
+
+            {user?.role === "ADMIN" && (
+              <button
+                type="button"
+                onClick={() => void handleSyncVerifiedJobs()}
+                disabled={isSyncing}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3.5 py-2 text-xs font-medium text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
+              >
+                <RefreshCw
+                  className={`h-3.5 w-3.5 text-blue-600 ${
+                    isSyncing ? "animate-spin" : ""
+                  }`}
+                />
+                <span>{isSyncing ? "Syncing..." : "Sync Greenhouse"}</span>
+              </button>
+            )}
 
             <button
               type="button"

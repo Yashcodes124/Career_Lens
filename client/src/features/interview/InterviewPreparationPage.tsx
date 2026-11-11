@@ -12,11 +12,10 @@ import {
   ShieldCheck,
   Target,
 } from "lucide-react";
-import * as interviewApi from "./interviewApi";
+import { fetchInterviewById, startInterview } from "./interviewApi";
 import type { Interview } from "./types";
 import { useResumes } from "../resume/useResumes";
 import { useApplications } from "../tracker/useApplications";
-import { apiClient } from "../../lib/api-client";
 import { ContentContainer, PageHeader } from "../../components/layout";
 import {
   Badge,
@@ -118,7 +117,7 @@ export const InterviewPreparationPage: React.FC = () => {
     try {
       setLoading(true);
       setError(null);
-      const data = await interviewApi.fetchInterviewById(interviewId);
+      const data = await fetchInterviewById(interviewId);
       setInterview(data);
 
       const plan = data.plan as Record<string, any> | null;
@@ -301,21 +300,7 @@ export const InterviewPreparationPage: React.FC = () => {
     setError(null);
 
     try {
-      const anyApi = interviewApi as Record<string, any>;
-      if (typeof anyApi.startInterview === "function") {
-        await anyApi.startInterview(interviewId);
-      } else if (typeof anyApi.startInterviewSession === "function") {
-        await anyApi.startInterviewSession(interviewId);
-      } else {
-        await apiClient
-          .post(`/interviews/${interviewId}/start`, {
-            durationMinutes,
-            difficulty,
-            interviewType,
-            focusSkills,
-          })
-          .catch(() => null);
-      }
+      await startInterview(interviewId);
 
       navigate(`/interviews/${interviewId}/live`, {
         state: {

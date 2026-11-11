@@ -5,6 +5,7 @@ import { ApplicationStatus } from "@prisma/client";
 import {
   createApplicationService,
   getApplicationByIdService,
+  deleteApplicationService,
   getApplicationsService,
   updateApplicationStatusService,
 } from "../services/applicationService";
@@ -101,14 +102,9 @@ export const updateApplicationStatusController = async (
   res: Response,
 ) => {
   try {
-    
     const userId = req.user!.userId;
     const { id } = req.params;
     const { status } = req.body;
-console.log("BODY:", req.body);
-    console.log("STATUS:", req.body?.status);
-    console.log("ENUM:", ApplicationStatus);
-    console.log("VALID STATUSES:", Object.values(ApplicationStatus));
 
     if (!Object.values(ApplicationStatus).includes(status)) {
       res.status(400).json({
@@ -142,6 +138,38 @@ console.log("BODY:", req.body);
     res.status(500).json({
       success: false,
       message: "Failed to update application status",
+    });
+  }
+};
+
+export const deleteApplicationController = async (
+  req: Request,
+  res: Response,
+) => {
+  try {
+    const userId = req.user!.userId;
+    const { id } = req.params;
+
+    await deleteApplicationService(userId, id);
+
+    res.status(200).json({
+      success: true,
+      message: "Application removed from tracker",
+    });
+  } catch (error) {
+    if (error instanceof Error && error.message === "Application not found") {
+      res.status(404).json({
+        success: false,
+        message: "Application not found",
+      });
+      return;
+    }
+
+    console.error("Delete application error:", error);
+
+    res.status(500).json({
+      success: false,
+      message: "Failed to delete application",
     });
   }
 };

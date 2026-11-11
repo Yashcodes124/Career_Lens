@@ -12,12 +12,13 @@ import {
   Sparkles,
   X,
 } from "lucide-react";
+import { fetchTailoring, type TailoringSuggestions } from "./tailoringApi";
 import { useResumes } from "../resume/useResumes";
 import { useReadiness } from "../readiness/useReadiness";
 import { calculateJobMatch } from "../matching/matchingApi";
 import type { MatchResult } from "../matching/types";
+import { fetchJobById } from "../jobs/jobsApi";
 import type { Job } from "../jobs/types";
-import { apiClient } from "../../lib/api-client";
 import { ContentContainer, PageHeader } from "../../components/layout";
 import {
   Badge,
@@ -36,64 +37,11 @@ interface TailoringSuggestion {
   id: string;
   section: string;
   skill: string;
-  evidenceSource: "INTERVIEW_VERIFIED" | "RESUME_EXTRACTED";
+  evidenceSource:
+    "INTERVIEW_VERIFIED" | "RESUME_TEXT_FOUND" | "RESUME_EXTRACTED";
   originalText: string;
   suggestedText: string;
   rationale: string;
-}
-
-interface TailoringApiResponse {
-  tailoredSummary?: string;
-  suggestions?: Array<{
-    section?: string;
-    skill?: string;
-    original?: string;
-    originalText?: string;
-    suggested?: string;
-    suggestedText?: string;
-    reason?: string;
-    rationale?: string;
-  }>;
-  matchedSkills?: string[];
-  excludedMissingSkills?: string[];
-}
-
-// Deterministic, truthful fallback builder bounded strictly by the user's real resume lines and verified skills
-function buildTruthfulSuggestions(
-  rawText: string,
-  matchedSkills: string[],
-  verifiedSet: Set<string>,
-  roleTitle: string,
-): TailoringSuggestion[] {
-  const resumeLines = rawText
-    .split(/\r?\n/)
-    .map((l) => l.trim())
-    .filter((l) => l.length > 25);
-
-  return matchedSkills.map((skill, idx) => {
-    const isVerified = verifiedSet.has(skill.toLowerCase().trim());
-    const matchingLine =
-      resumeLines.find((line) =>
-        line.toLowerCase().includes(skill.toLowerCase()),
-      ) ??
-      `Existing resume lists ${skill} in technical skills and project experience.`;
-
-    const suggestedText = isVerified
-      ? `${matchingLine.replace(/\.$/, "")} — demonstrated production trade-offs and implementation depth in ${skill} aligned with ${roleTitle} requirements.`
-      : `Highlight existing ${skill} implementation from your resume in the top summary and relevant project bullet for ${roleTitle}, specifying concrete scope and measurable outcomes from your actual work.`;
-
-    return {
-      id: `truthful-${idx}-${skill}`,
-      section: idx === 0 ? "Summary & Core Stack" : "Experience & Projects",
-      skill,
-      evidenceSource: isVerified ? "INTERVIEW_VERIFIED" : "RESUME_EXTRACTED",
-      originalText: matchingLine,
-      suggestedText,
-      rationale: isVerified
-        ? `You both listed ${skill} on your resume and verified it in a mock interview evaluation.`
-        : `${skill} is already present on your uploaded resume and explicitly required by ${roleTitle}.`,
-    };
-  });
 }
 
 export const TailoringPage: React.FC = () => {
@@ -113,6 +61,8 @@ export const TailoringPage: React.FC = () => {
 
   const [job, setJob] = useState<Job | null>(null);
   const [matchResult, setMatchResult] = useState<MatchResult | null>(null);
+  const [tailoringData, setTailoringData] =
+    useState<TailoringSuggestions | null>(null);
   const [suggestions, setSuggestions] = useState<TailoringSuggestion[]>([]);
   const [acceptedIds, setAcceptedIds] = useState<Set<string>>(new Set());
   const [activeTab, setActiveTab] = useState<string>("workbench");
@@ -141,96 +91,73 @@ export const TailoringPage: React.FC = () => {
       setLoading(true);
       setError(null);
 
-      const [jobRes, matchRes] = await Promise.all([
-        apiClient.get<{ data?: Job } | Job>(`/jobs/${jobId}`).catch(() => null),
+      const [resolvedJob, matchRes, tailoringRes] = await Promise.all([
+        fetchJobById(jobId).catch(() => null),
         calculateJobMatch({ resumeId: activeResumeId, jobId }),
+        fetchTailoring(activeResumeId, jobId),
       ]);
 
-      let resolvedJob: Job | null = null;
-      if (jobRes) {
-        resolvedJob =
-          "data" in jobRes && jobRes.data ? jobRes.data : (jobRes as Job);
+      if (resolvedJob) {
         setJob(resolvedJob);
       }
 
       const matchData = matchRes.data;
       setMatchResult(matchData);
+      setTailoringData(tailoringRes);
 
-      const roleTitle = resolvedJob?.title ?? "Target Engineering Role";
-      const rawResumeText =
-        (activeResume as { rawText?: string; content?: string })?.rawText ||
-        (activeResume as { content?: string })?.content ||
-        "";
+      const roleTitle =
+        resolvedJob?.title ||
+        tailoringRes.jobTitle ||
+        "Target Engineering Role";
 
-      // Try backend tailoring endpoint if available; strictly filter any output to matched skills only
-      let generatedSuggestions: TailoringSuggestion[] = [];
-      try {
-        const apiTailor = await apiClient.post<
-          { data?: TailoringApiResponse } | TailoringApiResponse
-        >("/tailoring", {
-          resumeId: activeResumeId,
-          jobId,
-        });
-        const payload =
-          apiTailor && "data" in apiTailor && apiTailor.data
-            ? apiTailor.data
-            : (apiTailor as TailoringApiResponse);
+      const built: TailoringSuggestion[] = [];
 
-        if (
-          Array.isArray(payload?.suggestions) &&
-          payload.suggestions.length > 0
-        ) {
-          const allowedSet = new Set(
-            matchData.matchedSkills.map((s) => s.toLowerCase().trim()),
-          );
-          generatedSuggestions = payload.suggestions
-            .filter(
-              (item) =>
-                !item.skill || allowedSet.has(item.skill.toLowerCase().trim()),
-            )
-            .map((item, idx) => {
-              const skillName =
-                item.skill || matchData.matchedSkills[idx] || "Verified Skill";
-              const isVerified = verifiedSkillSet.has(
-                skillName.toLowerCase().trim(),
-              );
-              return {
-                id: `api-sug-${idx}`,
-                section: item.section || "Experience & Summary",
-                skill: skillName,
-                evidenceSource: isVerified
-                  ? "INTERVIEW_VERIFIED"
-                  : "RESUME_EXTRACTED",
-                originalText:
-                  item.originalText ||
-                  item.original ||
-                  `Resume evidence for ${skillName}`,
-                suggestedText:
-                  item.suggestedText ||
-                  item.suggested ||
-                  `Emphasize your verified ${skillName} experience.`,
-                rationale:
-                  item.rationale ||
-                  item.reason ||
-                  `Grounded in your existing ${skillName} evidence.`,
-              };
-            });
-        }
-      } catch {
-        // Fallback to deterministic evidence-bounded builder below
-      }
-
-      if (generatedSuggestions.length === 0) {
-        generatedSuggestions = buildTruthfulSuggestions(
-          rawResumeText,
-          matchData.matchedSkills,
-          verifiedSkillSet,
-          roleTitle,
+      // 1. Skills found in raw resume text by deterministic backend tailoring service
+      for (const item of tailoringRes.addToSkills) {
+        const isVerified = verifiedSkillSet.has(
+          item.skill.toLowerCase().trim(),
         );
+        built.push({
+          id: `add-${item.skill}`,
+          section: "Skills & Experience Alignment",
+          skill: item.skill,
+          evidenceSource: isVerified
+            ? "INTERVIEW_VERIFIED"
+            : "RESUME_TEXT_FOUND",
+          originalText: item.evidence,
+          suggestedText: `Add "${item.skill}" explicitly to your Technical Skills section and surface the project bullet where ${item.skill} is already mentioned for ${roleTitle}.`,
+          rationale:
+            "Found in your uploaded resume text, but missing from your structured skills list.",
+        });
       }
 
-      setSuggestions(generatedSuggestions);
-      setAcceptedIds(new Set(generatedSuggestions.map((s) => s.id)));
+      // 2. Skills already matched on the resume or verified in interviews
+      for (const skill of matchData.matchedSkills) {
+        if (built.some((b) => b.skill.toLowerCase() === skill.toLowerCase())) {
+          continue;
+        }
+        const isVerified = verifiedSkillSet.has(skill.toLowerCase().trim());
+        built.push({
+          id: `matched-${skill}`,
+          section: isVerified
+            ? "Verified Core Competency"
+            : "Resume Qualification",
+          skill,
+          evidenceSource: isVerified
+            ? "INTERVIEW_VERIFIED"
+            : "RESUME_EXTRACTED",
+          originalText: `Listed on active resume (${skill}).`,
+          suggestedText: isVerified
+            ? `Emphasize your interview-verified ${skill} expertise in your top summary and primary engineering experience bullets for ${roleTitle}.`
+            : `Keep ${skill} prominent in your technical stack and pair it with measurable outcomes from your existing project experience.`,
+          rationale: isVerified
+            ? `Backed by both your resume and a strong mock interview evaluation.`
+            : `Present on your active resume and required by ${roleTitle}.`,
+        });
+      }
+
+      setSuggestions(built);
+      setAcceptedIds(new Set(built.map((s) => s.id)));
     } catch (err: unknown) {
       setError(
         err instanceof Error
@@ -270,8 +197,16 @@ export const TailoringPage: React.FC = () => {
     [suggestions, acceptedIds],
   );
 
-  const roleTitle = job?.title ?? "Target Engineering Role";
-  const companyName = job?.company ?? "Verified Employer";
+  const roleTitle =
+    job?.title || tailoringData?.jobTitle || "Target Engineering Role";
+  const companyName = job?.company || "Verified Employer";
+
+  const excludedSkills = useMemo(() => {
+    if (tailoringData?.notOnResume && tailoringData.notOnResume.length > 0) {
+      return tailoringData.notOnResume.map((item) => item.skill);
+    }
+    return matchResult?.missingSkills ?? [];
+  }, [tailoringData, matchResult]);
 
   const compiledTailoredDocument = useMemo(() => {
     const header = [
@@ -280,24 +215,33 @@ export const TailoringPage: React.FC = () => {
       `Generated: ${new Date().toLocaleDateString()}`,
       `Policy: Strictly bounded by existing resume facts and verified interview evaluations. Zero fabricated skills.`,
       "",
+      "## Recommended Skills List (Truthful & Evidence-Backed)",
+      (tailoringData?.suggestedSkills ?? matchResult?.matchedSkills ?? []).join(
+        ", ",
+      ) || "None",
+      "",
       "## Emphasized Qualifications (Backed by Evidence)",
       ...acceptedSuggestions.map(
         (s, idx) =>
-          `${idx + 1}. [${s.skill} — ${
-            s.evidenceSource === "INTERVIEW_VERIFIED"
-              ? "Interview Verified"
-              : "Resume Extracted"
-          }]\n   Original: ${s.originalText}\n   Tailored: ${s.suggestedText}`,
+          `${idx + 1}. [${s.skill} — ${s.section}]\n   Evidence: ${s.originalText}\n   Action: ${s.suggestedText}`,
       ),
       "",
       "## Excluded Missing Requirements (Never Added Until Proven)",
-      ...(matchResult?.missingSkills ?? []).map(
+      ...excludedSkills.map(
         (m) =>
-          `- ${m} (Not on active resume — complete a targeted interview first)`,
+          `- ${m} (Not found in resume text — complete a targeted interview first)`,
       ),
     ];
     return header.join("\n");
-  }, [roleTitle, companyName, activeResume, acceptedSuggestions, matchResult]);
+  }, [
+    roleTitle,
+    companyName,
+    activeResume,
+    tailoringData,
+    matchResult,
+    acceptedSuggestions,
+    excludedSkills,
+  ]);
 
   const handleCopyTailored = async () => {
     try {
@@ -399,8 +343,7 @@ export const TailoringPage: React.FC = () => {
           </Badge>
         </div>
         <p className="text-xs leading-relaxed text-content-body">
-          Suggestions below only reframe skills and experience already present
-          on{" "}
+          Suggestions below only surface skills already present in{" "}
           <strong className="font-semibold text-content-heading">
             {activeResume?.fileName ||
               activeResume?.title ||
@@ -408,10 +351,10 @@ export const TailoringPage: React.FC = () => {
           </strong>{" "}
           or verified in your mock interviews. The{" "}
           <strong className="font-semibold text-content-heading">
-            {matchResult?.missingSkills.length ?? 0} missing requirements
+            {excludedSkills.length} missing requirements
           </strong>{" "}
-          for this role are intentionally excluded so you never claim unverified
-          experience.
+          not found in your resume text are excluded so you never claim
+          unverified experience.
         </p>
       </Card>
 
@@ -446,8 +389,7 @@ export const TailoringPage: React.FC = () => {
                 <span className="inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-status-success">
                   <CheckCircle2 className="h-4 w-4" />
                   <span>
-                    Truthful Skills Safe to Emphasize (
-                    {matchResult?.matchedSkills.length ?? 0})
+                    Truthful Skills Safe to Emphasize ({suggestions.length})
                   </span>
                 </span>
                 <Badge tone="success" size="sm">
@@ -455,26 +397,35 @@ export const TailoringPage: React.FC = () => {
                 </Badge>
               </div>
               <p className="text-xs text-content-secondary">
-                Present on your active resume or verified in mock interviews:
+                Found in your resume text, skills list, or verified in mock
+                interviews:
               </p>
               <div className="flex flex-wrap gap-1.5">
-                {(matchResult?.matchedSkills ?? []).length === 0 ? (
+                {suggestions.length === 0 ? (
                   <span className="text-xs text-content-secondary">
-                    No matched skills found on active resume.
+                    No matched skills found in your resume text.
                   </span>
                 ) : (
-                  (matchResult?.matchedSkills ?? []).map((skill) => {
-                    const isVerified = verifiedSkillSet.has(
-                      skill.toLowerCase().trim(),
-                    );
-                    return (
-                      <SkillBadge
-                        key={skill}
-                        skill={skill}
-                        level={isVerified ? "VERIFIED" : "EXTRACTED"}
-                      />
-                    );
-                  })
+                  suggestions.map((item) => (
+                    <SkillBadge
+                      key={item.id}
+                      skill={item.skill}
+                      level={
+                        item.evidenceSource === "INTERVIEW_VERIFIED"
+                          ? "VERIFIED"
+                          : item.evidenceSource === "RESUME_TEXT_FOUND"
+                            ? "PRACTICED"
+                            : "EXTRACTED"
+                      }
+                      meta={
+                        item.evidenceSource === "INTERVIEW_VERIFIED"
+                          ? "Verified"
+                          : item.evidenceSource === "RESUME_TEXT_FOUND"
+                            ? "In Resume Text"
+                            : "On Resume"
+                      }
+                    />
+                  ))
                 )}
               </div>
             </Card>
@@ -485,7 +436,7 @@ export const TailoringPage: React.FC = () => {
                   <AlertTriangle className="h-4 w-4" />
                   <span>
                     Missing Skills Excluded from Fabrication (
-                    {matchResult?.missingSkills.length ?? 0})
+                    {excludedSkills.length})
                   </span>
                 </span>
                 <Badge tone="warning" size="sm">
@@ -493,17 +444,17 @@ export const TailoringPage: React.FC = () => {
                 </Badge>
               </div>
               <p className="text-xs text-content-secondary">
-                Required by the job, but omitted from tailoring until you prove
-                them in an interview or project:
+                Required by the job, but absent from your resume text until you
+                prove them in an interview or project:
               </p>
               <div className="flex flex-wrap gap-1.5">
-                {(matchResult?.missingSkills ?? []).length === 0 ? (
+                {excludedSkills.length === 0 ? (
                   <span className="text-xs text-status-success">
                     Zero missing skills — all requirements are backed by
                     evidence.
                   </span>
                 ) : (
-                  (matchResult?.missingSkills ?? []).map((skill) => (
+                  excludedSkills.map((skill) => (
                     <SkillBadge key={skill} skill={skill} level="MISSING" />
                   ))
                 )}
@@ -551,7 +502,7 @@ export const TailoringPage: React.FC = () => {
                     suggestions.length === 0 ? (
                       <EmptyState
                         title="No matched skills to tailor yet"
-                        description="Your current resume does not share extracted skills with this job posting. Practice the missing skills in a targeted interview first."
+                        description="Your current resume text does not mention the skills required by this job posting. Practice the missing skills in a targeted interview first."
                         icon={<Sparkles className="h-5 w-5" />}
                         action={
                           jobId ? (
@@ -598,13 +549,19 @@ export const TailoringPage: React.FC = () => {
                                         item.evidenceSource ===
                                         "INTERVIEW_VERIFIED"
                                           ? "VERIFIED"
-                                          : "EXTRACTED"
+                                          : item.evidenceSource ===
+                                              "RESUME_TEXT_FOUND"
+                                            ? "PRACTICED"
+                                            : "EXTRACTED"
                                       }
                                       meta={
                                         item.evidenceSource ===
                                         "INTERVIEW_VERIFIED"
                                           ? "Interview Verified"
-                                          : "On Resume"
+                                          : item.evidenceSource ===
+                                              "RESUME_TEXT_FOUND"
+                                            ? "Found in Resume Text"
+                                            : "On Resume"
                                       }
                                     />
                                     <span className="text-xs text-content-secondary">

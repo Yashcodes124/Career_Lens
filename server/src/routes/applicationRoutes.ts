@@ -6,6 +6,7 @@ import {
   createApplicationController,
   getApplicationByIdController,
   getApplicationsController,
+  deleteApplicationController,
   updateApplicationStatusController,
 } from "../controllers/applicationController";
 
@@ -17,5 +18,6 @@ router.get("/", getApplicationsController);
 router.get("/:id", getApplicationByIdController);
 router.post("/job/:jobId", createApplicationController);
 router.patch("/:id/status", updateApplicationStatusController);
+router.delete("/:id", deleteApplicationController);
 
 export default router;

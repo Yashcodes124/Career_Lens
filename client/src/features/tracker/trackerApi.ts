@@ -42,3 +42,9 @@ export async function updateApplicationStatus(
   );
   return response.application;
 }
+
+export async function deleteApplication(id: string): Promise<void> {
+  await apiClient(`/applications/${id}`, {
+    method: "DELETE",
+  });
+}

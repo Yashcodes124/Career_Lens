@@ -5,7 +5,7 @@ import { ArrowRight, CheckCircle2, Eye, FileText, Trash2 } from "lucide-react";
 import { useResumes } from "./useResumes";
 import { ResumeUploader } from "./ResumeUploader";
 import { ResumeParsedPreview, type ResumeRecord } from "./ResumeParsedPreview";
-import { apiClient } from "../../lib/api-client";
+import { deleteResume } from "./resumeApi";
 import { ContentContainer, PageHeader } from "../../components/layout";
 import {
   Badge,
@@ -81,7 +81,7 @@ export const ResumePage: React.FC = () => {
     if (!resumeToDelete) return;
     setIsDeleting(true);
     try {
-      await apiClient.delete(`/resumes/${resumeToDelete.id}`);
+      await deleteResume(resumeToDelete.id);
       await queryClient.invalidateQueries({ queryKey: ["resumes"] });
       setToastMessage(
         `Deleted ${resumeToDelete.fileName || resumeToDelete.title || "resume"}.`,

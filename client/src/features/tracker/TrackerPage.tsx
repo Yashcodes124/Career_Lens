@@ -20,7 +20,6 @@ import { fetchJobs } from "../jobs/jobsApi";
 import type { Job } from "../jobs/types";
 import { fetchUserInterviews } from "../interview/interviewApi";
 import type { Interview } from "../interview/types";
-import { apiClient } from "../../lib/api-client";
 import { ContentContainer, PageHeader } from "../../components/layout";
 import {
   Badge,
@@ -215,16 +214,7 @@ export const TrackerPage: React.FC = () => {
     setUpdatingId(app.id);
 
     try {
-      const anyTracker = trackerApi as Record<string, any>;
-      if (typeof anyTracker.updateApplicationStatus === "function") {
-        await anyTracker.updateApplicationStatus(app.id, nextStatus);
-      } else if (typeof anyTracker.updateApplication === "function") {
-        await anyTracker.updateApplication(app.id, { status: nextStatus });
-      } else {
-        await apiClient.patch(`/applications/${app.id}/status`, {
-          status: nextStatus,
-        });
-      }
+      await trackerApi.updateApplicationStatus(app.id, nextStatus);
 
       appendStatusHistory(app.id, nextStatus);
       await queryClient.invalidateQueries({ queryKey: ["applications"] });
@@ -253,14 +243,7 @@ export const TrackerPage: React.FC = () => {
     if (!appToRemove) return;
     setIsRemoving(true);
     try {
-      const anyTracker = trackerApi as Record<string, any>;
-      if (typeof anyTracker.deleteApplication === "function") {
-        await anyTracker.deleteApplication(appToRemove.id);
-      } else if (typeof anyTracker.removeApplication === "function") {
-        await anyTracker.removeApplication(appToRemove.id);
-      } else {
-        await apiClient.delete(`/applications/${appToRemove.id}`);
-      }
+      await trackerApi.deleteApplication(appToRemove.id);
 
       await queryClient.invalidateQueries({ queryKey: ["applications"] });
       if (selectedApp?.id === appToRemove.id) {

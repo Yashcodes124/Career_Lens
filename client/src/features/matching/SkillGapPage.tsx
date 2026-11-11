@@ -25,7 +25,8 @@ import type { ReadinessSkill } from "../readiness/readinessApi";
 import { useApplications } from "../tracker/useApplications";
 import type { Application } from "../tracker/types";
 import type { Job } from "../jobs/types";
-import { apiClient } from "../../lib/api-client";
+import { fetchJobById } from "../jobs/jobsApi";
+import { createInterview } from "../interview/interviewApi";
 import { ContentContainer, PageHeader } from "../../components/layout";
 import {
   Badge,
@@ -116,14 +117,9 @@ export const SkillGapPage: React.FC = () => {
   // Fetch job metadata
   useEffect(() => {
     if (!jobId) return;
-    apiClient
-      .get<{ data?: Job } | Job>(`/jobs/${jobId}`)
-      .then((res) => {
-        const unwrapped =
-          res && typeof res === "object" && "data" in res && res.data
-            ? res.data
-            : (res as Job);
-        if (unwrapped?.title) setJob(unwrapped);
+    fetchJobById(jobId)
+      .then((resolved) => {
+        if (resolved?.title) setJob(resolved);
       })
       .catch(() => null);
   }, [jobId]);
@@ -386,35 +382,24 @@ export const SkillGapPage: React.FC = () => {
           ? selectedFocusSkills
           : activeQueue.slice(0, 3).map((g) => g.skill);
 
-      const response = await apiClient.post<
-        { data?: { id?: string; interviewId?: string } } | { id?: string }
-      >("/interviews", {
+      const created = await createInterview({
         applicationId: targetAppId,
-        jobId,
-        resumeId: activeResumeId,
         durationMinutes,
         difficulty,
-        interviewType,
-        focusSkills: focusList,
+        focusTopics: focusList,
       });
 
-      const createdId =
-        (response as { data?: { id?: string; interviewId?: string } })?.data
-          ?.id ??
-        (response as { data?: { id?: string; interviewId?: string } })?.data
-          ?.interviewId ??
-        (response as { id?: string })?.id;
-
-      if (!createdId) {
+      if (!created?.id) {
         throw new Error("Interview created, but no session ID was returned.");
       }
 
       setInterviewModalOpen(false);
-      navigate(`/interviews/${createdId}/prep`, {
+      navigate(`/interviews/${created.id}/prep`, {
         state: {
           durationMinutes,
           difficulty,
           focusSkills: focusList,
+          focusTopics: focusList,
           roleTitle,
           companyName,
         },

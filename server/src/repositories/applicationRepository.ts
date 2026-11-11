@@ -70,3 +70,16 @@ export const updatedApplicationStatus = async (
     },
   });
 };
+
+// DELETE /api/applications/:id
+export const deleteApplication = async (
+  userId: string,
+  applicationId: string,
+) => {
+  return await prisma.application.deleteMany({
+    where: {
+      id: applicationId,
+      userId,
+    },
+  });
+};

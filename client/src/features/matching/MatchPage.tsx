@@ -16,9 +16,13 @@ import { useReadiness } from "../readiness/useReadiness";
 import type { ReadinessSkill } from "../readiness/readinessApi";
 import { useApplications } from "../tracker/useApplications";
 import { createApplication } from "../tracker/trackerApi";
-import { fetchSavedJobs, saveJob, unsaveJob } from "../jobs/jobsApi";
 import type { Job } from "../jobs/types";
-import { apiClient } from "../../lib/api-client";
+import {
+  fetchJobById,
+  fetchSavedJobs,
+  saveJob,
+  unsaveJob,
+} from "../jobs/jobsApi";
 import { ContentContainer, PageHeader } from "../../components/layout";
 import {
   Badge,
@@ -64,19 +68,12 @@ export const MatchPage: React.FC = () => {
     const loadJobMeta = async () => {
       try {
         const [jobRes, savedList] = await Promise.all([
-          apiClient
-            .get<{ data?: Job } | Job>(`/jobs/${jobId}`)
-            .catch(() => null),
+          fetchJobById(jobId).catch(() => null),
           fetchSavedJobs().catch(() => []),
         ]);
         if (cancelled) return;
-
-        if (jobRes) {
-          const unwrapped =
-            "data" in jobRes && jobRes.data ? jobRes.data : (jobRes as Job);
-          if (unwrapped && unwrapped.title) {
-            setJob(unwrapped);
-          }
+        if (jobRes && jobRes.title) {
+          setJob(jobRes);
         }
         setIsSaved(savedList.some((s) => s.id === jobId));
       } catch {
