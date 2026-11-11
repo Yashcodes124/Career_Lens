@@ -3,7 +3,6 @@ import {
   BrowserRouter as Router,
   Routes,
   Route,
-  Link,
   useNavigate,
   useLocation,
 } from "react-router-dom";
@@ -31,7 +30,7 @@ import { LiveInterviewPage } from "./features/interview/LiveInterviewPage";
 import { InterviewEvaluationPage } from "./features/interview/InterviewEvaluationPage";
 import { InterviewsPage } from "./features/interview/InterviewsPage";
 import { AppShell } from "./components/layout";
-import { Card } from "./components/ui";
+import { Button, Card } from "./components/ui";
 
 const WorkspaceRoute: React.FC<{ children: React.ReactNode }> = ({
   children,
@@ -236,26 +235,28 @@ const RegisterPage: React.FC = () => {
   );
 };
 
-const NotFound: React.FC = () => (
-  <AppShell variant="minimal">
-    <Card className="mx-auto max-w-md text-center" padding="lg">
-      <p className="text-xs font-semibold uppercase tracking-wider text-primary">
-        404 Not Found
-      </p>
-      <h1 className="mt-2 text-2xl font-semibold text-content-heading">
-        Page not found
-      </h1>
-      <p className="mt-2 text-sm text-content-secondary">
-        The page you are looking for does not exist or may have moved.
-      </p>
-      <Link
-        to="/dashboard"
-        className="mt-6 inline-flex h-10 items-center justify-center rounded-input bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
-      >
-        Back to Dashboard
-      </Link>
-    </Card>
-  </AppShell>
-);
+const NotFound: React.FC = () => {
+  const navigate = useNavigate();
+  return (
+    <AppShell variant="minimal">
+      <Card className="mx-auto max-w-md text-center" padding="lg">
+        <p className="text-xs font-semibold uppercase tracking-wider text-primary">
+          404 Not Found
+        </p>
+        <h1 className="mt-2 text-2xl font-semibold text-content-heading">
+          Page not found
+        </h1>
+        <p className="mt-2 text-sm text-content-secondary">
+          The page you are looking for does not exist or may have moved.
+        </p>
+        <div className="mt-6 flex justify-center">
+          <Button variant="primary" onClick={() => navigate("/dashboard")}>
+            Back to Dashboard
+          </Button>
+        </div>
+      </Card>
+    </AppShell>
+  );
+};
 
 export default App;

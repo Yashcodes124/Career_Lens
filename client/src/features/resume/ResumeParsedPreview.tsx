@@ -449,25 +449,38 @@ export const ResumeParsedPreview: React.FC<ResumeParsedPreviewProps> = ({
                       return (
                         <div
                           key={skill}
-                          className="inline-flex items-center gap-1"
+                          className="inline-flex items-center gap-1 rounded-sm"
                         >
-                          <button
-                            type="button"
+                          <SkillBadge
+                            skill={skill}
+                            level={isConfirmed ? "VERIFIED" : "EXTRACTED"}
+                            meta={isConfirmed ? "Confirmed" : "Extracted"}
+                            onRemove={() => handleRemoveSkill(skill)}
+                          />
+                          <Button
+                            variant="ghost"
+                            size="sm"
                             onClick={() => handleConfirmSkill(skill)}
+                            aria-label={
+                              isConfirmed
+                                ? `Unconfirm ${skill}`
+                                : `Confirm ${skill}`
+                            }
                             title={
                               isConfirmed
-                                ? "Confirmed skill (click to unconfirm)"
-                                : "Click to confirm this extracted skill"
+                                ? "Confirmed skill (click to undo)"
+                                : "Click to confirm this skill"
                             }
-                            className="rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                            className="h-6 px-1.5 text-[11px]"
                           >
-                            <SkillBadge
-                              skill={skill}
-                              level={isConfirmed ? "VERIFIED" : "EXTRACTED"}
-                              meta={isConfirmed ? "Confirmed" : "Extracted"}
-                              onRemove={() => handleRemoveSkill(skill)}
+                            <Check
+                              className={`h-3 w-3 ${
+                                isConfirmed
+                                  ? "text-status-success"
+                                  : "text-content-secondary"
+                              }`}
                             />
-                          </button>
+                          </Button>
                         </div>
                       );
                     })}

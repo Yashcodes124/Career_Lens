@@ -23,7 +23,6 @@ import {
   Badge,
   Button,
   Card,
-  EmptyState,
   ErrorState,
   JobCard,
   RequirementRow,
