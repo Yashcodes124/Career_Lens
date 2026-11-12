@@ -1,11 +1,11 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { ArrowRight, CheckCircle2, Eye, FileText, Trash2 } from "lucide-react";
 import { useResumes } from "./useResumes";
+import { deleteResume } from "./resumeApi";
 import { ResumeUploader } from "./ResumeUploader";
 import { ResumeParsedPreview, type ResumeRecord } from "./ResumeParsedPreview";
-import { deleteResume } from "./resumeApi";
 import { ContentContainer, PageHeader } from "../../components/layout";
 import {
   Badge,
@@ -24,6 +24,7 @@ const ACTIVE_RESUME_STORAGE_KEY = "truehire_active_resume_id";
 export const ResumePage: React.FC = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const detailSectionRef = useRef<HTMLDivElement | null>(null);
   const { data: resumesData, isLoading, isError, refetch } = useResumes();
 
   const resumes = useMemo<ResumeRecord[]>(
@@ -32,6 +33,7 @@ export const ResumePage: React.FC = () => {
   );
 
   const [selectedResumeId, setSelectedResumeId] = useState<string | null>(null);
+  const [modalResume, setModalResume] = useState<ResumeRecord | null>(null);
   const [activeResumeId, setActiveResumeId] = useState<string | null>(() => {
     try {
       return localStorage.getItem(ACTIVE_RESUME_STORAGE_KEY);
@@ -77,6 +79,15 @@ export const ResumePage: React.FC = () => {
     setToastMessage("Set as active resume for job matching.");
   };
 
+  const handleViewResume = (row: ResumeRecord) => {
+    setSelectedResumeId(row.id);
+    setModalResume(row);
+    detailSectionRef.current?.scrollIntoView({
+      behavior: "smooth",
+      block: "start",
+    });
+  };
+
   const handleDeleteResume = async () => {
     if (!resumeToDelete) return;
     setIsDeleting(true);
@@ -86,6 +97,9 @@ export const ResumePage: React.FC = () => {
       setToastMessage(
         `Deleted ${resumeToDelete.fileName || resumeToDelete.title || "resume"}.`,
       );
+      if (modalResume?.id === resumeToDelete.id) {
+        setModalResume(null);
+      }
       setResumeToDelete(null);
     } catch {
       setToastMessage("Could not delete resume. Please try again.");
@@ -99,7 +113,8 @@ export const ResumePage: React.FC = () => {
     const name = resume.fileName || resume.title || "";
     if (/\.docx$/i.test(name)) return "DOCX";
     if (/\.pdf$/i.test(name)) return "PDF";
-    return resume.fileType?.toUpperCase() || "PDF";
+    if (resume.mimeType?.includes("word")) return "DOCX";
+    return "PDF";
   };
 
   const getStatusBadge = (resume: ResumeRecord) => {
@@ -192,12 +207,18 @@ export const ResumePage: React.FC = () => {
           <SectionCard
             eyebrow="Uploaded Versions"
             title={`Resume List (${resumes.length})`}
-            description="Select any uploaded resume to inspect its extracted sections, confirm skills, or set it active for job matching."
+            description="Click View on any resume to open the full document inspector, confirm skills, or set it active for job matching."
           >
             <Table<ResumeRecord>
               data={resumes}
               rowKey={(row) => row.id}
-              onRowClick={(row) => setSelectedResumeId(row.id)}
+              onRowClick={(row) => {
+                setSelectedResumeId(row.id);
+                detailSectionRef.current?.scrollIntoView({
+                  behavior: "smooth",
+                  block: "start",
+                });
+              }}
               columns={[
                 {
                   key: "title",
@@ -244,13 +265,18 @@ export const ResumePage: React.FC = () => {
                   ),
                 },
                 {
-                  key: "skills",
-                  header: "Skills Count",
-                  render: (row) => (
-                    <span className="font-medium text-content-heading tabular-nums">
-                      {row.skills?.length ?? 0} skills
-                    </span>
-                  ),
+                  key: "sections",
+                  header: "Extracted Details",
+                  render: (row) => {
+                    const projCount = row.parsedData?.projects?.length ?? 0;
+                    const expCount = row.parsedData?.experience?.length ?? 0;
+                    return (
+                      <span className="text-xs font-medium text-content-body tabular-nums">
+                        {row.skills?.length ?? 0} skills · {projCount} projects
+                        · {expCount} exp
+                      </span>
+                    );
+                  },
                 },
                 {
                   key: "date",
@@ -275,10 +301,10 @@ export const ResumePage: React.FC = () => {
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => setSelectedResumeId(row.id)}
+                          onClick={() => handleViewResume(row)}
                           leftIcon={<Eye className="h-3.5 w-3.5" />}
                         >
-                          View
+                          View resume
                         </Button>
                         {!isActive && (
                           <Button
@@ -305,17 +331,45 @@ export const ResumePage: React.FC = () => {
             />
           </SectionCard>
 
-          {/* Selected Resume 5-Tab Detail View */}
+          {/* Inline Selected Resume Detail View */}
           {selectedResume && (
-            <ResumeParsedPreview
-              key={selectedResume.id}
-              resume={selectedResume}
-              isActiveForMatching={activeResumeId === selectedResume.id}
-              onSetActiveForMatching={handleSetActiveResume}
-            />
+            <div ref={detailSectionRef} id="resume-detail-section">
+              <ResumeParsedPreview
+                key={selectedResume.id}
+                resume={selectedResume}
+                isActiveForMatching={activeResumeId === selectedResume.id}
+                onSetActiveForMatching={handleSetActiveResume}
+              />
+            </div>
           )}
         </div>
       )}
+
+      {/* Full Resume Inspector Modal (Opened when clicking the Eye "View resume" button) */}
+      <Modal
+        open={Boolean(modalResume)}
+        onClose={() => setModalResume(null)}
+        title={
+          modalResume?.fileName || modalResume?.title || "Uploaded Resume View"
+        }
+        description="Complete view of your extracted summary, projects, work experience, education, skills, and plain text."
+        size="xl"
+        footer={
+          <Button variant="primary" onClick={() => setModalResume(null)}>
+            Close preview
+          </Button>
+        }
+      >
+        {modalResume && (
+          <ResumeParsedPreview
+            key={`modal-${modalResume.id}`}
+            resume={modalResume}
+            isActiveForMatching={activeResumeId === modalResume.id}
+            onSetActiveForMatching={handleSetActiveResume}
+            defaultTab="full"
+          />
+        )}
+      </Modal>
 
       {/* Delete Confirmation Modal */}
       <Modal

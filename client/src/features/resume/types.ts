@@ -34,6 +34,7 @@ export interface ResumeSummary {
   fileName: string | null;
   mimeType: string | null;
   fileSize: number | null;
+  rawText?: string;
   skills: string[];
   experienceYrs: number;
   parsedData: ParsedResumeData | null;

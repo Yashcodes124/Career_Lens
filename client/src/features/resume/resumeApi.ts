@@ -16,7 +16,12 @@ export async function fetchResumes(): Promise<ResumeSummary[]> {
   const response = await apiClient<ResumesResponse>("/resumes", { method: "GET" });
   return response.resumes ?? [];
 }
-
+export async function fetchResumeById(id: string): Promise<ResumeSummary> {
+  const response = await apiClient<ResumeResponse>(`/resumes/${id}`, {
+    method: "GET",
+  });
+  return response.resume;
+}
 export async function uploadResume(file: File): Promise<ResumeSummary> {
   const body = new FormData();
   body.append("resume", file);

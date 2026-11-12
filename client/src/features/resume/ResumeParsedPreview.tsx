@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   Briefcase,
   Check,
@@ -6,10 +6,18 @@ import {
   FileCode2,
   FileText,
   FolderGit2,
+  GraduationCap,
   Plus,
   RotateCcw,
   Sparkles,
 } from "lucide-react";
+import { fetchResumeById } from "./resumeApi";
+import type {
+  ParsedEducation,
+  ParsedExperience,
+  ParsedProject,
+  ResumeSummary,
+} from "./types";
 import {
   Badge,
   Button,
@@ -17,50 +25,20 @@ import {
   EmptyState,
   Input,
   SectionCard,
+  Skeleton,
   SkillBadge,
   Tabs,
 } from "../../components/ui";
 
-export interface ResumeRecord {
-  id: string;
-  title?: string;
-  fileName?: string | null;
-  fileType?: string | null;
-  fileSize?: number | null;
-  content?: string;
-  rawText?: string;
-  summary?: string | null;
-  skills: string[];
-  experience?: Array<
-    | string
-    | {
-        role?: string;
-        title?: string;
-        company?: string;
-        duration?: string;
-        period?: string;
-        highlights?: string[];
-        description?: string;
-      }
-  >;
-  projects?: Array<
-    | string
-    | {
-        name?: string;
-        title?: string;
-        description?: string;
-        technologies?: string[];
-        highlights?: string[];
-      }
-  >;
+export type ResumeRecord = ResumeSummary & {
   status?: "PARSED" | "PROCESSING" | "FAILED" | string;
-  createdAt: string;
-}
+};
 
 export interface ResumeParsedPreviewProps {
   resume: ResumeRecord;
   isActiveForMatching?: boolean;
   onSetActiveForMatching?: (resumeId: string) => void;
+  defaultTab?: string;
 }
 
 const CONFIRMED_SKILLS_KEY = "truehire_confirmed_resume_skills";
@@ -110,63 +88,26 @@ const writeCustomList = (resumeId: string, list: string[]) => {
   }
 };
 
-// Extract structured sections deterministically from raw text if backend only stored raw text
-function deriveSectionsFromRawText(rawText: string) {
-  const lines = rawText
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .filter(Boolean);
-
-  const summaryLines = lines.slice(0, 4).join(" ");
-
-  const experienceBlocks: string[] = [];
-  const projectBlocks: string[] = [];
-
-  let currentSection: "NONE" | "EXP" | "PROJ" = "NONE";
-  for (const line of lines) {
-    if (/^(work\s+)?experience|employment|career\s+history/i.test(line)) {
-      currentSection = "EXP";
-      continue;
-    }
-    if (
-      /^projects?|personal\s+projects|academic\s+projects|key\s+projects/i.test(
-        line,
-      )
-    ) {
-      currentSection = "PROJ";
-      continue;
-    }
-    if (
-      /^education|certifications|skills|technical\s+skills|achievements/i.test(
-        line,
-      )
-    ) {
-      currentSection = "NONE";
-      continue;
-    }
-
-    if (currentSection === "EXP" && line.length > 12) {
-      experienceBlocks.push(line);
-    } else if (currentSection === "PROJ" && line.length > 12) {
-      projectBlocks.push(line);
-    }
-  }
-
-  return {
-    summary:
-      summaryLines ||
-      "Resume parsed and indexed for deterministic job requirement matching.",
-    experienceLines: experienceBlocks.slice(0, 10),
-    projectLines: projectBlocks.slice(0, 8),
-  };
-}
+const formatDuration = (months: number | null | undefined): string | null => {
+  if (months === null || months === undefined || months <= 0) return null;
+  const years = Math.floor(months / 12);
+  const remaining = months % 12;
+  const parts: string[] = [];
+  if (years > 0) parts.push(`${years} yr${years > 1 ? "s" : ""}`);
+  if (remaining > 0) parts.push(`${remaining} mo`);
+  return parts.join(" ");
+};
 
 export const ResumeParsedPreview: React.FC<ResumeParsedPreviewProps> = ({
   resume,
   isActiveForMatching = false,
   onSetActiveForMatching,
+  defaultTab = "full",
 }) => {
-  const [activeTab, setActiveTab] = useState<string>("summary");
+  const [activeTab, setActiveTab] = useState<string>(defaultTab);
+  const [fullResume, setFullResume] = useState<ResumeSummary>(resume);
+  const [loadingDetail, setLoadingDetail] = useState<boolean>(false);
+
   const [confirmedSkills, setConfirmedSkills] = useState<Set<string>>(() =>
     readSet(CONFIRMED_SKILLS_KEY),
   );
@@ -178,11 +119,58 @@ export const ResumeParsedPreview: React.FC<ResumeParsedPreviewProps> = ({
   );
   const [newSkill, setNewSkill] = useState("");
 
-  const rawText = resume.rawText || resume.content || "";
-  const derived = useMemo(() => deriveSectionsFromRawText(rawText), [rawText]);
+  // Fetch full resume by ID so rawText and complete parsedData are always loaded
+  useEffect(() => {
+    setFullResume(resume);
+    let cancelled = false;
+    setLoadingDetail(true);
+
+    fetchResumeById(resume.id)
+      .then((detail) => {
+        if (!cancelled && detail) {
+          setFullResume(detail);
+        }
+      })
+      .catch(() => null)
+      .finally(() => {
+        if (!cancelled) setLoadingDetail(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [resume]);
+
+  const parsed = fullResume.parsedData;
+  const rawText = fullResume.rawText ?? "";
+
+  const summaryText =
+    parsed?.summary ||
+    (rawText
+      ? rawText.split(/\r?\n/).filter(Boolean).slice(0, 4).join(" ")
+      : "Resume parsed and indexed for deterministic job requirement matching.");
+
+  const experienceItems: ParsedExperience[] = useMemo(
+    () => (Array.isArray(parsed?.experience) ? parsed.experience : []),
+    [parsed],
+  );
+
+  const projectItems: ParsedProject[] = useMemo(
+    () => (Array.isArray(parsed?.projects) ? parsed.projects : []),
+    [parsed],
+  );
+
+  const educationItems: ParsedEducation[] = useMemo(
+    () => (Array.isArray(parsed?.education) ? parsed.education : []),
+    [parsed],
+  );
 
   const allSkills = useMemo(() => {
-    const combined = [...(resume.skills ?? []), ...customSkills];
+    const combined = [
+      ...(fullResume.skills ?? []),
+      ...(parsed?.skills ?? []),
+      ...customSkills,
+    ];
     const unique: string[] = [];
     const seen = new Set<string>();
     for (const s of combined) {
@@ -193,7 +181,7 @@ export const ResumeParsedPreview: React.FC<ResumeParsedPreviewProps> = ({
       }
     }
     return unique;
-  }, [resume.skills, customSkills, dismissedSkills]);
+  }, [fullResume.skills, parsed?.skills, customSkills, dismissedSkills]);
 
   const confirmedCount = useMemo(
     () =>
@@ -262,31 +250,21 @@ export const ResumeParsedPreview: React.FC<ResumeParsedPreviewProps> = ({
     setNewSkill("");
   };
 
-  const experienceItems = useMemo(() => {
-    if (Array.isArray(resume.experience) && resume.experience.length > 0) {
-      return resume.experience;
-    }
-    return derived.experienceLines;
-  }, [resume.experience, derived.experienceLines]);
-
-  const projectItems = useMemo(() => {
-    if (Array.isArray(resume.projects) && resume.projects.length > 0) {
-      return resume.projects;
-    }
-    return derived.projectLines;
-  }, [resume.projects, derived.projectLines]);
-
   const fileExtension = useMemo(() => {
-    const name = resume.fileName || resume.title || "";
+    const name = fullResume.fileName || fullResume.title || "";
     if (/\.docx$/i.test(name)) return "DOCX";
-    return resume.fileType?.toUpperCase() || "PDF";
-  }, [resume]);
+    if (fullResume.mimeType?.includes("word")) return "DOCX";
+    return "PDF";
+  }, [fullResume]);
+
+  const totalYears =
+    parsed?.totalExperienceYears ?? fullResume.experienceYrs ?? 0;
 
   return (
     <SectionCard
       eyebrow="Resume Detail"
-      title={resume.fileName || resume.title || "Parsed Resume"}
-      description={`Uploaded ${new Date(resume.createdAt).toLocaleDateString()} · ${fileExtension} · ${allSkills.length} active skills (${confirmedCount} confirmed)`}
+      title={fullResume.fileName || fullResume.title || "Parsed Resume"}
+      description={`Uploaded ${new Date(fullResume.createdAt).toLocaleDateString()} · ${fileExtension} · ${allSkills.length} active skills (${confirmedCount} confirmed) · ${projectItems.length} projects · ${experienceItems.length} experience entries`}
       action={
         <div className="flex flex-wrap items-center gap-2">
           {isActiveForMatching ? (
@@ -301,7 +279,7 @@ export const ResumeParsedPreview: React.FC<ResumeParsedPreviewProps> = ({
               <Button
                 variant="primary"
                 size="sm"
-                onClick={() => onSetActiveForMatching(resume.id)}
+                onClick={() => onSetActiveForMatching(fullResume.id)}
               >
                 Use for matching
               </Button>
@@ -315,6 +293,192 @@ export const ResumeParsedPreview: React.FC<ResumeParsedPreviewProps> = ({
         onChange={setActiveTab}
         items={[
           {
+            id: "full",
+            label: "Full Resume",
+            content: (
+              <div className="space-y-6">
+                {/* Summary Banner */}
+                <Card muted padding="md" className="space-y-2">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <p className="text-xs font-semibold uppercase tracking-wider text-primary">
+                      Professional Summary
+                    </p>
+                    <Badge tone="neutral" size="sm">
+                      {totalYears} {totalYears === 1 ? "yr" : "yrs"} experience
+                    </Badge>
+                  </div>
+                  <p className="text-sm leading-relaxed text-content-body">
+                    {summaryText}
+                  </p>
+                </Card>
+
+                {/* Projects Section */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between border-b border-border pb-2">
+                    <h3 className="inline-flex items-center gap-2 text-sm font-semibold text-content-heading">
+                      <FolderGit2 className="h-4 w-4 text-primary" />
+                      <span>Projects ({projectItems.length})</span>
+                    </h3>
+                  </div>
+
+                  {projectItems.length === 0 ? (
+                    <p className="text-xs text-content-secondary">
+                      No structured projects listed. Check the Raw text tab for
+                      full document text.
+                    </p>
+                  ) : (
+                    <div className="grid gap-3 md:grid-cols-2">
+                      {projectItems.map((proj, idx) => (
+                        <Card
+                          key={`${proj.name}-${idx}`}
+                          padding="md"
+                          className="space-y-2.5"
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <h4 className="text-sm font-semibold text-content-heading">
+                              {proj.name || "Technical Project"}
+                            </h4>
+                            <Sparkles className="h-3.5 w-3.5 shrink-0 text-primary" />
+                          </div>
+                          {proj.description && (
+                            <p className="text-xs leading-relaxed text-content-body">
+                              {proj.description}
+                            </p>
+                          )}
+                          {Array.isArray(proj.technologies) &&
+                            proj.technologies.length > 0 && (
+                              <div className="flex flex-wrap gap-1.5 pt-1">
+                                {proj.technologies.map((tech) => (
+                                  <Badge key={tech} tone="primary" size="sm">
+                                    {tech}
+                                  </Badge>
+                                ))}
+                              </div>
+                            )}
+                        </Card>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Experience Section */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between border-b border-border pb-2">
+                    <h3 className="inline-flex items-center gap-2 text-sm font-semibold text-content-heading">
+                      <Briefcase className="h-4 w-4 text-primary" />
+                      <span>Work Experience ({experienceItems.length})</span>
+                    </h3>
+                  </div>
+
+                  {experienceItems.length === 0 ? (
+                    <p className="text-xs text-content-secondary">
+                      No work experience entries extracted.
+                    </p>
+                  ) : (
+                    <ul className="space-y-3">
+                      {experienceItems.map((exp, idx) => (
+                        <li key={`${exp.company}-${idx}`}>
+                          <Card padding="md" className="space-y-1.5">
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                              <h4 className="text-sm font-semibold text-content-heading">
+                                {exp.role || "Engineering Role"}
+                                {exp.company ? ` · ${exp.company}` : ""}
+                              </h4>
+                              {formatDuration(exp.durationMonths) && (
+                                <Badge tone="neutral" size="sm">
+                                  {formatDuration(exp.durationMonths)}
+                                </Badge>
+                              )}
+                            </div>
+                            {exp.description && (
+                              <p className="text-xs leading-relaxed text-content-body">
+                                {exp.description}
+                              </p>
+                            )}
+                          </Card>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+
+                {/* Education Section */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between border-b border-border pb-2">
+                    <h3 className="inline-flex items-center gap-2 text-sm font-semibold text-content-heading">
+                      <GraduationCap className="h-4 w-4 text-primary" />
+                      <span>Education ({educationItems.length})</span>
+                    </h3>
+                  </div>
+
+                  {educationItems.length === 0 ? (
+                    <p className="text-xs text-content-secondary">
+                      No education entries extracted.
+                    </p>
+                  ) : (
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      {educationItems.map((edu, idx) => (
+                        <Card
+                          key={`${edu.institution}-${idx}`}
+                          padding="sm"
+                          className="space-y-1"
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <h4 className="text-sm font-semibold text-content-heading">
+                              {edu.institution || "Institution"}
+                            </h4>
+                            {(edu.startYear || edu.endYear) && (
+                              <Badge tone="neutral" size="sm">
+                                {edu.startYear ?? ""}
+                                {edu.endYear ? ` – ${edu.endYear}` : ""}
+                              </Badge>
+                            )}
+                          </div>
+                          <p className="text-xs text-content-body">
+                            {[edu.degree, edu.field]
+                              .filter(Boolean)
+                              .join(" in ")}
+                          </p>
+                        </Card>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Skills Snapshot */}
+                <div className="space-y-2.5">
+                  <div className="flex items-center justify-between border-b border-border pb-2">
+                    <h3 className="text-sm font-semibold text-content-heading">
+                      Extracted Skills ({allSkills.length})
+                    </h3>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setActiveTab("skills")}
+                    >
+                      Confirm or edit skills →
+                    </Button>
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {allSkills.map((skill) => {
+                      const isConfirmed = confirmedSkills.has(
+                        skill.toLowerCase().trim(),
+                      );
+                      return (
+                        <SkillBadge
+                          key={skill}
+                          skill={skill}
+                          level={isConfirmed ? "VERIFIED" : "EXTRACTED"}
+                          meta={isConfirmed ? "Confirmed" : "Extracted"}
+                        />
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            ),
+          },
+          {
             id: "summary",
             label: "Summary",
             content: (
@@ -324,11 +488,11 @@ export const ResumeParsedPreview: React.FC<ResumeParsedPreviewProps> = ({
                     Extracted Overview
                   </p>
                   <p className="text-sm leading-relaxed text-content-body">
-                    {resume.summary || derived.summary}
+                    {summaryText}
                   </p>
                 </Card>
 
-                <div className="grid gap-4 sm:grid-cols-3">
+                <div className="grid gap-4 sm:grid-cols-4">
                   <Card padding="sm" className="space-y-1">
                     <p className="text-xs text-content-secondary">
                       Extracted Skills
@@ -342,26 +506,32 @@ export const ResumeParsedPreview: React.FC<ResumeParsedPreviewProps> = ({
                   </Card>
 
                   <Card padding="sm" className="space-y-1">
-                    <p className="text-xs text-content-secondary">
-                      Experience Entries
-                    </p>
-                    <p className="text-xl font-semibold text-content-heading tabular-nums">
-                      {experienceItems.length}
-                    </p>
-                    <p className="text-xs text-content-secondary">
-                      Parsed role & responsibility lines
-                    </p>
-                  </Card>
-
-                  <Card padding="sm" className="space-y-1">
-                    <p className="text-xs text-content-secondary">
-                      Project Highlights
-                    </p>
+                    <p className="text-xs text-content-secondary">Projects</p>
                     <p className="text-xl font-semibold text-content-heading tabular-nums">
                       {projectItems.length}
                     </p>
                     <p className="text-xs text-content-secondary">
-                      Technical project references
+                      Parsed project entries
+                    </p>
+                  </Card>
+
+                  <Card padding="sm" className="space-y-1">
+                    <p className="text-xs text-content-secondary">Experience</p>
+                    <p className="text-xl font-semibold text-content-heading tabular-nums">
+                      {experienceItems.length}
+                    </p>
+                    <p className="text-xs text-content-secondary">
+                      {totalYears} yrs total experience
+                    </p>
+                  </Card>
+
+                  <Card padding="sm" className="space-y-1">
+                    <p className="text-xs text-content-secondary">Education</p>
+                    <p className="text-xl font-semibold text-content-heading tabular-nums">
+                      {educationItems.length}
+                    </p>
+                    <p className="text-xs text-content-secondary">
+                      Academic qualifications
                     </p>
                   </Card>
                 </div>
@@ -384,8 +554,9 @@ export const ResumeParsedPreview: React.FC<ResumeParsedPreviewProps> = ({
                       Confirm or remove extracted skills
                     </p>
                     <p className="text-xs text-content-secondary">
-                      Click a skill to toggle confirmation, or click the remove
-                      icon (×) to exclude inaccurate keywords from job matching.
+                      Click the check icon (✓) to confirm a skill, or click the
+                      remove icon (×) to exclude inaccurate keywords from job
+                      matching.
                     </p>
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
@@ -412,7 +583,6 @@ export const ResumeParsedPreview: React.FC<ResumeParsedPreviewProps> = ({
                   </div>
                 </Card>
 
-                {/* Add Skill Control */}
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
                   <Input
                     label="Add a missing skill to this resume profile"
@@ -501,50 +671,28 @@ export const ResumeParsedPreview: React.FC<ResumeParsedPreviewProps> = ({
                 />
               ) : (
                 <ul className="space-y-3">
-                  {experienceItems.map((item, idx) => {
-                    if (typeof item === "string") {
-                      return (
-                        <li key={idx}>
-                          <Card padding="sm" className="flex items-start gap-3">
-                            <Briefcase className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-                            <p className="text-sm leading-relaxed text-content-body">
-                              {item}
-                            </p>
-                          </Card>
-                        </li>
-                      );
-                    }
-                    return (
-                      <li key={idx}>
-                        <Card padding="md" className="space-y-2">
-                          <div className="flex flex-wrap items-center justify-between gap-2">
-                            <h4 className="text-sm font-semibold text-content-heading">
-                              {item.role || item.title || "Engineering Role"}
-                              {item.company ? ` · ${item.company}` : ""}
-                            </h4>
-                            {(item.duration || item.period) && (
-                              <Badge tone="neutral" size="sm">
-                                {item.duration || item.period}
-                              </Badge>
-                            )}
-                          </div>
-                          {item.description && (
-                            <p className="text-xs leading-relaxed text-content-body">
-                              {item.description}
-                            </p>
+                  {experienceItems.map((item, idx) => (
+                    <li key={`${item.company}-${idx}`}>
+                      <Card padding="md" className="space-y-2">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <h4 className="text-sm font-semibold text-content-heading">
+                            {item.role || "Engineering Role"}
+                            {item.company ? ` · ${item.company}` : ""}
+                          </h4>
+                          {formatDuration(item.durationMonths) && (
+                            <Badge tone="neutral" size="sm">
+                              {formatDuration(item.durationMonths)}
+                            </Badge>
                           )}
-                          {Array.isArray(item.highlights) &&
-                            item.highlights.length > 0 && (
-                              <ul className="list-disc space-y-1 pl-4 text-xs text-content-body">
-                                {item.highlights.map((h, hIdx) => (
-                                  <li key={hIdx}>{h}</li>
-                                ))}
-                              </ul>
-                            )}
-                        </Card>
-                      </li>
-                    );
-                  })}
+                        </div>
+                        {item.description && (
+                          <p className="text-xs leading-relaxed text-content-body">
+                            {item.description}
+                          </p>
+                        )}
+                      </Card>
+                    </li>
+                  ))}
                 </ul>
               ),
           },
@@ -560,75 +708,102 @@ export const ResumeParsedPreview: React.FC<ResumeParsedPreviewProps> = ({
                 />
               ) : (
                 <ul className="space-y-3">
-                  {projectItems.map((proj, idx) => {
-                    if (typeof proj === "string") {
-                      return (
-                        <li key={idx}>
-                          <Card padding="sm" className="flex items-start gap-3">
-                            <FolderGit2 className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-                            <p className="text-sm leading-relaxed text-content-body">
-                              {proj}
-                            </p>
-                          </Card>
-                        </li>
-                      );
-                    }
-                    return (
-                      <li key={idx}>
-                        <Card padding="md" className="space-y-2">
-                          <div className="flex flex-wrap items-center justify-between gap-2">
-                            <h4 className="text-sm font-semibold text-content-heading">
-                              {proj.name || proj.title || "Technical Project"}
-                            </h4>
-                            <Sparkles className="h-3.5 w-3.5 text-primary" />
-                          </div>
-                          {proj.description && (
-                            <p className="text-xs leading-relaxed text-content-body">
-                              {proj.description}
-                            </p>
+                  {projectItems.map((proj, idx) => (
+                    <li key={`${proj.name}-${idx}`}>
+                      <Card padding="md" className="space-y-2">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <h4 className="text-sm font-semibold text-content-heading">
+                            {proj.name || "Technical Project"}
+                          </h4>
+                          <Sparkles className="h-3.5 w-3.5 text-primary" />
+                        </div>
+                        {proj.description && (
+                          <p className="text-xs leading-relaxed text-content-body">
+                            {proj.description}
+                          </p>
+                        )}
+                        {Array.isArray(proj.technologies) &&
+                          proj.technologies.length > 0 && (
+                            <div className="flex flex-wrap gap-1.5 pt-1">
+                              {proj.technologies.map((tech) => (
+                                <Badge key={tech} tone="primary" size="sm">
+                                  {tech}
+                                </Badge>
+                              ))}
+                            </div>
                           )}
-                          {Array.isArray(proj.technologies) &&
-                            proj.technologies.length > 0 && (
-                              <div className="flex flex-wrap gap-1.5 pt-1">
-                                {proj.technologies.map((tech) => (
-                                  <Badge key={tech} tone="neutral" size="sm">
-                                    {tech}
-                                  </Badge>
-                                ))}
-                              </div>
-                            )}
-                        </Card>
-                      </li>
-                    );
-                  })}
+                      </Card>
+                    </li>
+                  ))}
+                </ul>
+              ),
+          },
+          {
+            id: "education",
+            label: "Education",
+            count: educationItems.length,
+            content:
+              educationItems.length === 0 ? (
+                <EmptyState
+                  title="No structured education entries detected"
+                  description="Switch to the Raw text tab to view your full academic details."
+                />
+              ) : (
+                <ul className="space-y-3">
+                  {educationItems.map((edu, idx) => (
+                    <li key={`${edu.institution}-${idx}`}>
+                      <Card padding="md" className="space-y-1.5">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <h4 className="text-sm font-semibold text-content-heading">
+                            {edu.institution || "Institution"}
+                          </h4>
+                          {(edu.startYear || edu.endYear) && (
+                            <Badge tone="neutral" size="sm">
+                              {edu.startYear ?? ""}
+                              {edu.endYear ? ` – ${edu.endYear}` : ""}
+                            </Badge>
+                          )}
+                        </div>
+                        <p className="text-xs text-content-body">
+                          {[edu.degree, edu.field].filter(Boolean).join(" in ")}
+                        </p>
+                      </Card>
+                    </li>
+                  ))}
                 </ul>
               ),
           },
           {
             id: "raw",
             label: "Raw text",
-            content: rawText ? (
-              <Card muted padding="md">
-                <div className="mb-2 flex items-center justify-between">
-                  <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-content-heading">
-                    <FileCode2 className="h-3.5 w-3.5 text-primary" />
-                    <span>Extracted Plain Text</span>
-                  </span>
-                  <span className="text-xs text-content-secondary tabular-nums">
-                    {rawText.length.toLocaleString()} characters
-                  </span>
+            content:
+              loadingDetail && !rawText ? (
+                <div className="space-y-2">
+                  <Skeleton className="h-6 w-48" />
+                  <Skeleton className="h-64 w-full" />
                 </div>
-                <pre className="max-h-96 overflow-y-auto whitespace-pre-wrap rounded-input border border-border bg-surface p-4 font-mono text-xs leading-relaxed text-content-body">
-                  {rawText}
-                </pre>
-              </Card>
-            ) : (
-              <EmptyState
-                title="Raw text unavailable"
-                description="This resume record only contains extracted skill metadata."
-                icon={<FileText className="h-5 w-5" />}
-              />
-            ),
+              ) : rawText ? (
+                <Card muted padding="md">
+                  <div className="mb-2 flex items-center justify-between">
+                    <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-content-heading">
+                      <FileCode2 className="h-3.5 w-3.5 text-primary" />
+                      <span>Extracted Plain Text</span>
+                    </span>
+                    <span className="text-xs text-content-secondary tabular-nums">
+                      {rawText.length.toLocaleString()} characters
+                    </span>
+                  </div>
+                  <pre className="max-h-96 overflow-y-auto whitespace-pre-wrap rounded-input border border-border bg-surface p-4 font-mono text-xs leading-relaxed text-content-body">
+                    {rawText}
+                  </pre>
+                </Card>
+              ) : (
+                <EmptyState
+                  title="Raw text unavailable"
+                  description="This resume record only contains extracted skill metadata."
+                  icon={<FileText className="h-5 w-5" />}
+                />
+              ),
           },
         ]}
       />

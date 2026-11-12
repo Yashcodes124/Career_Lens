@@ -26,7 +26,10 @@ import { useApplications } from "../tracker/useApplications";
 import type { Application } from "../tracker/types";
 import type { Job } from "../jobs/types";
 import { fetchJobById } from "../jobs/jobsApi";
-import { createInterview } from "../interview/interviewApi";
+import {
+  createInterview,
+  INTERVIEW_ROUND_CATALOG,
+} from "../interview/interviewApi";
 import { ContentContainer, PageHeader } from "../../components/layout";
 import {
   Badge,
@@ -108,7 +111,13 @@ export const SkillGapPage: React.FC = () => {
   const [difficulty, setDifficulty] = useState<"EASY" | "MEDIUM" | "HARD">(
     "MEDIUM",
   );
-  const [interviewType, setInterviewType] = useState<string>("TECHNICAL");
+  const [roundMode, setRoundMode] = useState<"ALL" | "SPECIFIC">("ALL");
+  const [selectedRounds, setSelectedRounds] = useState<string[]>([
+    "Project & Resume Deep-Dive",
+    "Core Technical & Stack Assessment",
+    "System Design & Architecture",
+  ]);
+
   const [selectedFocusSkills, setSelectedFocusSkills] = useState<string[]>([]);
   const [customFocusSkill, setCustomFocusSkill] = useState("");
   const [isCreatingInterview, setIsCreatingInterview] = useState(false);
@@ -314,6 +323,14 @@ export const SkillGapPage: React.FC = () => {
 
   const activeQueue =
     activeViewTab === "overview" ? overviewGapQueue : roleGapQueue;
+  const selectableSkillsPool = useMemo(() => {
+    const set = new Set<string>();
+    for (const g of activeQueue) set.add(g.skill);
+    for (const g of overviewGapQueue) set.add(g.skill);
+    for (const r of job?.requirements ?? []) set.add(r);
+    for (const s of (activeResume?.skills ?? []).slice(0, 10)) set.add(s);
+    return [...set];
+  }, [activeQueue, overviewGapQueue, job, activeResume]);
 
   const selectedGapItem = useMemo(
     () =>
@@ -382,11 +399,21 @@ export const SkillGapPage: React.FC = () => {
           ? selectedFocusSkills
           : activeQueue.slice(0, 3).map((g) => g.skill);
 
+      const roundsToUse =
+        roundMode === "ALL"
+          ? INTERVIEW_ROUND_CATALOG.slice(0, durationMinutes <= 15 ? 3 : 5).map(
+              (r) => r.name,
+            )
+          : selectedRounds.length > 0
+            ? selectedRounds
+            : ["Core Technical & Stack Assessment"];
+
       const created = await createInterview({
         applicationId: targetAppId,
         durationMinutes,
         difficulty,
         focusTopics: focusList,
+        selectedRounds: roundsToUse,
       });
 
       if (!created?.id) {
@@ -905,28 +932,27 @@ export const SkillGapPage: React.FC = () => {
             />
           )}
 
-          {/* Duration Preset */}
-          <div className="space-y-2">
-            <p className="text-xs font-medium text-content-heading">
-              Session duration
-            </p>
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-              {[15, 30, 45, 60].map((mins) => (
-                <Button
-                  key={mins}
-                  variant={durationMinutes === mins ? "primary" : "outline"}
-                  size="sm"
-                  onClick={() => setDurationMinutes(mins)}
-                  leftIcon={<Clock className="h-3.5 w-3.5" />}
-                >
-                  {mins} minutes
-                </Button>
-              ))}
-            </div>
-          </div>
-
-          {/* Difficulty & Interview Type */}
+          {/* Duration & Difficulty */}
           <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2">
+              <p className="text-xs font-medium text-content-heading">
+                Session duration
+              </p>
+              <div className="grid grid-cols-2 gap-2">
+                {[15, 30, 45, 60].map((mins) => (
+                  <Button
+                    key={mins}
+                    variant={durationMinutes === mins ? "primary" : "outline"}
+                    size="sm"
+                    onClick={() => setDurationMinutes(mins)}
+                    leftIcon={<Clock className="h-3.5 w-3.5" />}
+                  >
+                    {mins} min
+                  </Button>
+                ))}
+              </div>
+            </div>
+
             <Select
               label="Difficulty level"
               value={difficulty}
@@ -942,24 +968,82 @@ export const SkillGapPage: React.FC = () => {
                 },
               ]}
             />
+          </div>
 
-            <Select
-              label="Interview format"
-              value={interviewType}
-              onChange={(e) => setInterviewType(e.target.value)}
-              options={[
-                { value: "TECHNICAL", label: "Technical deep-dive" },
-                {
-                  value: "SYSTEM_DESIGN",
-                  label: "System design & architecture",
-                },
-                {
-                  value: "BEHAVIORAL",
-                  label: "Behavioral & project ownership",
-                },
-                { value: "MIXED", label: "Mixed technical + behavioral" },
-              ]}
-            />
+          {/* User-Specific Interview Rounds Selector */}
+          <div className="space-y-3 border-t border-border pt-4">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="text-xs font-medium text-content-heading">
+                Interview rounds to include
+              </p>
+              <div className="flex items-center gap-1.5">
+                <Button
+                  variant={roundMode === "ALL" ? "primary" : "outline"}
+                  size="sm"
+                  onClick={() => setRoundMode("ALL")}
+                >
+                  All rounds (Full mock)
+                </Button>
+                <Button
+                  variant={roundMode === "SPECIFIC" ? "primary" : "outline"}
+                  size="sm"
+                  onClick={() => setRoundMode("SPECIFIC")}
+                >
+                  Choose specific rounds ({selectedRounds.length})
+                </Button>
+              </div>
+            </div>
+
+            {roundMode === "ALL" ? (
+              <Card muted padding="sm">
+                <p className="text-xs text-content-body">
+                  Full mock interview covering{" "}
+                  <strong className="font-semibold text-content-heading">
+                    Intro & Role Fit, Project Deep-Dive, Core Technical, System
+                    Design, and Behavioral Ownership
+                  </strong>{" "}
+                  scaled to {durationMinutes} minutes.
+                </p>
+              </Card>
+            ) : (
+              <div className="grid gap-2 sm:grid-cols-2">
+                {INTERVIEW_ROUND_CATALOG.map((round) => {
+                  const isChecked = selectedRounds.includes(round.name);
+                  return (
+                    <Card
+                      key={round.id}
+                      padding="sm"
+                      interactive
+                      onClick={() =>
+                        setSelectedRounds((prev) =>
+                          prev.includes(round.name)
+                            ? prev.filter((r) => r !== round.name)
+                            : [...prev, round.name],
+                        )
+                      }
+                      className={`cursor-pointer space-y-1 ${
+                        isChecked ? "border-primary bg-primary-soft/30" : ""
+                      }`}
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-xs font-semibold text-content-heading">
+                          {round.shortLabel}
+                        </span>
+                        <Badge
+                          tone={isChecked ? "primary" : "neutral"}
+                          size="sm"
+                        >
+                          {isChecked ? "Selected" : "Include"}
+                        </Badge>
+                      </div>
+                      <p className="text-[11px] text-content-secondary">
+                        {round.description}
+                      </p>
+                    </Card>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
           {/* Focus Skills Selection */}
@@ -967,17 +1051,17 @@ export const SkillGapPage: React.FC = () => {
             <p className="text-xs font-medium text-content-heading">
               Focus skills to assess ({selectedFocusSkills.length} selected)
             </p>
-            <div className="flex flex-wrap gap-2">
-              {activeQueue.map((gap) => {
-                const isSelected = selectedFocusSkills.includes(gap.skill);
+            <div className="flex flex-wrap gap-1.5">
+              {selectableSkillsPool.map((skill) => {
+                const isSelected = selectedFocusSkills.includes(skill);
                 return (
                   <Button
-                    key={gap.skill}
+                    key={skill}
                     variant={isSelected ? "primary" : "outline"}
                     size="sm"
-                    onClick={() => toggleFocusSkillInModal(gap.skill)}
+                    onClick={() => toggleFocusSkillInModal(skill)}
                   >
-                    {gap.skill} ({gap.priority})
+                    {skill}
                   </Button>
                 );
               })}
@@ -985,8 +1069,8 @@ export const SkillGapPage: React.FC = () => {
 
             <div className="flex flex-col gap-2 pt-2 sm:flex-row sm:items-end">
               <Input
-                label="Add a custom skill to test"
-                placeholder="e.g., Redis, System Design, OAuth2"
+                label="Add any custom skill or topic to test"
+                placeholder="e.g., Redis, System Design, OAuth2, Kafka"
                 value={customFocusSkill}
                 onChange={(e) => setCustomFocusSkill(e.target.value)}
                 onKeyDown={(e) => {

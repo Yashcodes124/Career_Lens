@@ -56,7 +56,19 @@ const buildCustomSkillPlan = (params: {
 
   let rounds: { name: string; duration: number }[];
 
-  if (duration <= 15) {
+  if (params.config.selectedRounds && params.config.selectedRounds.length > 0) {
+    const cleanRounds = params.config.selectedRounds
+      .map((r) => r.trim())
+      .filter(Boolean);
+    const count = cleanRounds.length;
+    const baseMinutes = Math.max(3, Math.floor(duration / count));
+    const remainder = Math.max(0, duration - baseMinutes * count);
+
+    rounds = cleanRounds.map((name, idx) => ({
+      name,
+      duration: idx === count - 1 ? baseMinutes + remainder : baseMinutes,
+    }));
+  } else if (duration <= 15) {
     rounds = [
       { name: `${targetSkills[0]} Fundamentals`, duration: 5 },
       { name: `Applied ${targetSkills.slice(0, 2).join(" & ")}`, duration: 10 },
@@ -154,7 +166,8 @@ export const createInterviewService = async (
     customConfig &&
     (customConfig.durationMinutes !== undefined ||
       customConfig.difficulty !== undefined ||
-      (customConfig.focusTopics && customConfig.focusTopics.length > 0)),
+      (customConfig.focusTopics && customConfig.focusTopics.length > 0) ||
+      (customConfig.selectedRounds && customConfig.selectedRounds.length > 0)),
   );
 
   let plan: InterviewPlan;

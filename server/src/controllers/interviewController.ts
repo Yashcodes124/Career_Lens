@@ -8,7 +8,6 @@ import {
 } from "../services/interviewService";
 import { findInterviewsByUserId } from "../repositories/interviewRepository";
 
-
 export const createInterviewController = async (
   req: Request,
   res: Response,
@@ -16,8 +15,13 @@ export const createInterviewController = async (
 ) => {
   try {
     const userId = req.user!.userId;
-    const { applicationId, durationMinutes, difficulty, focusTopics } =
-      req.body ?? {};
+    const {
+      applicationId,
+      durationMinutes,
+      difficulty,
+      focusTopics,
+      selectedRounds,
+    } = req.body ?? {};
 
     if (!userId) {
       return res.status(401).json({
@@ -35,7 +39,8 @@ export const createInterviewController = async (
     const hasCustomOptions =
       durationMinutes !== undefined ||
       difficulty !== undefined ||
-      (Array.isArray(focusTopics) && focusTopics.length > 0);
+      (Array.isArray(focusTopics) && focusTopics.length > 0) ||
+      (Array.isArray(selectedRounds) && selectedRounds.length > 0);
 
     const interview = hasCustomOptions
       ? await createInterviewService(userId, applicationId, {
@@ -49,6 +54,9 @@ export const createInterviewController = async (
               : undefined,
           focusTopics: Array.isArray(focusTopics)
             ? focusTopics.map(String)
+            : undefined,
+          selectedRounds: Array.isArray(selectedRounds)
+            ? selectedRounds.map(String)
             : undefined,
         })
       : await createInterviewService(userId, applicationId);

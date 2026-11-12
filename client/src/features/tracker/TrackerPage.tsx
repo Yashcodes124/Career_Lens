@@ -7,6 +7,8 @@ import {
   Clock,
   FileText,
   Kanban,
+  LayoutGrid,
+  Columns,
   MessageSquare,
   Plus,
   Search,
@@ -31,6 +33,7 @@ import {
   Input,
   Modal,
   ScoreRing,
+  SectionCard,
   Select,
   Skeleton,
   SkillBadge,
@@ -127,6 +130,12 @@ export const TrackerPage: React.FC = () => {
 
   const [interviews, setInterviews] = useState<Interview[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
+  const [stageFilter, setStageFilter] = useState<"ALL" | ApplicationStatus>(
+    "ALL",
+  );
+  const [layoutMode, setLayoutMode] = useState<"GRID" | "BOARD">("GRID");
+  const [showEmptyStages, setShowEmptyStages] = useState<boolean>(false);
+
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
@@ -157,7 +166,6 @@ export const TrackerPage: React.FC = () => {
     [applicationsData],
   );
 
-  // Count interviews per applicationId
   const interviewCountMap = useMemo(() => {
     const map = new Map<string, Interview[]>();
     for (const session of interviews) {
@@ -173,14 +181,16 @@ export const TrackerPage: React.FC = () => {
 
   const filteredApplications = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
-    if (!q) return applications;
-    return applications.filter(
-      (app) =>
+    return applications.filter((app) => {
+      const matchesStage = stageFilter === "ALL" || app.status === stageFilter;
+      const matchesQuery =
+        !q ||
         app.job.title.toLowerCase().includes(q) ||
         app.job.company.toLowerCase().includes(q) ||
-        (app.skillGaps ?? []).some((g) => g.toLowerCase().includes(q)),
-    );
-  }, [applications, searchQuery]);
+        (app.skillGaps ?? []).some((g) => g.toLowerCase().includes(q));
+      return matchesStage && matchesQuery;
+    });
+  }, [applications, searchQuery, stageFilter]);
 
   const groupedByColumn = useMemo(() => {
     const map: Record<ApplicationStatus, Application[]> = {
@@ -200,6 +210,20 @@ export const TrackerPage: React.FC = () => {
     return map;
   }, [filteredApplications]);
 
+  // Only show stages that actually have applications unless user toggled showEmptyStages or picked a specific stage
+  const visibleColumns = useMemo(() => {
+    if (stageFilter !== "ALL") {
+      return PIPELINE_COLUMNS.filter((c) => c.status === stageFilter);
+    }
+    if (showEmptyStages) {
+      return PIPELINE_COLUMNS;
+    }
+    const populated = PIPELINE_COLUMNS.filter(
+      (c) => groupedByColumn[c.status].length > 0,
+    );
+    return populated.length > 0 ? populated : PIPELINE_COLUMNS.slice(0, 1);
+  }, [stageFilter, showEmptyStages, groupedByColumn]);
+
   const openAppDetailDrawer = (app: Application) => {
     setSelectedApp(app);
     setAppNotes(readAppNotes(app.id));
@@ -215,7 +239,6 @@ export const TrackerPage: React.FC = () => {
 
     try {
       await trackerApi.updateApplicationStatus(app.id, nextStatus);
-
       appendStatusHistory(app.id, nextStatus);
       await queryClient.invalidateQueries({ queryKey: ["applications"] });
 
@@ -244,7 +267,6 @@ export const TrackerPage: React.FC = () => {
     setIsRemoving(true);
     try {
       await trackerApi.deleteApplication(appToRemove.id);
-
       await queryClient.invalidateQueries({ queryKey: ["applications"] });
       if (selectedApp?.id === appToRemove.id) {
         setSelectedApp(null);
@@ -297,13 +319,161 @@ export const TrackerPage: React.FC = () => {
     }
   };
 
+  const renderAppCard = (app: Application) => {
+    const appInterviews = interviewCountMap.get(app.id) ?? [];
+    const interviewCount = appInterviews.length;
+    const roundedScore =
+      app.matchScore != null ? Math.round(app.matchScore) : null;
+    const gaps = app.skillGaps ?? [];
+    const stageMeta =
+      PIPELINE_COLUMNS.find((c) => c.status === app.status) ??
+      PIPELINE_COLUMNS[0];
+
+    return (
+      <Card
+        key={app.id}
+        padding="md"
+        interactive
+        onClick={() => openAppDetailDrawer(app)}
+        className="flex flex-col justify-between gap-4 cursor-pointer"
+      >
+        <div className="space-y-3">
+          {/* Header: Company, Role, Stage & Match Score */}
+          <div className="flex items-start justify-between gap-2">
+            <div className="min-w-0 space-y-1">
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="truncate text-xs font-semibold text-content-secondary">
+                  {app.job.company}
+                </span>
+                <Badge tone={stageMeta.tone} size="sm">
+                  {stageMeta.label}
+                </Badge>
+              </div>
+              <h3 className="text-base font-semibold text-content-heading hover:text-primary">
+                {app.job.title}
+              </h3>
+            </div>
+
+            {roundedScore !== null && (
+              <Badge
+                tone={
+                  roundedScore >= 75
+                    ? "success"
+                    : roundedScore >= 50
+                      ? "primary"
+                      : "warning"
+                }
+              >
+                {roundedScore}% match
+              </Badge>
+            )}
+          </div>
+
+          {/* Skill Gaps */}
+          <div className="space-y-1.5 border-t border-border pt-2.5">
+            <p className="text-xs font-medium text-content-secondary">
+              {gaps.length > 0
+                ? `Priority skill gaps (${gaps.length}):`
+                : "All extracted requirements met"}
+            </p>
+            {gaps.length > 0 && (
+              <div className="flex flex-wrap gap-1.5">
+                {gaps.slice(0, 4).map((gap) => (
+                  <Badge key={gap} tone="warning" size="sm">
+                    {gap}
+                  </Badge>
+                ))}
+                {gaps.length > 4 && (
+                  <Badge tone="neutral" size="sm">
+                    +{gaps.length - 4} more
+                  </Badge>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Telemetry */}
+          <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-content-secondary tabular-nums">
+            <span className="inline-flex items-center gap-1">
+              <MessageSquare className="h-3.5 w-3.5 text-primary" />
+              {interviewCount}{" "}
+              {interviewCount === 1 ? "interview" : "interviews"}
+            </span>
+            <span className="inline-flex items-center gap-1">
+              <Clock className="h-3.5 w-3.5" />
+              Updated {new Date(app.updatedAt).toLocaleDateString()}
+            </span>
+          </div>
+        </div>
+
+        {/* Footer Controls */}
+        <div
+          className="space-y-2.5 border-t border-border pt-3"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <Select
+            aria-label={`Update status for ${app.job.title}`}
+            value={app.status}
+            disabled={updatingId === app.id}
+            options={PIPELINE_COLUMNS.map((c) => ({
+              value: c.status,
+              label: `Move to: ${c.label}`,
+            }))}
+            onChange={(e) =>
+              void handleStatusChange(app, e.target.value as ApplicationStatus)
+            }
+          />
+
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex flex-wrap items-center gap-1.5">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() =>
+                  navigate(
+                    `/matches/${app.jobId}${
+                      activeResume ? `?resumeId=${activeResume.id}` : ""
+                    }`,
+                  )
+                }
+              >
+                View match
+              </Button>
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={() =>
+                  navigate(
+                    `/skill-gaps/${app.jobId}${
+                      activeResume ? `?resumeId=${activeResume.id}` : ""
+                    }`,
+                  )
+                }
+              >
+                Practice interview
+              </Button>
+            </div>
+
+            <Button
+              variant="ghost"
+              size="sm"
+              aria-label={`Remove ${app.job.title}`}
+              onClick={() => setAppToRemove(app)}
+            >
+              <Trash2 className="h-3.5 w-3.5 text-status-danger" />
+            </Button>
+          </div>
+        </div>
+      </Card>
+    );
+  };
+
   return (
-    <ContentContainer size="full" className="space-y-6">
-      {/* 1. Header */}
+    <ContentContainer size="xl" className="space-y-6">
       <PageHeader
         eyebrow="Opportunity Pipeline"
-        title="Applications"
-        description="Track every opportunity and its preparation status."
+        title={`Applications (${applications.length})`}
+        description="Track every opportunity, its requirement match coverage, and mock interview status."
         primaryAction={
           <Button
             variant="primary"
@@ -337,50 +507,105 @@ export const TrackerPage: React.FC = () => {
         />
       )}
 
-      {/* Search & Stage Summary Bar */}
+      {/* Stage Filter Pills, Search & Layout Switcher */}
       {applications.length > 0 && (
-        <Card
-          padding="sm"
-          className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center"
-        >
-          <div className="flex flex-wrap items-center gap-2">
-            {PIPELINE_COLUMNS.map((col) => (
-              <Badge key={col.status} tone={col.tone} size="sm">
-                {col.label}: {groupedByColumn[col.status].length}
-              </Badge>
-            ))}
-          </div>
+        <Card padding="sm" className="space-y-3">
+          <div className="flex flex-col justify-between gap-3 lg:flex-row lg:items-center">
+            {/* Stage Filter Buttons (Only active counts highlighted; click to filter) */}
+            <div className="flex flex-wrap items-center gap-1.5">
+              <Button
+                variant={stageFilter === "ALL" ? "primary" : "outline"}
+                size="sm"
+                onClick={() => setStageFilter("ALL")}
+              >
+                All Active ({applications.length})
+              </Button>
+              {PIPELINE_COLUMNS.map((col) => {
+                const count = applications.filter(
+                  (a) => a.status === col.status,
+                ).length;
+                if (
+                  count === 0 &&
+                  !showEmptyStages &&
+                  stageFilter !== col.status
+                ) {
+                  return null;
+                }
+                return (
+                  <Button
+                    key={col.status}
+                    variant={stageFilter === col.status ? "primary" : "outline"}
+                    size="sm"
+                    onClick={() => setStageFilter(col.status)}
+                  >
+                    {col.label} ({count})
+                  </Button>
+                );
+              })}
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowEmptyStages((prev) => !prev)}
+              >
+                {showEmptyStages ? "Hide empty stages" : "Show all stages"}
+              </Button>
+            </div>
 
-          <div className="w-full sm:w-72">
-            <Input
-              placeholder="Filter by company, role, or skill gap..."
-              value={searchQuery}
-              leftAddon={<Search className="h-4 w-4" />}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
+            {/* Search & Layout Toggle */}
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="w-full sm:w-64">
+                <Input
+                  placeholder="Search company, role, or skill..."
+                  value={searchQuery}
+                  leftAddon={<Search className="h-4 w-4" />}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+              </div>
+
+              <div className="inline-flex rounded-input border border-border bg-muted p-0.5">
+                <button
+                  type="button"
+                  onClick={() => setLayoutMode("GRID")}
+                  className={`inline-flex items-center gap-1.5 rounded-sm px-2.5 py-1.5 text-xs font-medium transition-colors ${
+                    layoutMode === "GRID"
+                      ? "bg-surface text-content-heading shadow-xs"
+                      : "text-content-secondary hover:text-content-heading"
+                  }`}
+                >
+                  <LayoutGrid className="h-3.5 w-3.5" />
+                  <span>Grid</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setLayoutMode("BOARD")}
+                  className={`inline-flex items-center gap-1.5 rounded-sm px-2.5 py-1.5 text-xs font-medium transition-colors ${
+                    layoutMode === "BOARD"
+                      ? "bg-surface text-content-heading shadow-xs"
+                      : "text-content-secondary hover:text-content-heading"
+                  }`}
+                >
+                  <Columns className="h-3.5 w-3.5" />
+                  <span>Columns</span>
+                </button>
+              </div>
+            </div>
           </div>
         </Card>
       )}
 
-      {/* 2. Pipeline View (5 Columns: Saved, Applied, Interviewing, Offer, Rejected — Horizontally Scrollable on Mobile) */}
       {isLoading ? (
-        <div className="flex gap-4 overflow-x-auto pb-4" aria-busy="true">
-          {PIPELINE_COLUMNS.map((col) => (
-            <div
-              key={col.status}
-              className="w-[300px] shrink-0 space-y-3 lg:flex-1"
-            >
-              <Skeleton className="h-10 w-full" />
-              <Skeleton className="h-44 w-full" />
-              <Skeleton className="h-44 w-full" />
-            </div>
+        <div
+          className="grid gap-4 md:grid-cols-2 xl:grid-cols-3"
+          aria-busy="true"
+        >
+          {[1, 2, 3].map((n) => (
+            <Skeleton key={n} className="h-52 w-full" />
           ))}
         </div>
       ) : applications.length === 0 ? (
-        /* 5. Empty State */
         <EmptyState
           title="No applications yet."
-          description="Save a job to start tracking your application pipeline."
+          description="Save or match a job to start tracking your application pipeline."
           icon={<Kanban className="h-5 w-5" />}
           action={
             <div className="flex flex-wrap items-center justify-center gap-2">
@@ -397,34 +622,73 @@ export const TrackerPage: React.FC = () => {
             </div>
           }
         />
+      ) : filteredApplications.length === 0 ? (
+        <EmptyState
+          title="No applications match this filter"
+          description="Clear your search query or switch stage filters above."
+          action={
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setSearchQuery("");
+                setStageFilter("ALL");
+              }}
+            >
+              Reset filter
+            </Button>
+          }
+        />
+      ) : layoutMode === "GRID" ? (
+        /* Horizontal Multi-Column Grid Grouped by Populated Stage */
+        <div className="space-y-6">
+          {visibleColumns.map((column) => {
+            const colApps = groupedByColumn[column.status];
+            return (
+              <SectionCard
+                key={column.status}
+                eyebrow="Pipeline Stage"
+                title={`${column.label} (${colApps.length})`}
+                action={
+                  <Badge tone={column.tone} size="sm">
+                    {colApps.length} {colApps.length === 1 ? "role" : "roles"}
+                  </Badge>
+                }
+                empty={colApps.length === 0}
+                emptyTitle={`No roles in ${column.label}`}
+                emptyDescription="Move an application card to this stage using its status dropdown."
+              >
+                <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                  {colApps.map(renderAppCard)}
+                </div>
+              </SectionCard>
+            );
+          })}
+        </div>
       ) : (
+        /* Horizontally Scrollable Board View (Only Populated Columns unless Show All is active) */
         <div
           className="flex gap-4 overflow-x-auto pb-4 snap-x snap-mandatory"
           role="region"
           aria-label="Application pipeline columns"
         >
-          {PIPELINE_COLUMNS.map((column) => {
+          {visibleColumns.map((column) => {
             const colApps = groupedByColumn[column.status];
-
             return (
               <section
                 key={column.status}
                 aria-label={`${column.label} stage`}
-                className="flex w-[300px] min-w-[290px] shrink-0 snap-start flex-col rounded-card border border-border bg-muted/60 p-3 sm:w-[320px] xl:flex-1"
+                className="flex w-[320px] min-w-[300px] flex-1 shrink-0 snap-start flex-col rounded-card border border-border bg-muted/60 p-3.5"
               >
-                {/* Column Header */}
                 <div className="mb-3 flex items-center justify-between border-b border-border pb-2.5 px-1">
-                  <div className="flex items-center gap-2">
-                    <h2 className="text-xs font-semibold uppercase tracking-wider text-content-heading">
-                      {column.label}
-                    </h2>
-                  </div>
+                  <h2 className="text-xs font-semibold uppercase tracking-wider text-content-heading">
+                    {column.label}
+                  </h2>
                   <Badge tone={column.tone} size="sm">
                     {colApps.length}
                   </Badge>
                 </div>
 
-                {/* Column Cards */}
                 {colApps.length === 0 ? (
                   <div className="flex flex-1 items-center justify-center rounded-card border border-dashed border-border bg-surface/50 px-4 py-8 text-center">
                     <p className="text-xs text-content-secondary">
@@ -432,159 +696,7 @@ export const TrackerPage: React.FC = () => {
                     </p>
                   </div>
                 ) : (
-                  <div className="space-y-3">
-                    {colApps.map((app) => {
-                      const appInterviews = interviewCountMap.get(app.id) ?? [];
-                      const interviewCount = appInterviews.length;
-                      const roundedScore =
-                        app.matchScore != null
-                          ? Math.round(app.matchScore)
-                          : null;
-                      const gaps = app.skillGaps ?? [];
-
-                      return (
-                        /* 3. Application Card */
-                        <Card
-                          key={app.id}
-                          padding="sm"
-                          interactive
-                          onClick={() => openAppDetailDrawer(app)}
-                          className="cursor-pointer space-y-3"
-                        >
-                          {/* Company, Role, Status, Match Score */}
-                          <div className="flex items-start justify-between gap-2">
-                            <div className="min-w-0 space-y-0.5">
-                              <p className="truncate text-xs font-semibold text-content-secondary">
-                                {app.job.company}
-                              </p>
-                              <h3 className="text-sm font-semibold text-content-heading hover:text-primary">
-                                {app.job.title}
-                              </h3>
-                            </div>
-
-                            {roundedScore !== null && (
-                              <Badge
-                                tone={
-                                  roundedScore >= 75
-                                    ? "success"
-                                    : roundedScore >= 50
-                                      ? "primary"
-                                      : "warning"
-                                }
-                                size="sm"
-                              >
-                                {roundedScore}% match
-                              </Badge>
-                            )}
-                          </div>
-
-                          {/* Skill Gaps Preview */}
-                          <div className="space-y-1">
-                            <p className="text-[11px] font-medium text-content-secondary">
-                              {gaps.length > 0
-                                ? `Skill gaps (${gaps.length}):`
-                                : "Skill gaps: None identified"}
-                            </p>
-                            {gaps.length > 0 && (
-                              <div className="flex flex-wrap gap-1">
-                                {gaps.slice(0, 3).map((gap) => (
-                                  <Badge key={gap} tone="warning" size="sm">
-                                    {gap}
-                                  </Badge>
-                                ))}
-                                {gaps.length > 3 && (
-                                  <Badge tone="neutral" size="sm">
-                                    +{gaps.length - 3}
-                                  </Badge>
-                                )}
-                              </div>
-                            )}
-                          </div>
-
-                          {/* Interview Count & Last Updated */}
-                          <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border pt-2 text-[11px] text-content-secondary tabular-nums">
-                            <span className="inline-flex items-center gap-1">
-                              <MessageSquare className="h-3 w-3 text-primary" />
-                              {interviewCount}{" "}
-                              {interviewCount === 1
-                                ? "interview"
-                                : "interviews"}
-                            </span>
-                            <span className="inline-flex items-center gap-1">
-                              <Clock className="h-3 w-3" />
-                              {new Date(app.updatedAt).toLocaleDateString()}
-                            </span>
-                          </div>
-
-                          {/* Card Actions: Update Status, View Job, Start Interview, Remove */}
-                          <div
-                            className="space-y-2 border-t border-border pt-2.5"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            <Select
-                              aria-label={`Update status for ${app.job.title}`}
-                              value={app.status}
-                              disabled={updatingId === app.id}
-                              options={PIPELINE_COLUMNS.map((c) => ({
-                                value: c.status,
-                                label: `Status: ${c.label}`,
-                              }))}
-                              onChange={(e) =>
-                                void handleStatusChange(
-                                  app,
-                                  e.target.value as ApplicationStatus,
-                                )
-                              }
-                            />
-
-                            <div className="flex flex-wrap items-center justify-between gap-1.5">
-                              <div className="flex items-center gap-1.5">
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() =>
-                                    navigate(
-                                      `/matches/${app.jobId}${
-                                        activeResume
-                                          ? `?resumeId=${activeResume.id}`
-                                          : ""
-                                      }`,
-                                    )
-                                  }
-                                >
-                                  View job
-                                </Button>
-                                <Button
-                                  variant="primary"
-                                  size="sm"
-                                  onClick={() =>
-                                    navigate(
-                                      `/skill-gaps/${app.jobId}${
-                                        activeResume
-                                          ? `?resumeId=${activeResume.id}`
-                                          : ""
-                                      }`,
-                                    )
-                                  }
-                                >
-                                  Start interview
-                                </Button>
-                              </div>
-
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                aria-label={`Remove ${app.job.title}`}
-                                onClick={() => setAppToRemove(app)}
-                              >
-                                <Trash2 className="h-3.5 w-3.5 text-status-danger" />
-                              </Button>
-                            </div>
-                          </div>
-                        </Card>
-                      );
-                    })}
-                  </div>
+                  <div className="space-y-3">{colApps.map(renderAppCard)}</div>
                 )}
               </section>
             );
@@ -592,7 +704,7 @@ export const TrackerPage: React.FC = () => {
         </div>
       )}
 
-      {/* 4. Application Detail Drawer (Job details, Resume used, Match result, Interviews, Notes, Status history) */}
+      {/* Application Detail Drawer */}
       <Drawer
         open={Boolean(selectedApp)}
         onClose={() => setSelectedApp(null)}
@@ -651,7 +763,6 @@ export const TrackerPage: React.FC = () => {
       >
         {selectedApp && (
           <div className="space-y-5">
-            {/* Match Result & Status Header */}
             <Card
               muted
               padding="md"
@@ -685,7 +796,6 @@ export const TrackerPage: React.FC = () => {
               />
             </Card>
 
-            {/* Stage Selector */}
             <Select
               label="Pipeline stage"
               value={selectedApp.status}
@@ -701,7 +811,6 @@ export const TrackerPage: React.FC = () => {
               }
             />
 
-            {/* Skill Gaps for This Opportunity */}
             <div className="space-y-2 border-t border-border pt-4">
               <p className="text-xs font-semibold uppercase tracking-wider text-content-secondary">
                 Identified Skill Gaps ({selectedApp.skillGaps?.length ?? 0})
@@ -719,7 +828,6 @@ export const TrackerPage: React.FC = () => {
               )}
             </div>
 
-            {/* Linked Interviews */}
             <div className="space-y-2 border-t border-border pt-4">
               <div className="flex items-center justify-between">
                 <p className="text-xs font-semibold uppercase tracking-wider text-content-secondary">
@@ -778,7 +886,7 @@ export const TrackerPage: React.FC = () => {
                           >
                             {session.status === "COMPLETED"
                               ? "Evaluation"
-                              : "Resume"}
+                              : "Open"}
                           </Button>
                         </Card>
                       </li>
@@ -788,7 +896,6 @@ export const TrackerPage: React.FC = () => {
               )}
             </div>
 
-            {/* Candidate Notes */}
             <div className="space-y-2 border-t border-border pt-4">
               <Textarea
                 label="Preparation & recruiter notes"
@@ -803,7 +910,6 @@ export const TrackerPage: React.FC = () => {
               />
             </div>
 
-            {/* Status History */}
             <div className="space-y-2 border-t border-border pt-4">
               <p className="text-xs font-semibold uppercase tracking-wider text-content-secondary">
                 Status History

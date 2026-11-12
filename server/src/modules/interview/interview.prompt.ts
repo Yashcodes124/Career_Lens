@@ -2,6 +2,7 @@ export interface InterviewCustomConfig {
   durationMinutes?: number;
   difficulty?: "EASY" | "MEDIUM" | "HARD";
   focusTopics?: string[];
+  selectedRounds?: string[];
 }
 
 export interface InterviewPromptInput {

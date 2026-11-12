@@ -1,144 +1,124 @@
 # CURRENT_STATE.md — TrueHire / Career_Lens
 
-> **Last updated:** 2026-11-11 | **Status:** Pre-Deployment Ready (Backend & Frontend Design System Aligned)
-> **Scope:** Full-stack read/write verification across `server/src/`, `client/src/`, `server/prisma/`, and root deployment configurations.
+> **Last updated:** 2026-11-12 | **Status:** Pre-Deployment Ready (Full-Stack Light Design System & Closed-Loop Verified)
+> **Scope:** Every file in `server/src/`, `client/src/`, `server/prisma/`, `docs/`, and all root configuration files.
+
 ---
 
 ## 1. Project Overview & Tech Stack
 
 ### Application Architecture
 
-TrueHire is a full-stack, AI-powered interview-readiness platform built as a **monorepo** with two independent workspaces: `client/` (React SPA) and `server/` (Express REST API). The platform closes a feedback loop:
+TrueHire is a full-stack, AI-powered job discovery and interview-readiness platform built as a **monorepo** with two workspaces: `client/` (React 18 SPA) and `server/` (Express 4 REST API). The platform implements a traceable closed-loop workflow:
 
-```
-Resume Upload → Job Matching → Skill Gap Analysis → Mock Interview → LLM Evaluation → UserSkill Update → Improved Matching
+```text
+Resume Upload → Deterministic Job Matching → Skill Gap Prioritization → User-Scoped Mock Interview → Rubric Evaluation → UserSkill Evidence Write-Back → Improved Role Matching
 ```
 
 ### Tech Stack
 
 | Layer | Technology | Version / Notes |
 |---|---|---|
-| **Frontend** | React 18 + TypeScript + Vite 5 | SPA, no SSR |
-| **Styling** | Tailwind CSS 3.4 + lucide-react icons | Custom design system in `components/ui/` |
-| **Routing** | React Router DOM 6.22 | Client-side routing |
-| **State / Data** | TanStack React Query 5 + React Context | Query cache + AuthContext |
-| **Forms** | React Hook Form 7 + Zod 3 | Client-side validation |
-| **Animation** | Framer Motion 14, GSAP 3, Lenis 1 | Landing page |
-| **Backend** | Node.js 20 + Express 4.18 + TypeScript 5.3 | `tsx watch` for dev |
-| **ORM** | Prisma 5.10 | PostgreSQL driver |
-| **Database** | PostgreSQL 15 (Supabase-hosted in prod; Docker locally) | Connection pooling via pgBouncer |
-| **Auth** | JWT (jsonwebtoken 9) + bcryptjs | 7-day tokens, stored in `localStorage` |
-| **File Upload** | Multer 2 (memory storage, 5 MB limit) | No persistent file storage — buffers only |
-| **PDF Parsing** | pdf-parse 2 | Text-based PDFs only |
-| **DOCX Parsing** | mammoth 1.12 | Extracts raw text |
-| **AI / LLM** | OpenAI-compatible SDK (`openai` v7) | Wraps NVIDIA NIM, Groq, Gemini, Ollama |
-| **Primary AI Provider** | NVIDIA NIM / Groq (OpenAI-compat. endpoint) | Config-driven via `AI_BASE_URL` + `AI_API_KEY` |
-| **Input Validation** | Zod 3 (backend + frontend) | All LLM responses validated |
-| **Security** | Helmet 7, CORS, express-rate-limit 7 | 4 rate-limit tiers |
-| **Backend Testing** | Vitest 1 + Supertest 7 | Unit + integration, no E2E |
-| **Frontend Testing** | @playwright/test 1.65 (devDep only) | Zero test files found |
-| **CI/CD** | None yet | `render.yaml` for Render.com deployment |
-| **Local Dev DB** | Docker Compose (postgres:15, port 5433) | |
-| **Build** | `tsc` (server) / `vite build` (client) | |
+| **Frontend** | React 18 + TypeScript + Vite 5 | SPA (client/), production bundle verified via `tsc && vite build` |
+| **Design System** | Tailwind CSS 3.4 + lucide-react | Single light theme (#f6f8fb canvas, #ffffff surface, #2563eb primary); 26 shared primitives in `client/src/components/ui/Primitives.tsx` |
+| **Layout System** | AppShell, Sidebar, TopNav, MobileNav, PageHeader, ContentContainer | Unified responsive workspace, auth, and minimal shells in `client/src/components/layout/` |
+| **Routing** | React Router DOM 6.22 | 18 client routes defined in `client/src/App.tsx` |
+| **State / Data** | TanStack React Query 5 + React Context | Query cache + AuthContext + central apiClient wrapper |
+| **Backend** | Node.js 20 + Express 4.18 + TypeScript 5.3 | Layered architecture: routes → controllers → services → repositories → Prisma |
+| **ORM & Database** | Prisma 5.10 + PostgreSQL 15 | Supabase (pgBouncer `DATABASE_URL` + `DIRECT_URL`) in prod; Docker locally (port 5433) |
+| **Auth** | JWT (jsonwebtoken 9) + bcryptjs | 7-day Bearer tokens stored in `localStorage['truehire_auth_token']` |
+| **File Upload & Parsing** | Multer 2 (memory storage, 5 MB limit) + pdf-parse 2 + mammoth 1.12 | In-memory PDF and DOCX text extraction (≥40 chars required) |
+| **AI / LLM** | OpenAI-compatible SDK (openai v7) | Supports Groq, NVIDIA NIM, Gemini, and Ollama via `AI_BASE_URL` + `AI_API_KEY` |
+| **Validation & Security** | Zod 3, Helmet 7, strict CORS, express-rate-limit 7 | 4 rate-limit tiers (globalRateLimiter, authLimiter, uploadLimiter, aiLimiter) |
+| **Backend Testing** | Vitest 1 + Supertest 7 | 10 test suites in `server/src/__tests__/` (`npm test`) |
+| **Deployment Configs** | `render.yaml` (Backend) + `client/vercel.json` (Frontend SPA) | Ready for Render + Vercel + Supabase deployment |
 
-### Repository Directory Tree (top 3 levels, excluding `node_modules`, `dist`, `.git`)
+### Repository Directory Tree
 
 ```
 Career_Lens/
-├── .env                          ← Real credentials committed (security risk!)
 ├── .gitattributes
 ├── .gitignore
-├── docker-compose.yml            ← Local PostgreSQL only (no app service)
-├── local_data.sql
+├── CURRENT_STATE.md
+├── docker-compose.yml
 ├── README.md
-├── render.yaml                   ← Render.com deployment config (server only)
-│
+├── render.yaml
+├── docs/
+│   ├── AI_MODELS.md
+│   ├── API.md
+│   ├── ARCHITECTURE.md
+│   ├── DATABASE.md
+│   ├── DEPLOYMENT.md
+│   ├── ENVIRONMENT.md
+│   └── UI_SCREENSHOT_WORKFLOW.md
 ├── client/
-│   ├── package.json              ← truehire-client, Vite, React 18
-│   ├── vite.config.ts
+│   ├── .env.example
+│   ├── capture-ui.mjs
+│   ├── index.html
+│   ├── package.json
+│   ├── postcss.config.js
+│   ├── tailwind.config.js
 │   ├── tsconfig.json
-│   ├── public/
-│   │   └── landing/
+│   ├── vercel.json
+│   ├── vite.config.ts
+│   ├── public/landing/
 │   └── src/
-│       ├── App.tsx               ← All routes defined here
-│       ├── main.tsx
+│       ├── App.tsx
 │       ├── index.css
-│       ├── app/README.md
+│       ├── main.tsx
 │       ├── components/
-│       │   ├── layout/           ← AppShell, Sidebar, TopNav, MobileNav, PageHeader
-│       │   └── ui/               ← Primitives.tsx, AceternityPrimitives.tsx
+│       │   ├── NavBar.tsx
+│       │   ├── layout/           ← AppShell, Sidebar, TopNav, MobileNav, PageHeader, ContentContainer, navigation
+│       │   └── ui/               ← Primitives.tsx (26 shared components), AceternityPrimitives.tsx, index.ts
 │       ├── features/
 │       │   ├── auth/             ← AuthContext, LoginForm, RegisterForm, OnboardingWizard,
-│       │   │                        ProtectedRoute, ProfileSetupForm, UserProfileCard, useAuth
-│       │   ├── dashboard/        ← DashboardPage
-│       │   ├── interview/        ← interviewApi, InterviewPreparationPage, LiveInterviewPage,
-│       │   │                        InterviewEvaluationPage, InterviewsPage, types
-│       │   ├── jobs/             ← jobsApi, JobsPage, SavedJobsPage, JobCard, types
-│       │   ├── landing/          ← LandingPage
-│       │   ├── matching/         ← matchingApi, MatchPage, MatchResult, SkillGapPage,
-│       │   │                        skillResources, types
-│       │   ├── readiness/        ← readinessApi, ReadinessPage, ReadinessPanel, useReadiness
-│       │   ├── resume/           ← resumeApi, ResumePage, ResumeUploader, ResumeParsedPreview,
-│       │   │                        resumeFile, useResumes, types
-│       │   ├── tailoring/        ← tailoringApi, TailoringPage
-│       │   └── tracker/          ← trackerApi, TrackerPage, useApplications, types
-│       ├── hooks/README.md
+│       │   │                        ProfileSetupForm, ProtectedRoute, UserProfileCard, useAuth, index.ts
+│       │   ├── dashboard/        ← DashboardPage.tsx
+│       │   ├── interview/        ← interviewApi.ts, InterviewsPage.tsx, InterviewPreparationPage.tsx,
+│       │   │                        LiveInterviewPage.tsx, InterviewEvaluationPage.tsx, types.ts
+│       │   ├── jobs/             ← jobsApi.ts, JobsPage.tsx, SavedJobsPage.tsx, JobCard.tsx, types.ts
+│       │   ├── landing/          ← LandingPage.tsx
+│       │   ├── matching/         ← matchingApi.ts, MatchPage.tsx, MatchResult.tsx, SkillGapPage.tsx,
+│       │   │                        skillResources.ts, types.ts
+│       │   ├── readiness/        ← readinessApi.ts, ReadinessPage.tsx, ReadinessPanel.tsx, useReadiness.ts
+│       │   ├── resume/           ← resumeApi.ts, ResumePage.tsx, ResumeUploader.tsx,
+│       │   │                        ResumeParsedPreview.tsx, resumeFile.ts, useResumes.ts, types.ts
+│       │   ├── tailoring/        ← tailoringApi.ts, TailoringPage.tsx
+│       │   └── tracker/          ← trackerApi.ts, TrackerPage.tsx, useApplications.ts, types.ts
 │       ├── lib/
-│       │   └── api-client.ts     ← Central fetch wrapper (token injection, 401 handling)
+│       │   └── api-client.ts
 │       ├── services/
-│       │   └── authApi.ts        ← Auth API calls
+│       │   └── authApi.ts
 │       └── types/
 │           └── auth.ts
-│
-├── server/
-│   ├── package.json              ← truehire-server, Express, Prisma
-│   ├── tsconfig.json
-│   ├── prisma/
-│   │   ├── schema.prisma         ← 9 models, 4 enums
-│   │   └── migrations/
-│   └── src/
-│       ├── app.ts                ← Express app setup, route mounting, error handler
-│       ├── index.ts              ← Server entry point, graceful shutdown
-│       ├── config/
-│       │   ├── env.ts            ← Zod-validated env schema
-│       │   └── db.ts             ← Prisma client singleton
-│       ├── controllers/          ← 7 controller files (thin, delegates to services)
-│       ├── integrations/
-│       │   ├── ai/               ← aiClient.ts, nvidiaClient.ts, resumePrompt.ts, resumeSchema.ts
-│       │   └── jobs/
-│       │       ├── greenhouse/   ← greenhouseClient.ts, greenhouseAdapter.ts, greenhouseSchema.ts
-│       │       ├── lever/README.md   ← Placeholder only
-│       │       └── ashby/README.md   ← Placeholder only
-│       ├── middleware/           ← authMiddleware, uploadMiddleware, rateLimit, requireRole
-│       ├── modules/
-│       │   ├── interview/        ← interview.prompt.ts, interview.question.prompt.ts,
-│       │   │                        interview.ai.ts, interviewSchema.ts
-│       │   └── evaluation/       ← interview.evaluation.prompt.ts, finalEvaluationSchema.ts
-│       ├── repositories/         ← 8 repository files (all Prisma calls)
-│       ├── routes/               ← 7 route files
-│       ├── scripts/              ← verifyAi.ts (manual AI connectivity test)
-│       ├── services/
-│       │   ├── authService.ts
-│       │   ├── applicationService.ts
-│       │   ├── greenhouseSyncService.ts
-│       │   ├── interviewService.ts
-│       │   ├── jobService.ts
-│       │   ├── savedJobService.ts
-│       │   ├── matching/         ← matchService.ts, matchingService.ts, jobSkillExtractor.ts,
-│       │   │                        skillDictionary.ts, skillNormalizer.ts
-│       │   ├── readiness/        ← readinessService.ts, nextAction.ts
-│       │   ├── resume/           ← resumeService.ts
-│       │   ├── skills/           ← skillEvidence.ts
-│       │   └── tailoring/        ← tailoringService.ts
-│       ├── types/
-│       │   └── express.d.ts      ← Augments Express.Request with user: JwtPayload
-│       ├── utils/                ← appError.ts, documentParser.ts, jobQuery.ts, jwt.ts,
-│       │                            parseModelJson.ts, password.ts
-│       ├── validators/           ← authValidator.ts, resumeValidator.ts
-│       └── __tests__/            ← 9 test files + fixtures/
-│
-└── docs/
-    └── (API.md, DATABASE.md, ENVIRONMENT.md, AI_MODELS.md referenced in README)
+└── server/
+    ├── .env.example
+    ├── package.json
+    ├── tsconfig.json
+    ├── vitest.config.ts
+    ├── prisma/
+    │   ├── schema.prisma
+    │   └── migrations/           ← 6 migrations
+    └── src/
+        ├── app.ts
+        ├── index.ts
+        ├── config/               ← db.ts, env.ts
+        ├── controllers/          ← 7 controllers (application, auth, interview, job, match, readiness, resume)
+        ├── integrations/
+        │   ├── ai/               ← aiClient.ts, nvidiaClient.ts, resumePrompt.ts, resumeSchema.ts
+        │   └── jobs/greenhouse/  ← greenhouseAdapter.ts, greenhouseClient.ts, greenhouseSchema.ts
+        ├── middleware/           ← authMiddleware.ts, rateLimit.ts, requireRole.ts, uploadMiddleware.ts
+        ├── modules/
+        │   ├── evaluation/       ← finalEvaluationSchema.ts, interview.evaluation.prompt.ts
+        │   └── interview/        ← interview.ai.ts, interview.prompt.ts, interview.question.prompt.ts, interviewSchema.ts
+        ├── repositories/         ← 8 repositories (application, interview, job, match, resume, savedJob, skill, user)
+        ├── routes/               ← 7 route modules (application, auth, interview, job, match, readiness, resume)
+        ├── scripts/              ← verifyAi.ts (manual AI connectivity test)
+        ├── services/             ← authService, applicationService, greenhouseSyncService, interviewService,
+        │                            jobService, savedJobService, matching/, readiness/, resume/, skills/, tailoring/
+        ├── utils/                ← appError.ts, documentParser.ts, jobQuery.ts, jwt.ts, parseModelJson.ts, password.ts
+        ├── validators/           ← authValidator.ts, resumeValidator.ts
+        └── __tests__/            ← 10 Vitest test files + fixtures/
 ```
 
 ---
