@@ -1,19 +1,29 @@
-import { Request, Response, NextFunction } from 'express';
-import { authService } from '../services/authService.js';
-import { registerSchema, loginSchema, updateProfileSchema } from '../validators/authValidator.js';
-import { AuthenticatedRequest } from '../middleware/authMiddleware.js';
+import { Request, Response, NextFunction } from "express";
+import { authService } from "../services/authService.js";
+import {
+  registerSchema,
+  loginSchema,
+  updateProfileSchema,
+} from "../validators/authValidator.js";
+import { AuthenticatedRequest } from "../middleware/authMiddleware.js";
 
-export async function register(req: Request, res: Response, next: NextFunction): Promise<void> {
+export async function register(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
   try {
     const validatedInput = registerSchema.parse(req.body);
     const result = await authService.register(validatedInput);
     res.status(201).json(result);
   } catch (error: any) {
-    if (error.name === 'ZodError') {
-      res.status(400).json({ error: 'Validation failed', details: error.errors });
+    if (error.name === "ZodError") {
+      res
+        .status(400)
+        .json({ error: "Validation failed", details: error.errors });
       return;
     }
-    if (error.message === 'User with this email already exists') {
+    if (error.message === "User with this email already exists") {
       res.status(409).json({ error: error.message });
       return;
     }
@@ -21,17 +31,23 @@ export async function register(req: Request, res: Response, next: NextFunction):
   }
 }
 
-export async function login(req: Request, res: Response, next: NextFunction): Promise<void> {
+export async function login(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
   try {
     const validatedInput = loginSchema.parse(req.body);
     const result = await authService.login(validatedInput);
     res.status(200).json(result);
   } catch (error: any) {
-    if (error.name === 'ZodError') {
-      res.status(400).json({ error: 'Validation failed', details: error.errors });
+    if (error.name === "ZodError") {
+      res
+        .status(400)
+        .json({ error: "Validation failed", details: error.errors });
       return;
     }
-    if (error.message === 'Invalid email or password') {
+    if (error.message === "Invalid email or password") {
       res.status(401).json({ error: error.message });
       return;
     }
@@ -39,11 +55,53 @@ export async function login(req: Request, res: Response, next: NextFunction): Pr
   }
 }
 
-export async function getMe(req: Request, res: Response, next: NextFunction): Promise<void> {
+export async function refresh(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    const refreshToken = req.body?.refreshToken as string | undefined;
+    if (!refreshToken) {
+      res.status(400).json({ error: "refreshToken is required" });
+      return;
+    }
+    const result = await authService.refreshSession(refreshToken);
+    res.status(200).json(result);
+  } catch (error: any) {
+    if (error.message === "Invalid or expired refresh token") {
+      res.status(401).json({ error: error.message });
+      return;
+    }
+    next(error);
+  }
+}
+
+export async function logout(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    const userId = (req as AuthenticatedRequest).user?.userId;
+    if (userId) {
+      await authService.logout(userId);
+    }
+    res.status(200).json({ success: true, message: "Logged out" });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function getMe(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
   try {
     const userId = (req as AuthenticatedRequest).user?.userId;
     if (!userId) {
-      res.status(401).json({ error: 'Unauthorized' });
+      res.status(401).json({ error: "Unauthorized" });
       return;
     }
     const profile = await authService.getProfile(userId);
@@ -53,22 +111,31 @@ export async function getMe(req: Request, res: Response, next: NextFunction): Pr
   }
 }
 
-export async function updateProfile(req: Request, res: Response, next: NextFunction): Promise<void> {
+export async function updateProfile(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
   try {
     const userId = (req as AuthenticatedRequest).user?.userId;
     if (!userId) {
-      res.status(401).json({ error: 'Unauthorized' });
+      res.status(401).json({ error: "Unauthorized" });
       return;
     }
     const validatedInput = updateProfileSchema.parse(req.body);
-    const updatedProfile = await authService.updateProfile(userId, validatedInput);
+    const updatedProfile = await authService.updateProfile(
+      userId,
+      validatedInput,
+    );
     res.status(200).json(updatedProfile);
   } catch (error: any) {
-    if (error.name === 'ZodError') {
-      res.status(400).json({ error: 'Validation failed', details: error.errors });
+    if (error.name === "ZodError") {
+      res
+        .status(400)
+        .json({ error: "Validation failed", details: error.errors });
       return;
     }
-    if (error.message === 'Email is already taken by another user') {
+    if (error.message === "Email is already taken by another user") {
       res.status(409).json({ error: error.message });
       return;
     }

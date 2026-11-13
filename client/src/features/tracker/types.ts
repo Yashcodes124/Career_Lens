@@ -12,7 +12,6 @@ export interface Application {
   status: ApplicationStatus;
   matchScore?: number | null;
   skillGaps: string[];
-  tailoredText?: string | null;
   createdAt: string;
   updatedAt: string;
   job: Job;

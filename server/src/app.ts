@@ -31,13 +31,7 @@ app.use(
       ) {
         callback(null, true);
       } else {
-        callback(
-          new AppError(
-            403,
-            `Origin ${origin} not allowed by CORS`,
-            "CORS_FORBIDDEN",
-          ),
-        );
+        callback(new Error("CORS not allowed"), false);
       }
     },
     credentials: true,
@@ -70,12 +64,11 @@ app.get("/api/health", async (_req: Request, res: Response) => {
   }
 });
 
-// Strictly mount domain route modules
+// Mount canonical domain route modules
 app.use("/api/auth", authRoutes);
 app.use("/api/resumes", resumeRoutes);
 app.use("/api/jobs", jobRoutes);
 app.use("/api/matches", matchRoutes);
-app.use("/api/match", matchRoutes);
 app.use("/api/interviews", interviewRoutes);
 app.use("/api/applications", applicationRoutes);
 app.use("/api/readiness", readinessRoutes);

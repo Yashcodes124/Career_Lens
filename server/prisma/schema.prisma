@@ -13,6 +13,14 @@ enum Role {
   ADMIN
 }
 
+enum JobSource {
+  GREENHOUSE
+  LEVER
+  ASHBY
+  MANUAL
+  LINKEDIN
+}
+
 enum ApplicationStatus {
   SAVED
   APPLIED
@@ -37,6 +45,7 @@ model User {
   id                 String        @id @default(uuid())
   email              String        @unique
   passwordHash       String
+  refreshTokenHash   String?
   name               String
   role               Role          @default(USER)
   targetRole         String?
@@ -59,7 +68,6 @@ model Resume {
   user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   title         String
   fileName      String?
-  filePath      String?
   mimeType      String?
   fileSize      Int?
   rawText       String   @db.Text
@@ -76,7 +84,7 @@ model Resume {
 model Job {
   id           String        @id @default(uuid())
   externalId   String?       @unique
-  source       String        // GREENHOUSE, LEVER, ASHBY, MANUAL
+  source       JobSource     @default(GREENHOUSE)
   title        String
   company      String
   location     String?
@@ -112,18 +120,17 @@ model SavedJob {
 }
 
 model Application {
-  id           String            @id @default(uuid())
-  userId       String
-  user         User              @relation(fields: [userId], references: [id], onDelete: Cascade)
-  jobId        String
-  job          Job               @relation(fields: [jobId], references: [id], onDelete: Cascade)
-  status       ApplicationStatus @default(SAVED)
-  matchScore   Float?
-  skillGaps    String[]          @default([])
-  tailoredText String?           @db.Text
-  createdAt    DateTime          @default(now())
-  updatedAt    DateTime          @updatedAt
-  interviews   Interview[]
+  id         String            @id @default(uuid())
+  userId     String
+  user       User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  jobId      String
+  job        Job               @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  status     ApplicationStatus @default(SAVED)
+  matchScore Float?
+  skillGaps  String[]          @default([])
+  createdAt  DateTime          @default(now())
+  updatedAt  DateTime          @updatedAt
+  interviews Interview[]
 
   @@unique([userId, jobId])
   @@index([userId])
@@ -132,19 +139,18 @@ model Application {
 }
 
 model Interview {
-  id            String          @id @default(uuid())
+  id            String              @id @default(uuid())
   userId        String
-  user          User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user          User                @relation(fields: [userId], references: [id], onDelete: Cascade)
   applicationId String?
-  application   Application?    @relation(fields: [applicationId], references: [id], onDelete: SetNull)
+  application   Application?        @relation(fields: [applicationId], references: [id], onDelete: SetNull)
   title         String
-  status        InterviewStatus @default(SCHEDULED)
+  status        InterviewStatus     @default(SCHEDULED)
   plan          Json?
-  transcript    Json?
   questions     InterviewQuestion[]
   evaluation    Evaluation?
-  createdAt     DateTime        @default(now())
-  updatedAt     DateTime        @updatedAt
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
 
   @@index([userId])
   @@index([applicationId])
@@ -159,7 +165,7 @@ model InterviewQuestion {
   question    String    @db.Text
   order       Int
   answer      String?   @db.Text
-  feedback    String?   @db.Text
+  feedback    Json?
   score       Float?
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt

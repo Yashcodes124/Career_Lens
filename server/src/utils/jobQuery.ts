@@ -1,8 +1,9 @@
-// Parses the job list query string into safe, bounded values.
+import type { JobSource } from "@prisma/client";
+
 export interface JobQuery {
   q?: string;
   location?: string;
-  source?: string;
+  source?: JobSource;
   page: number;
   pageSize: number;
 }
@@ -10,6 +11,14 @@ export interface JobQuery {
 const DEFAULT_PAGE_SIZE = 50;
 const MAX_PAGE_SIZE = 100;
 const MAX_TEXT_LENGTH = 100;
+
+const VALID_SOURCES = new Set<JobSource>([
+  "GREENHOUSE",
+  "LEVER",
+  "ASHBY",
+  "MANUAL",
+  "LINKEDIN",
+]);
 
 const toPositiveInt = (value: unknown, fallback: number): number => {
   const parsed = parseInt(String(value ?? ""), 10);
@@ -23,12 +32,20 @@ const cleanText = (value: unknown): string | undefined => {
 };
 
 export const parseJobQuery = (query: Record<string, unknown>): JobQuery => {
-  const source = cleanText(query.source);
+  const rawSource = cleanText(query.source)?.toUpperCase();
+  const source =
+    rawSource && VALID_SOURCES.has(rawSource as JobSource)
+      ? (rawSource as JobSource)
+      : undefined;
+
   return {
     q: cleanText(query.q),
     location: cleanText(query.location),
-    source: source?.toUpperCase(),
+    source,
     page: toPositiveInt(query.page, 1),
-    pageSize: Math.min(toPositiveInt(query.pageSize, DEFAULT_PAGE_SIZE), MAX_PAGE_SIZE),
+    pageSize: Math.min(
+      toPositiveInt(query.pageSize, DEFAULT_PAGE_SIZE),
+      MAX_PAGE_SIZE,
+    ),
   };
 };

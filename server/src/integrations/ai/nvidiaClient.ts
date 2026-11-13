@@ -5,13 +5,10 @@ import { parseModelJson } from "../../utils/parseModelJson";
 
 const DEFAULT_MODEL = "nvidia/nemotron-3.5-super-vl-120b-a12b";
 const DEFAULT_BASE_URL = "https://integrate.api.nvidia.com/v1";
-const REQUEST_TIMEOUT_MS = 90_000;
 
 let cachedClient: OpenAI | null = null;
 let cachedKey = "";
 let cachedBaseUrl = "";
-
-
 
 const getClient = (): OpenAI => {
   const apiKey = process.env.NVIDIA_API_KEY || process.env.AI_API_KEY;
@@ -23,13 +20,19 @@ const getClient = (): OpenAI => {
     );
   }
 
-  const baseURL = process.env.AI_BASE_URL || DEFAULT_BASE_URL;
+  const baseURL =
+    process.env.NVIDIA_BASE_URL ||
+    (process.env.AI_BASE_URL?.includes("nvidia.com")
+      ? process.env.AI_BASE_URL
+      : DEFAULT_BASE_URL);
+
+  const timeout = Number(process.env.AI_TIMEOUT_MS) || 90_000;
 
   if (!cachedClient || cachedKey !== apiKey || cachedBaseUrl !== baseURL) {
     cachedClient = new OpenAI({
       apiKey,
       baseURL,
-      timeout: REQUEST_TIMEOUT_MS,
+      timeout,
       maxRetries: 1,
     });
     cachedKey = apiKey;

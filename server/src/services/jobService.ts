@@ -1,7 +1,23 @@
+import type { JobSource } from "@prisma/client";
 import type { JobQuery } from "../utils/jobQuery";
 import { getJobs, getJobById, upsertJob } from "../repositories/jobRepository";
 import { extractJobSkills } from "./matching/jobSkillExtractor";
 import { AppError } from "../utils/appError";
+
+const VALID_JOB_SOURCES = new Set<JobSource>([
+  "GREENHOUSE",
+  "LEVER",
+  "ASHBY",
+  "MANUAL",
+  "LINKEDIN",
+]);
+
+export const normalizeJobSource = (raw?: string): JobSource => {
+  const upper = (raw || "LINKEDIN").trim().toUpperCase();
+  return VALID_JOB_SOURCES.has(upper as JobSource)
+    ? (upper as JobSource)
+    : "MANUAL";
+};
 
 export const getJobsService = async (filters: JobQuery) => {
   return await getJobs(filters);
@@ -42,7 +58,7 @@ export const importExternalJobService = async (
     );
   }
 
-  const source = (input.source || "LINKEDIN").trim().toUpperCase();
+  const source = normalizeJobSource(input.source);
   const requirements = extractJobSkills(`${title}\n${description}`);
 
   return await upsertJob({

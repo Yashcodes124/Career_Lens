@@ -2,7 +2,10 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import App from "./App.tsx";
+import { initClientMonitoring } from "./lib/sentry";
 import "./index.css";
+
+initClientMonitoring();
 
 const queryClient = new QueryClient({
   defaultOptions: {

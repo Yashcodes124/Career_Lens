@@ -5,7 +5,10 @@ import {
   getJobsService,
   importExternalJobService,
 } from "../services/jobService";
-import { syncGreenhouseJobs } from "../services/greenhouseSyncService";
+import {
+  syncAllSoftwareJobs,
+  syncGreenhouseJobs,
+} from "../services/greenhouseSyncService";
 import {
   getSavedJobsService,
   unsaveJobService,
@@ -60,28 +63,29 @@ export const getJobByIdController = async (req: Request, res: Response) => {
 
 export const syncGreenhouseController = async (req: Request, res: Response) => {
   try {
-    const boardToken =
-      (req.body?.boardToken as string | undefined) ||
-      process.env.GREENHOUSE_BOARD_TOKEN ||
-      "stripe";
-    const company =
-      (req.body?.company as string | undefined) ||
-      process.env.GREENHOUSE_COMPANY ||
-      boardToken;
+    const explicitBoardToken = (
+      req.body?.boardToken as string | undefined
+    )?.trim();
+    const explicitCompany = (req.body?.company as string | undefined)?.trim();
 
-    const result = await syncGreenhouseJobs(boardToken, company);
+    const result = explicitBoardToken
+      ? await syncGreenhouseJobs(
+          explicitBoardToken,
+          explicitCompany || explicitBoardToken,
+        )
+      : await syncAllSoftwareJobs();
 
     res.status(200).json({
       success: true,
-      message: "Greenhouse jobs synced successfully",
+      message: "Software engineering jobs synced successfully",
       ...result,
     });
   } catch (error) {
-    console.error("Greenhouse sync error:", error);
+    console.error("Job sync error:", error);
 
     res.status(500).json({
       success: false,
-      message: "Failed to sync Greenhouse jobs",
+      message: "Failed to sync jobs",
     });
   }
 };

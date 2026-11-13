@@ -17,6 +17,58 @@ export interface InterviewPlan {
   rounds: InterviewRound[];
 }
 
+export interface QuestionFeedbackObject {
+  score?: number;
+  feedback?: string;
+  strengths?: string[];
+  improvements?: string[];
+}
+
+export function parseQuestionFeedback(
+  raw: string | QuestionFeedbackObject | null | undefined,
+): QuestionFeedbackObject | null {
+  if (!raw) return null;
+  if (typeof raw === "object") {
+    return {
+      score: typeof raw.score === "number" ? raw.score : undefined,
+      feedback: typeof raw.feedback === "string" ? raw.feedback : undefined,
+      strengths: Array.isArray(raw.strengths)
+        ? raw.strengths.map(String)
+        : undefined,
+      improvements: Array.isArray(raw.improvements)
+        ? raw.improvements.map(String)
+        : undefined,
+    };
+  }
+  if (typeof raw === "string") {
+    try {
+      const parsed = JSON.parse(raw) as Record<string, unknown>;
+      if (parsed && typeof parsed === "object") {
+        return {
+          score: typeof parsed.score === "number" ? parsed.score : undefined,
+          feedback: typeof parsed.feedback === "string" ? parsed.feedback : raw,
+          strengths: Array.isArray(parsed.strengths)
+            ? parsed.strengths.map(String)
+            : undefined,
+          improvements: Array.isArray(parsed.improvements)
+            ? parsed.improvements.map(String)
+            : undefined,
+        };
+      }
+    } catch {
+      return { feedback: raw };
+    }
+  }
+  return null;
+}
+
+export function getQuestionFeedbackText(
+  raw: string | QuestionFeedbackObject | null | undefined,
+  fallback = "",
+): string {
+  return parseQuestionFeedback(raw)?.feedback || fallback;
+}
+
 export interface InterviewQuestion {
   id: string;
   interviewId: string;
@@ -24,7 +76,7 @@ export interface InterviewQuestion {
   question: string;
   order: number;
   answer: string | null;
-  feedback: string | null;
+  feedback: string | QuestionFeedbackObject | null;
   score: number | null;
   createdAt: string;
   updatedAt: string;

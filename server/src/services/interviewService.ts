@@ -379,7 +379,7 @@ export const submitAnswerService = async (
   const updatedQuestion = await saveQuestionAnswerAndFeedback(
     questionId,
     answer,
-    JSON.stringify(evaluation),
+    evaluation,
     evaluation.score,
   );
 
@@ -441,7 +441,12 @@ export const generateFinalEvaluationService = async (
       question: q.question,
       answer: q.answer,
       score: q.score,
-      feedback: q.feedback,
+      feedback:
+        typeof q.feedback === "string"
+          ? q.feedback
+          : q.feedback !== null && q.feedback !== undefined
+            ? JSON.stringify(q.feedback)
+            : null,
     })),
   });
 

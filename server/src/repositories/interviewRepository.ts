@@ -1,5 +1,4 @@
-// server/src/modules/interview/interview.repository.ts
-
+import { Prisma } from "@prisma/client";
 import { prisma } from "../config/db";
 import { InterviewQuestion } from "../modules/interview/interviewSchema";
 import { FinalEvaluation } from "../modules/evaluation/finalEvaluationSchema";
@@ -87,12 +86,11 @@ export const getQuestionById = async (
   });
 };
 
-//update and save answer , feedback and score
-//localhost:5000/api/interviews/InterviewID/questions/questionId/answer
+//update and save answer, feedback (Json) and score
 export const saveQuestionAnswerAndFeedback = async (
   questionId: string,
   answer: string,
-  feedback: string,
+  feedback: Prisma.InputJsonValue,
   score: number,
 ) => {
   return await prisma.interviewQuestion.update({
@@ -105,7 +103,6 @@ export const saveQuestionAnswerAndFeedback = async (
   });
 };
 
-//retrieve the next question
 // Interview and questions are written together, so a failure never leaves an empty interview.
 export const createInterviewWithQuestions = async (
   data: { userId: string; applicationId: string; title: string; plan: object },
@@ -124,6 +121,7 @@ export const createInterviewWithQuestions = async (
     return interview;
   });
 };
+
 // GET /api/interviews
 export const findInterviewsByUserId = async (userId: string) => {
   return await prisma.interview.findMany({
@@ -145,20 +143,20 @@ export const findInterviewsByUserId = async (userId: string) => {
 export const saveAnswer = async (questionId: string, answer: string) => {
   return await prisma.interviewQuestion.update({
     where: { id: questionId },
-    data: { answer, feedback: null, score: null },
+    data: { answer, feedback: Prisma.DbNull, score: null },
   });
 };
 
 // A question is unfinished until it has feedback, meaning it was answered AND evaluated.
 export const countUnfinishedQuestions = async (interviewId: string) => {
   return await prisma.interviewQuestion.count({
-    where: { interviewId, feedback: null },
+    where: { interviewId, feedback: { equals: Prisma.DbNull } },
   });
 };
 
 export const getFirstUnfinishedQuestion = async (interviewId: string) => {
   return await prisma.interviewQuestion.findFirst({
-    where: { interviewId, feedback: null },
+    where: { interviewId, feedback: { equals: Prisma.DbNull } },
     orderBy: { order: "asc" },
   });
 };
@@ -182,7 +180,6 @@ export const saveFinalEvaluation = async (
   });
 };
 
-//it will verify whether an evaluation already exists before calling Ai
 export const getEvaluationByInterviewId = async (interviewId: string) => {
   return await prisma.evaluation.findUnique({
     where: {

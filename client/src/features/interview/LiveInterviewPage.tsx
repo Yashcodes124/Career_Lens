@@ -15,7 +15,12 @@ import {
   generateInterviewEvaluation,
   submitInterviewAnswer,
 } from "./interviewApi";
-import type { Interview, InterviewQuestion } from "./types";
+import {
+  Interview,
+  InterviewQuestion,
+  QuestionFeedbackObject,
+  parseQuestionFeedback,
+} from "./types";
 import { ContentContainer } from "../../components/layout";
 import {
   Badge,
@@ -49,28 +54,39 @@ const formatElapsed = (totalSeconds: number): string => {
 };
 
 const deriveQuestionFeedbackDetails = (
-  feedbackText: string | null | undefined,
+  feedbackInput: QuestionFeedbackObject | string | null | undefined,
   score: number | null | undefined,
 ) => {
-  const raw = (feedbackText || "").trim();
+  const parsedObj =
+    typeof feedbackInput === "string"
+      ? parseQuestionFeedback(feedbackInput)
+      : feedbackInput;
+
+  const raw = (parsedObj?.feedback || "").trim();
   const sentences = raw
     .split(/(?<=[.!?])\s+/)
     .map((s) => s.trim())
     .filter(Boolean);
 
   const numericScore = score ?? 70;
-  const strengths: string[] = [];
-  const improvements: string[] = [];
+  const strengths: string[] = Array.isArray(parsedObj?.strengths)
+    ? parsedObj!.strengths.map((s) => String(s).trim()).filter(Boolean)
+    : [];
+  const improvements: string[] = Array.isArray(parsedObj?.improvements)
+    ? parsedObj!.improvements.map((s) => String(s).trim()).filter(Boolean)
+    : [];
 
-  for (const s of sentences) {
-    if (
-      /missing|improve|should|could|consider|lacked|expand|clarify|however|instead/i.test(
-        s,
-      )
-    ) {
-      improvements.push(s);
-    } else {
-      strengths.push(s);
+  if (strengths.length === 0 && improvements.length === 0) {
+    for (const s of sentences) {
+      if (
+        /missing|improve|should|could|consider|lacked|expand|clarify|however|instead/i.test(
+          s,
+        )
+      ) {
+        improvements.push(s);
+      } else {
+        strengths.push(s);
+      }
     }
   }
 
@@ -368,7 +384,7 @@ export const LiveInterviewPage: React.FC = () => {
     () =>
       hasSubmittedCurrent && currentQuestion
         ? deriveQuestionFeedbackDetails(
-            currentQuestion.feedback,
+            parseQuestionFeedback(currentQuestion.feedback),
             currentQuestion.score,
           )
         : null,

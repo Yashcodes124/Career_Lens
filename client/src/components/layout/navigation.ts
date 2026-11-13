@@ -31,7 +31,7 @@ export const NAV_ITEMS: NavItem[] = [
     path: "/readiness",
     group: "workspace",
     icon: Award,
-    matchPrefixes: ["/readiness", "/skills", "/skill-gap", "/skill-gaps"],
+    matchPrefixes: ["/readiness", "/skills", "/skill-gaps"],
   },
   {
     label: "Interviews",
@@ -94,10 +94,7 @@ export function getRouteContext(pathname: string): {
   if (pathname === "/readiness" || pathname === "/skills") {
     return { section: "Workspace", title: "Skill Readiness" };
   }
-  if (
-    pathname.startsWith("/skill-gap/") ||
-    pathname.startsWith("/skill-gaps/")
-  ) {
+  if (pathname.startsWith("/skill-gaps/")) {
     return {
       section: "Readiness",
       title: "Skill Gap Analysis",

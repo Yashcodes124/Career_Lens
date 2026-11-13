@@ -17,7 +17,13 @@ import {
   fetchInterviewById,
   generateInterviewEvaluation,
 } from "./interviewApi";
-import type { Interview, InterviewEvaluation } from "./types";
+import {
+  getQuestionFeedbackText,
+  type Interview,
+  type InterviewEvaluation,
+  type InterviewQuestion,
+  type QuestionFeedbackObject,
+} from "./types";
 import { ContentContainer, PageHeader } from "../../components/layout";
 import {
   Badge,
@@ -248,14 +254,15 @@ export const InterviewEvaluationPage: React.FC = () => {
         strengthened.push({
           skill: label,
           evidence:
-            q.feedback || `Scored ${qScore}/100 in interview assessment.`,
+            getQuestionFeedbackText(q.feedback) ||
+            `Scored ${q.score ?? 0}% in ${q.round}`,
         });
       } else {
         stillWeak.push({
           skill: label,
           evidence:
-            q.feedback ||
-            `Scored ${qScore}/100 — needs deeper practice on edge cases.`,
+            getQuestionFeedbackText(q.feedback) ||
+            `Needs deeper practice in ${q.round}`,
         });
       }
     }
@@ -575,10 +582,10 @@ export const InterviewEvaluationPage: React.FC = () => {
                   <FeedbackCard
                     title={`Question ${idx + 1} Feedback & Suggested Improvement`}
                     score={q.score}
-                    summary={
-                      q.feedback ||
-                      "Evaluated against technical depth and clarity criteria."
-                    }
+                    summary={getQuestionFeedbackText(
+                      q.feedback,
+                      "No detailed feedback recorded for this question.",
+                    )}
                     suggestedAnswer="Ensure your answer states the architectural pattern, quantifies scale/latency assumptions, and covers failure recovery."
                   />
                 </InterviewQuestionCard>

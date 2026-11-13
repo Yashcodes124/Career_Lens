@@ -1,14 +1,10 @@
-//  src/integrations/jobs/greenhouse/greenhouseAdapter.ts;
-
-//CanonicalJob: refers to  std-template the application follows for different platforms
-
+import type { JobSource } from "@prisma/client";
 import type { GreenhouseJob } from "./greenhouseSchema";
 import { extractJobSkills } from "../../../services/matching/jobSkillExtractor";
 
-//Standard template
 export type CanonicalJob = {
   externalId: string;
-  source: string;
+  source: JobSource;
   title: string;
   company: string;
   location: string | null;
@@ -18,11 +14,13 @@ export type CanonicalJob = {
   url: string | null;
 };
 
-const cleanJobDescription = (rawContent: string): string => {
+export const cleanJobDescription = (rawContent: string): string => {
   return rawContent
     .replace(/&lt;/g, "<")
     .replace(/&gt;/g, ">")
     .replace(/&amp;/g, "&")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
     .replace(/&nbsp;/g, " ")
     .replace(/<[^>]*>/g, " ")
     .replace(/\s+/g, " ")
@@ -41,13 +39,12 @@ export const adaptGreenhouseJob = (
     company,
     location: job.location?.name ?? null,
     description: plainTextDescription,
-    requirements: extractJobSkills(plainTextDescription),
+    requirements: extractJobSkills(`${job.title}\n${plainTextDescription}`),
     salaryRange: null,
     url: job.absolute_url,
   };
 };
 
-//Green house adaptor
 export const adaptGreenhouseJobs = (
   jobs: GreenhouseJob[],
   company: string,
