@@ -21,8 +21,6 @@ import {
   getQuestionFeedbackText,
   type Interview,
   type InterviewEvaluation,
-  type InterviewQuestion,
-  type QuestionFeedbackObject,
 } from "./types";
 import { ContentContainer, PageHeader } from "../../components/layout";
 import {
@@ -210,10 +208,11 @@ export const InterviewEvaluationPage: React.FC = () => {
     const qStrengths: string[] = [];
     const qImprovements: string[] = [];
     for (const q of interview?.questions ?? []) {
-      if (q.score != null && q.score >= 70 && q.feedback) {
-        qStrengths.push(`${q.round}: ${q.feedback}`);
-      } else if (q.feedback) {
-        qImprovements.push(`${q.round}: ${q.feedback}`);
+      const feedbackText = getQuestionFeedbackText(q.feedback);
+      if (q.score != null && q.score >= 70 && feedbackText) {
+        qStrengths.push(`${q.round}: ${feedbackText}`);
+      } else if (feedbackText) {
+        qImprovements.push(`${q.round}: ${feedbackText}`);
       }
     }
 

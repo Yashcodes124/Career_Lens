@@ -9,10 +9,19 @@ import {
   Code2,
   Compass,
   ExternalLink,
+  FileText,
+  Briefcase,
+  MessageSquare,
   PlayCircle,
   ShieldCheck,
 } from "lucide-react";
-import type { GapPriority, MatchResult as MatchResultType } from "./types";
+import type {
+  GapPriority,
+  MatchResult as MatchResultType,
+  SkillConfidence,
+  SkillEvidenceAuditItem,
+  SkillVerificationState,
+} from "./types";
 import { getResourcesForSkill, type SkillResourceLink } from "./skillResources";
 import {
   Badge,
@@ -23,7 +32,6 @@ import {
   RequirementRow,
   ScoreRing,
   SectionCard,
-  SkillBadge,
   Tabs,
   type BadgeTone,
 } from "../../components/ui";
@@ -46,6 +54,27 @@ const getReadinessLabel = (
   if (score >= 60) return { label: "Good match", tone: "primary" };
   if (score >= 40) return { label: "Partial match", tone: "warning" };
   return { label: "Needs preparation", tone: "danger" };
+};
+
+const CONFIDENCE_META: Record<
+  SkillConfidence,
+  { label: string; tone: BadgeTone }
+> = {
+  EXACT_MATCH: { label: "Exact match", tone: "success" },
+  ALIAS_MATCH: { label: "Alias match", tone: "primary" },
+  INFERRED_MATCH: { label: "Inferred match", tone: "primary" },
+  PARTIAL_MATCH: { label: "Partial match", tone: "warning" },
+  MISSING: { label: "No match", tone: "neutral" },
+};
+
+const VERIFICATION_META: Record<
+  SkillVerificationState,
+  { label: string; tone: BadgeTone }
+> = {
+  VERIFIED_STRONG: { label: "Verified strong", tone: "success" },
+  UNVERIFIED: { label: "Unverified resume claim", tone: "primary" },
+  WEAK: { label: "Weak in interview", tone: "warning" },
+  MISSING: { label: "Missing", tone: "danger" },
 };
 
 const RESOURCE_TYPE_ICON: Record<SkillResourceLink["type"], React.ReactNode> = {
@@ -145,6 +174,14 @@ export const MatchResult: React.FC<MatchResultProps> = ({
     );
   }, [result.tactical, weakSkillsMap]);
 
+  const auditMap = useMemo(() => {
+    const map = new Map<string, SkillEvidenceAuditItem>();
+    for (const item of result.skillAudit ?? []) {
+      map.set(item.skill.toLowerCase().trim(), item);
+    }
+    return map;
+  }, [result.skillAudit]);
+
   if (result.status === "INSUFFICIENT_DATA" || result.score === null) {
     return (
       <EmptyState
@@ -163,6 +200,8 @@ export const MatchResult: React.FC<MatchResultProps> = ({
 
   const totalRequirements =
     result.matchedSkills.length + result.missingSkills.length;
+  const defaultImpactPct =
+    totalRequirements > 0 ? Math.round((1 / totalRequirements) * 100) : 0;
   const readiness = getReadinessLabel(result.score);
 
   const verifiedMatchCount = result.matchedSkills.filter((s) =>
@@ -217,6 +256,9 @@ export const MatchResult: React.FC<MatchResultProps> = ({
                 You meet {result.matchedSkills.length} of {totalRequirements}{" "}
                 requirements
               </Badge>
+              <Badge tone="primary">
+                Each skill = +{defaultImpactPct}% match score
+              </Badge>
             </div>
             <h2 className="text-lg font-semibold text-content-heading sm:text-xl">
               Why this match?
@@ -235,7 +277,7 @@ export const MatchResult: React.FC<MatchResultProps> = ({
           </div>
         </div>
 
-        {/* 4 Actionable Summary Metrics: Requirement Coverage, Matched Skills, Missing Skills, Evidence Strength */}
+        {/* 4 Actionable Summary Metrics */}
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <Card muted padding="sm" className="space-y-1.5">
             <p className="text-xs font-medium text-content-secondary">
@@ -304,11 +346,476 @@ export const MatchResult: React.FC<MatchResultProps> = ({
         />
       </Card>
 
-      {/* 2. Missing Skills & Prioritized Preparation Plan */}
+      {/* 1B. Three Distinct Scores + 7-Factor Score Decomposition */}
+      {result.scoreDecomposition && (
+        <SectionCard
+          eyebrow="Transparent Score Decomposition"
+          title="Match vs. Readiness vs. Preparation Breakdown"
+          description="TrueHire separates paper resume matching from live interview readiness and high-impact gap completion."
+        >
+          <div className="space-y-6">
+            {/* 3 Distinct Questions: Match Score vs Readiness Score vs Preparation Score */}
+            <div className="grid gap-4 lg:grid-cols-3">
+              <Card muted padding="md" className="space-y-2">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-xs font-semibold uppercase tracking-wider text-content-secondary">
+                    1. Match Score
+                  </span>
+                  <Badge
+                    tone={
+                      result.scoreDecomposition.headlineScores.matchScore
+                        .score >= 70
+                        ? "success"
+                        : "primary"
+                    }
+                    size="sm"
+                  >
+                    {result.scoreDecomposition.headlineScores.matchScore.score}%
+                  </Badge>
+                </div>
+                <p className="text-xs font-semibold text-content-heading">
+                  “
+                  {result.scoreDecomposition.headlineScores.matchScore.question}
+                  ”
+                </p>
+                <ProgressBar
+                  value={
+                    result.scoreDecomposition.headlineScores.matchScore.score
+                  }
+                  tone="primary"
+                />
+                <p className="text-xs text-content-secondary">
+                  {result.scoreDecomposition.headlineScores.matchScore.summary}
+                </p>
+              </Card>
+
+              <Card muted padding="md" className="space-y-2">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-xs font-semibold uppercase tracking-wider text-content-secondary">
+                    2. Readiness Score
+                  </span>
+                  <Badge
+                    tone={
+                      result.scoreDecomposition.headlineScores.readinessScore
+                        .score >= 70
+                        ? "success"
+                        : "warning"
+                    }
+                    size="sm"
+                  >
+                    {
+                      result.scoreDecomposition.headlineScores.readinessScore
+                        .score
+                    }
+                    %
+                  </Badge>
+                </div>
+                <p className="text-xs font-semibold text-content-heading">
+                  “
+                  {
+                    result.scoreDecomposition.headlineScores.readinessScore
+                      .question
+                  }
+                  ”
+                </p>
+                <ProgressBar
+                  value={
+                    result.scoreDecomposition.headlineScores.readinessScore
+                      .score
+                  }
+                  tone={
+                    result.scoreDecomposition.headlineScores.readinessScore
+                      .score >= 70
+                      ? "success"
+                      : "warning"
+                  }
+                />
+                <p className="text-xs text-content-secondary">
+                  {
+                    result.scoreDecomposition.headlineScores.readinessScore
+                      .summary
+                  }
+                </p>
+              </Card>
+
+              <Card muted padding="md" className="space-y-2">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-xs font-semibold uppercase tracking-wider text-content-secondary">
+                    3. Preparation Score
+                  </span>
+                  <Badge
+                    tone={
+                      result.scoreDecomposition.headlineScores.preparationScore
+                        .score >= 70
+                        ? "success"
+                        : "primary"
+                    }
+                    size="sm"
+                  >
+                    {
+                      result.scoreDecomposition.headlineScores.preparationScore
+                        .score
+                    }
+                    %
+                  </Badge>
+                </div>
+                <p className="text-xs font-semibold text-content-heading">
+                  “
+                  {
+                    result.scoreDecomposition.headlineScores.preparationScore
+                      .question
+                  }
+                  ”
+                </p>
+                <ProgressBar
+                  value={
+                    result.scoreDecomposition.headlineScores.preparationScore
+                      .score
+                  }
+                  tone="success"
+                />
+                <p className="text-xs text-content-secondary">
+                  {
+                    result.scoreDecomposition.headlineScores.preparationScore
+                      .summary
+                  }
+                </p>
+              </Card>
+            </div>
+
+            {/* 7-Factor Granular Decomposition Grid */}
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              <Card padding="sm" className="space-y-1.5">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-semibold text-content-heading">
+                    Required-Skill Coverage
+                  </span>
+                  <span className="font-semibold text-primary tabular-nums">
+                    {
+                      result.scoreDecomposition.factors.requiredSkillCoverage
+                        .score
+                    }
+                    %
+                  </span>
+                </div>
+                <ProgressBar
+                  value={
+                    result.scoreDecomposition.factors.requiredSkillCoverage
+                      .score
+                  }
+                  tone="primary"
+                />
+                <p className="text-[11px] text-content-secondary">
+                  {
+                    result.scoreDecomposition.factors.requiredSkillCoverage
+                      .detail
+                  }
+                </p>
+              </Card>
+
+              <Card padding="sm" className="space-y-1.5">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-semibold text-content-heading">
+                    Preferred-Skill Coverage
+                  </span>
+                  <span className="font-semibold text-primary tabular-nums">
+                    {
+                      result.scoreDecomposition.factors.preferredSkillCoverage
+                        .score
+                    }
+                    %
+                  </span>
+                </div>
+                <ProgressBar
+                  value={
+                    result.scoreDecomposition.factors.preferredSkillCoverage
+                      .score
+                  }
+                  tone="primary"
+                />
+                <p className="text-[11px] text-content-secondary">
+                  {
+                    result.scoreDecomposition.factors.preferredSkillCoverage
+                      .detail
+                  }
+                </p>
+              </Card>
+
+              <Card padding="sm" className="space-y-1.5">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-semibold text-content-heading">
+                    Interview-Verified Coverage
+                  </span>
+                  <span className="font-semibold text-status-success tabular-nums">
+                    {
+                      result.scoreDecomposition.factors
+                        .interviewVerifiedCoverage.score
+                    }
+                    %
+                  </span>
+                </div>
+                <ProgressBar
+                  value={
+                    result.scoreDecomposition.factors.interviewVerifiedCoverage
+                      .score
+                  }
+                  tone="success"
+                />
+                <p className="text-[11px] text-content-secondary">
+                  {
+                    result.scoreDecomposition.factors.interviewVerifiedCoverage
+                      .detail
+                  }
+                </p>
+              </Card>
+
+              <Card padding="sm" className="space-y-1.5">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-semibold text-content-heading">
+                    Resume-Evidence Quality
+                  </span>
+                  <span className="font-semibold text-primary tabular-nums">
+                    {
+                      result.scoreDecomposition.factors.resumeEvidenceQuality
+                        .score
+                    }
+                    %
+                  </span>
+                </div>
+                <ProgressBar
+                  value={
+                    result.scoreDecomposition.factors.resumeEvidenceQuality
+                      .score
+                  }
+                  tone="primary"
+                />
+                <p className="text-[11px] text-content-secondary">
+                  {
+                    result.scoreDecomposition.factors.resumeEvidenceQuality
+                      .detail
+                  }
+                </p>
+              </Card>
+
+              <Card padding="sm" className="space-y-1.5">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-semibold text-content-heading">
+                    Experience-Level Alignment
+                  </span>
+                  <span className="font-semibold text-primary tabular-nums">
+                    {
+                      result.scoreDecomposition.factors.experienceAlignment
+                        .score
+                    }
+                    %
+                  </span>
+                </div>
+                <ProgressBar
+                  value={
+                    result.scoreDecomposition.factors.experienceAlignment.score
+                  }
+                  tone="success"
+                />
+                <p className="text-[11px] text-content-secondary">
+                  {result.scoreDecomposition.factors.experienceAlignment.detail}
+                </p>
+              </Card>
+
+              <Card padding="sm" className="space-y-1.5">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-semibold text-content-heading">
+                    Critical-Gap Penalty
+                  </span>
+                  <span className="font-semibold text-status-danger tabular-nums">
+                    -
+                    {
+                      result.scoreDecomposition.factors.criticalGapPenalty
+                        .penaltyPct
+                    }
+                    %
+                  </span>
+                </div>
+                <ProgressBar
+                  value={Math.max(
+                    0,
+                    100 -
+                      result.scoreDecomposition.factors.criticalGapPenalty
+                        .penaltyPct,
+                  )}
+                  tone="warning"
+                />
+                <p className="text-[11px] text-content-secondary">
+                  {result.scoreDecomposition.factors.criticalGapPenalty.detail}
+                </p>
+              </Card>
+
+              <Card padding="sm" className="space-y-1.5 sm:col-span-2">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-semibold text-content-heading">
+                    Job-Description Signal Confidence
+                  </span>
+                  <Badge
+                    tone={
+                      result.scoreDecomposition.factors.jobDescriptionConfidence
+                        .level === "HIGH"
+                        ? "success"
+                        : result.scoreDecomposition.factors
+                              .jobDescriptionConfidence.level === "MEDIUM"
+                          ? "primary"
+                          : "warning"
+                    }
+                    size="sm"
+                  >
+                    {
+                      result.scoreDecomposition.factors.jobDescriptionConfidence
+                        .level
+                    }{" "}
+                    (
+                    {
+                      result.scoreDecomposition.factors.jobDescriptionConfidence
+                        .score
+                    }
+                    %)
+                  </Badge>
+                </div>
+                <ProgressBar
+                  value={
+                    result.scoreDecomposition.factors.jobDescriptionConfidence
+                      .score
+                  }
+                  tone="primary"
+                />
+                <p className="text-[11px] text-content-secondary">
+                  {
+                    result.scoreDecomposition.factors.jobDescriptionConfidence
+                      .detail
+                  }
+                </p>
+              </Card>
+            </div>
+          </div>
+        </SectionCard>
+      )}
+
+      {/* 2. Matched Skills — Evidence-Linked Verification Cards */}
+      <SectionCard
+        eyebrow="Credited Qualifications"
+        title={`Matched Skills & Evidence Trail (${result.matchedSkills.length})`}
+        description="Every credited skill shows its resume evidence, job requirement frequency, interview verification citation, match confidence, and exact score impact."
+        empty={result.matchedSkills.length === 0}
+        emptyTitle="No matched skills yet"
+        emptyDescription="Your active resume does not currently list the technical skills extracted from this job posting."
+      >
+        <div className="grid gap-4 lg:grid-cols-2">
+          {result.matchedSkills.map((skill) => {
+            const norm = skill.toLowerCase().trim();
+            const audit = auditMap.get(norm);
+            const isVerified =
+              audit?.verificationState === "VERIFIED_STRONG" ||
+              fortifiedSet.has(norm);
+            const impactPct = audit?.impactPct ?? defaultImpactPct;
+            const confidenceMeta =
+              CONFIDENCE_META[audit?.confidence ?? "EXACT_MATCH"];
+            const verdictMeta =
+              VERIFICATION_META[isVerified ? "VERIFIED_STRONG" : "UNVERIFIED"];
+
+            return (
+              <Card
+                key={skill}
+                padding="md"
+                className="flex flex-col justify-between gap-3"
+              >
+                <div className="space-y-2.5">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
+                      {isVerified ? (
+                        <ShieldCheck className="h-4 w-4 shrink-0 text-status-success" />
+                      ) : (
+                        <CheckCircle2 className="h-4 w-4 shrink-0 text-primary" />
+                      )}
+                      <span className="text-sm font-semibold text-content-heading">
+                        {skill} — {verdictMeta.label}
+                      </span>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <Badge tone={confidenceMeta.tone} size="sm">
+                        {confidenceMeta.label}
+                      </Badge>
+                      <Badge tone="success" size="sm">
+                        Impact: +{impactPct}% match score
+                      </Badge>
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5 rounded-input border border-border bg-muted/40 p-3 text-xs">
+                    <p className="text-content-body">
+                      <strong className="inline-flex items-center gap-1 font-semibold text-content-heading">
+                        <MessageSquare className="h-3.5 w-3.5 text-primary" />
+                        Interview evidence:{" "}
+                      </strong>
+                      {audit?.interviewEvidence.citation ||
+                        (isVerified
+                          ? "Verified strong in rubric-scored mock interview evaluation."
+                          : "Unverified claim — not yet tested in a mock interview.")}
+                    </p>
+
+                    <p className="text-content-body">
+                      <strong className="inline-flex items-center gap-1 font-semibold text-content-heading">
+                        <FileText className="h-3.5 w-3.5 text-primary" />
+                        Resume evidence
+                        {audit?.resumeEvidence.section
+                          ? ` (${audit.resumeEvidence.section})`
+                          : ""}
+                        :{" "}
+                      </strong>
+                      {audit?.resumeEvidence.snippet
+                        ? `"${audit.resumeEvidence.snippet}"`
+                        : `Extracted from active resume as "${skill}".`}
+                    </p>
+
+                    <p className="text-content-secondary">
+                      <strong className="inline-flex items-center gap-1 font-semibold text-content-heading">
+                        <Briefcase className="h-3.5 w-3.5 text-primary" />
+                        Job requirement:{" "}
+                      </strong>
+                      {audit?.jobEvidence.summary ??
+                        "Listed in role requirements"}
+                      {audit?.jobEvidence.snippet
+                        ? ` — "${audit.jobEvidence.snippet}"`
+                        : ""}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between gap-2 border-t border-border pt-2.5">
+                  <span className="text-xs text-content-secondary">
+                    {audit?.recommendedAction ??
+                      (isVerified
+                        ? "Verified strong — highlight this proof point in your application."
+                        : "Verify this claim in a targeted mock interview.")}
+                  </span>
+                  {!isVerified && onPracticeSkill && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => onPracticeSkill(skill)}
+                      rightIcon={<ArrowRight className="h-3.5 w-3.5" />}
+                    >
+                      Verify skill
+                    </Button>
+                  )}
+                </div>
+              </Card>
+            );
+          })}
+        </div>
+      </SectionCard>
+
+      {/* 3. Missing & Weak Skills — Evidence-Linked Gap Cards */}
       <SectionCard
         eyebrow="Gap Analysis"
-        title={`Missing Skills & Priority Ranking (${result.skillGaps.length})`}
-        description="Ranked by mention frequency in this job posting, occurrence across your saved jobs, and past interview evaluations."
+        title={`Missing & Weak Skills — Evidence & Impact (${result.skillGaps.length})`}
+        description="Ranked by mention frequency in this job posting, interview evidence, and exact score impact."
         action={
           result.skillGaps.length > 0 ? (
             <Button variant="outline" size="sm" onClick={toggleAllResources}>
@@ -325,52 +832,89 @@ export const MatchResult: React.FC<MatchResultProps> = ({
         <ul className="space-y-3">
           {result.skillGaps.map((gap) => {
             const normSkill = gap.skill.toLowerCase().trim();
+            const audit = auditMap.get(normSkill);
             const isOpen = expandedSkills.has(gap.skill);
             const resources = getResourcesForSkill(gap.skill);
-            const isPartiallyMet = exposedSet.has(normSkill);
+            const isPartiallyMet =
+              audit?.verificationState === "WEAK" || exposedSet.has(normSkill);
             const savedJobCount = Math.max(1, jobFrequencyMap[normSkill] ?? 1);
+            const impactPct = audit?.impactPct ?? defaultImpactPct;
+            const confidenceMeta =
+              CONFIDENCE_META[
+                audit?.confidence ??
+                  (isPartiallyMet ? "PARTIAL_MATCH" : "MISSING")
+              ];
 
             return (
               <li key={gap.skill}>
                 <Card padding="none" className="overflow-hidden">
-                  <div className="flex flex-col justify-between gap-4 p-4 sm:flex-row sm:items-center sm:p-5">
-                    <div className="space-y-1.5 min-w-0 flex-1">
+                  <div className="flex flex-col justify-between gap-4 p-4 sm:flex-row sm:items-start sm:p-5">
+                    <div className="space-y-2 min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-2">
                         <AlertTriangle
                           className="h-4 w-4 shrink-0 text-status-warning"
                           aria-hidden="true"
                         />
                         <span className="text-sm font-semibold text-content-heading">
-                          {gap.skill}
+                          {gap.skill} —{" "}
+                          {isPartiallyMet ? "Weak in interview" : "Missing"}
                         </span>
                         <Badge tone={priorityToneMap[gap.priority]} size="sm">
                           {gap.priority} priority
                         </Badge>
+                        <Badge tone={confidenceMeta.tone} size="sm">
+                          {confidenceMeta.label}
+                        </Badge>
+                        <Badge tone="warning" size="sm">
+                          Impact: +{impactPct}% match score
+                        </Badge>
                         <Badge tone="primary" size="sm">
-                          Appears in {savedJobCount} tracked{" "}
+                          In {savedJobCount} tracked{" "}
                           {savedJobCount === 1 ? "job" : "jobs"}
                         </Badge>
-                        {isPartiallyMet && (
-                          <Badge tone="warning" size="sm">
-                            Partially met · Flagged in interview
-                          </Badge>
-                        )}
                       </div>
 
-                      <p className="text-xs leading-relaxed text-content-body">
-                        <strong className="font-medium text-content-heading">
-                          Evidence:{" "}
-                        </strong>
-                        {gap.evidence}
-                      </p>
+                      <div className="space-y-1 rounded-input border border-border bg-muted/40 p-3 text-xs">
+                        <p className="text-content-body">
+                          <strong className="font-semibold text-content-heading">
+                            Job requirement:{" "}
+                          </strong>
+                          {audit?.jobEvidence.summary ?? gap.evidence}
+                          {audit?.jobEvidence.snippet
+                            ? ` — "${audit.jobEvidence.snippet}"`
+                            : ""}
+                        </p>
+
+                        <p className="text-content-body">
+                          <strong className="font-semibold text-content-heading">
+                            Resume evidence:{" "}
+                          </strong>
+                          {audit?.resumeEvidence.found &&
+                          audit.resumeEvidence.snippet
+                            ? `Found in ${audit.resumeEvidence.section ?? "Resume"}: "${audit.resumeEvidence.snippet}"`
+                            : "Not found on active resume."}
+                        </p>
+
+                        {isPartiallyMet && (
+                          <p className="text-status-warning">
+                            <strong className="font-semibold">
+                              Interview evidence:{" "}
+                            </strong>
+                            {audit?.interviewEvidence.citation ||
+                              weakSkillsMap[normSkill] ||
+                              "Flagged weak in a prior mock interview — practice to reclaim credit."}
+                          </p>
+                        )}
+                      </div>
 
                       <p className="text-xs text-content-secondary">
                         <strong className="font-medium text-content-heading">
                           Recommended action:{" "}
                         </strong>
-                        {isPartiallyMet
-                          ? `Retake a 15-minute targeted interview on ${gap.skill} to convert weak evidence into Verified.`
-                          : `Complete a targeted practice interview on ${gap.skill} and add concrete project proof to your resume.`}
+                        {audit?.recommendedAction ??
+                          (isPartiallyMet
+                            ? `Retake a 15-minute targeted interview on ${gap.skill} to reclaim +${impactPct}% match score.`
+                            : `Complete a deployment project + targeted interview on ${gap.skill} (+${impactPct}% match score).`)}
                       </p>
                     </div>
 
@@ -446,58 +990,11 @@ export const MatchResult: React.FC<MatchResultProps> = ({
         </ul>
       </SectionCard>
 
-      {/* 3. Matched Skills & Evidence Source */}
-      <SectionCard
-        eyebrow="Credited Qualifications"
-        title={`Matched Skills & Evidence Source (${result.matchedSkills.length})`}
-        description="Every matched requirement shows whether it is verified by a mock interview rubric or extracted from your active resume."
-        empty={result.matchedSkills.length === 0}
-        emptyTitle="No matched skills yet"
-        emptyDescription="Your active resume does not currently list the technical skills extracted from this job posting."
-      >
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {result.matchedSkills.map((skill) => {
-            const norm = skill.toLowerCase().trim();
-            const isVerified = fortifiedSet.has(norm);
-            return (
-              <Card
-                key={skill}
-                padding="sm"
-                className="flex flex-col justify-between gap-2.5"
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex items-center gap-2 min-w-0">
-                    {isVerified ? (
-                      <ShieldCheck className="h-4 w-4 shrink-0 text-status-success" />
-                    ) : (
-                      <CheckCircle2 className="h-4 w-4 shrink-0 text-primary" />
-                    )}
-                    <span className="truncate text-sm font-semibold text-content-heading">
-                      {skill}
-                    </span>
-                  </div>
-                  <SkillBadge
-                    skill={skill}
-                    level={isVerified ? "VERIFIED" : "EXTRACTED"}
-                    meta={isVerified ? "Verified" : "Resume"}
-                  />
-                </div>
-                <p className="text-xs text-content-secondary">
-                  {isVerified
-                    ? "Evidence: Verified in a rubric-scored mock interview session."
-                    : "Evidence: Extracted from your active resume — test in an interview to verify."}
-                </p>
-              </Card>
-            );
-          })}
-        </div>
-      </SectionCard>
-
       {/* 4. Requirement Checklist: Met / Partially Met / Missing */}
       <SectionCard
         eyebrow="Complete Audit"
         title="Requirement Checklist"
-        description="Full breakdown of Met, Partially Met, and Missing role requirements."
+        description="Full breakdown of Met, Partially Met, and Missing role requirements with exact evidence."
       >
         <Tabs
           activeTab={checklistTab}
@@ -510,59 +1007,78 @@ export const MatchResult: React.FC<MatchResultProps> = ({
               content: (
                 <div className="space-y-2.5">
                   {result.matchedSkills.map((skill) => {
-                    const isVerified = fortifiedSet.has(
-                      skill.toLowerCase().trim(),
-                    );
+                    const norm = skill.toLowerCase().trim();
+                    const audit = auditMap.get(norm);
+                    const isVerified = fortifiedSet.has(norm);
+                    const impact = audit?.impactPct ?? defaultImpactPct;
                     return (
                       <RequirementRow
                         key={`all-met-${skill}`}
                         skill={skill}
                         status={isVerified ? "MET" : "PRACTICED"}
                         evidence={
-                          isVerified
-                            ? "Met · Verified in mock interview evaluation"
-                            : "Met · Claimed on your active resume"
+                          audit
+                            ? `${
+                                isVerified
+                                  ? audit.interviewEvidence.summary
+                                  : audit.resumeEvidence.snippet
+                                    ? `Resume (${audit.resumeEvidence.section ?? "Skills"}): "${audit.resumeEvidence.snippet}"`
+                                    : "Claimed on active resume"
+                              } · ${audit.jobEvidence.summary} · Impact: +${impact}%`
+                            : isVerified
+                              ? `Met · Verified in mock interview evaluation · Impact: +${impact}%`
+                              : `Met · Claimed on your active resume · Impact: +${impact}%`
                         }
                       />
                     );
                   })}
-                  {partiallyMetSkills.map((skill) => (
-                    <RequirementRow
-                      key={`all-partial-${skill}`}
-                      skill={skill}
-                      status="WEAK"
-                      priority="high"
-                      evidence={
-                        weakSkillsMap[skill.toLowerCase().trim()] ||
-                        "Partially met · Listed on resume but flagged weak in prior interview"
-                      }
-                      action={
-                        onPracticeSkill ? (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => onPracticeSkill(skill)}
-                          >
-                            Practice skill
-                          </Button>
-                        ) : undefined
-                      }
-                    />
-                  ))}
-                  {strictlyMissingSkills.map((skill) => {
-                    const gapObj = result.skillGaps.find(
-                      (g) => g.skill.toLowerCase() === skill.toLowerCase(),
+                  {partiallyMetSkills.map((skill) => {
+                    const norm = skill.toLowerCase().trim();
+                    const audit = auditMap.get(norm);
+                    const impact = audit?.impactPct ?? defaultImpactPct;
+                    return (
+                      <RequirementRow
+                        key={`all-partial-${skill}`}
+                        skill={skill}
+                        status="WEAK"
+                        priority="high"
+                        evidence={`${
+                          audit?.interviewEvidence.citation ||
+                          weakSkillsMap[norm] ||
+                          "Partially met · Listed on resume but flagged weak in prior interview"
+                        } · ${audit?.jobEvidence.summary ?? ""} · Impact: +${impact}%`}
+                        action={
+                          onPracticeSkill ? (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => onPracticeSkill(skill)}
+                            >
+                              Practice skill
+                            </Button>
+                          ) : undefined
+                        }
+                      />
                     );
+                  })}
+                  {strictlyMissingSkills.map((skill) => {
+                    const norm = skill.toLowerCase().trim();
+                    const audit = auditMap.get(norm);
+                    const gapObj = result.skillGaps.find(
+                      (g) => g.skill.toLowerCase() === norm,
+                    );
+                    const impact = audit?.impactPct ?? defaultImpactPct;
                     return (
                       <RequirementRow
                         key={`all-miss-${skill}`}
                         skill={skill}
                         status="MISSING"
                         priority={gapObj?.priority ?? "medium"}
-                        evidence={
+                        evidence={`${
+                          audit?.jobEvidence.summary ??
                           gapObj?.evidence ??
-                          "Missing · Required by job description, not found on resume"
-                        }
+                          "Missing · Required by job description"
+                        } · Impact: +${impact}%`}
                         action={
                           onPracticeSkill ? (
                             <Button
@@ -593,18 +1109,26 @@ export const MatchResult: React.FC<MatchResultProps> = ({
                 ) : (
                   <div className="space-y-2.5">
                     {result.matchedSkills.map((skill) => {
-                      const isVerified = fortifiedSet.has(
-                        skill.toLowerCase().trim(),
-                      );
+                      const norm = skill.toLowerCase().trim();
+                      const audit = auditMap.get(norm);
+                      const isVerified = fortifiedSet.has(norm);
+                      const impact = audit?.impactPct ?? defaultImpactPct;
                       return (
                         <RequirementRow
                           key={`met-${skill}`}
                           skill={skill}
                           status={isVerified ? "MET" : "PRACTICED"}
                           evidence={
-                            isVerified
-                              ? "Verified in mock interview"
-                              : "Extracted from active resume"
+                            audit
+                              ? `${
+                                  isVerified
+                                    ? audit.interviewEvidence.summary
+                                    : (audit.resumeEvidence.snippet ??
+                                      "Extracted from active resume")
+                                } · Impact: +${impact}%`
+                              : isVerified
+                                ? "Verified in mock interview"
+                                : "Extracted from active resume"
                           }
                         />
                       );
@@ -624,29 +1148,34 @@ export const MatchResult: React.FC<MatchResultProps> = ({
                   />
                 ) : (
                   <div className="space-y-2.5">
-                    {partiallyMetSkills.map((skill) => (
-                      <RequirementRow
-                        key={`partial-${skill}`}
-                        skill={skill}
-                        status="WEAK"
-                        priority="high"
-                        evidence={
-                          weakSkillsMap[skill.toLowerCase().trim()] ||
-                          "Flagged for review in a previous mock interview"
-                        }
-                        action={
-                          onPracticeSkill ? (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => onPracticeSkill(skill)}
-                            >
-                              Retake practice
-                            </Button>
-                          ) : undefined
-                        }
-                      />
-                    ))}
+                    {partiallyMetSkills.map((skill) => {
+                      const norm = skill.toLowerCase().trim();
+                      const audit = auditMap.get(norm);
+                      return (
+                        <RequirementRow
+                          key={`partial-${skill}`}
+                          skill={skill}
+                          status="WEAK"
+                          priority="high"
+                          evidence={
+                            audit?.interviewEvidence.citation ||
+                            weakSkillsMap[norm] ||
+                            "Flagged for review in a previous mock interview"
+                          }
+                          action={
+                            onPracticeSkill ? (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => onPracticeSkill(skill)}
+                              >
+                                Retake practice
+                              </Button>
+                            ) : undefined
+                          }
+                        />
+                      );
+                    })}
                   </div>
                 ),
             },
@@ -663,8 +1192,10 @@ export const MatchResult: React.FC<MatchResultProps> = ({
                 ) : (
                   <div className="space-y-2.5">
                     {strictlyMissingSkills.map((skill) => {
+                      const norm = skill.toLowerCase().trim();
+                      const audit = auditMap.get(norm);
                       const gapObj = result.skillGaps.find(
-                        (g) => g.skill.toLowerCase() === skill.toLowerCase(),
+                        (g) => g.skill.toLowerCase() === norm,
                       );
                       return (
                         <RequirementRow
@@ -673,6 +1204,7 @@ export const MatchResult: React.FC<MatchResultProps> = ({
                           status="MISSING"
                           priority={gapObj?.priority ?? "medium"}
                           evidence={
+                            audit?.jobEvidence.summary ??
                             gapObj?.evidence ??
                             "Required by role, not present on active resume"
                           }
