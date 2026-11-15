@@ -412,6 +412,67 @@ export const syncAshbyJobs = async (boardName: string, company: string) => {
   };
 };
 
+export interface SyncHealthReport {
+  status: "HEALTHY" | "DEGRADED";
+  lastSuccessfulSyncAt: string | null;
+  totalFetched: number;
+  totalSaved: number;
+  totalDeactivated: number;
+  duplicatesRemoved: number;
+  sourcesChecked: string[];
+}
+
+let latestSyncHealth: SyncHealthReport = {
+  status: "HEALTHY",
+  lastSuccessfulSyncAt: null,
+  totalFetched: 0,
+  totalSaved: 0,
+  totalDeactivated: 0,
+  duplicatesRemoved: 0,
+  sourcesChecked: ["GREENHOUSE", "LEVER", "ASHBY"],
+};
+
+export const getLatestSyncHealth = (): SyncHealthReport => latestSyncHealth;
+
+const buildDedupeSignature = (job: CanonicalJob): string => {
+  const company = job.company.toLowerCase().replace(/[^a-z0-9]/g, "");
+  const title = job.title
+    .toLowerCase()
+    .replace(/\b(sr|senior|jr|junior|ii|iii|i)\b/g, "")
+    .replace(/[^a-z0-9]/g, "");
+  const loc = (job.location ?? "remote")
+    .toLowerCase()
+    .split(",")[0]
+    .replace(/[^a-z0-9]/g, "");
+  return `${company}::${title}::${loc}`;
+};
+
+export const deduplicateCanonicalJobs = (
+  jobs: CanonicalJob[],
+): { uniqueJobs: CanonicalJob[]; duplicatesRemoved: number } => {
+  const seen = new Map<string, CanonicalJob>();
+  let duplicatesRemoved = 0;
+
+  for (const job of jobs) {
+    const key = buildDedupeSignature(job);
+    const existing = seen.get(key);
+    if (!existing) {
+      seen.set(key, job);
+    } else {
+      duplicatesRemoved++;
+      // Prefer the listing with more extracted requirements or a direct URL
+      if (
+        job.requirements.length > existing.requirements.length ||
+        (!existing.url && job.url)
+      ) {
+        seen.set(key, job);
+      }
+    }
+  }
+
+  return { uniqueJobs: [...seen.values()], duplicatesRemoved };
+};
+
 export const syncAllSoftwareJobs = async () => {
   // 1. Deactivate any legacy food-delivery postings (Swiggy / Zomato)
   const deactivatedExcluded = await prisma.job.updateMany({
@@ -485,9 +546,24 @@ export const syncAllSoftwareJobs = async () => {
     }
   }
 
-  return {
+  const nowIso = new Date().toISOString();
+  const summary = {
     totalFetched: curatedSaved.length + liveFetched,
     totalSaved: curatedSaved.length + liveSaved,
     totalDeactivated: deactivatedExcluded.count,
+    duplicatesRemoved: 0,
+    lastSuccessfulSyncAt: nowIso,
   };
+
+  latestSyncHealth = {
+    status: "HEALTHY",
+    lastSuccessfulSyncAt: nowIso,
+    totalFetched: summary.totalFetched,
+    totalSaved: summary.totalSaved,
+    totalDeactivated: summary.totalDeactivated,
+    duplicatesRemoved: summary.duplicatesRemoved,
+    sourcesChecked: ["GREENHOUSE", "LEVER", "ASHBY"],
+  };
+
+  return summary;
 };

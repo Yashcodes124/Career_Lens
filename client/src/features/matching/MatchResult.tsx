@@ -21,6 +21,7 @@ import type {
   SkillConfidence,
   SkillEvidenceAuditItem,
   SkillVerificationState,
+  ClaimVerificationStatus,
 } from "./types";
 import { getResourcesForSkill, type SkillResourceLink } from "./skillResources";
 import {
@@ -49,8 +50,13 @@ export interface MatchResultProps {
 
 const getReadinessLabel = (
   score: number,
+  hasVerifiedOrProjectEvidence = false,
 ): { label: string; tone: BadgeTone } => {
-  if (score >= 80) return { label: "Strong match", tone: "success" };
+  if (score >= 80) {
+    return hasVerifiedOrProjectEvidence
+      ? { label: "Strong match", tone: "success" }
+      : { label: "Resume match (Unverified)", tone: "primary" };
+  }
   if (score >= 60) return { label: "Good match", tone: "primary" };
   if (score >= 40) return { label: "Partial match", tone: "warning" };
   return { label: "Needs preparation", tone: "danger" };
@@ -62,9 +68,22 @@ const CONFIDENCE_META: Record<
 > = {
   EXACT_MATCH: { label: "Exact match", tone: "success" },
   ALIAS_MATCH: { label: "Alias match", tone: "primary" },
-  INFERRED_MATCH: { label: "Inferred match", tone: "primary" },
+  INFERRED_MATCH: { label: "Context inferred", tone: "primary" },
   PARTIAL_MATCH: { label: "Partial match", tone: "warning" },
+  LOW_CONFIDENCE: { label: "Low confidence", tone: "warning" },
   MISSING: { label: "No match", tone: "neutral" },
+};
+
+const CLAIM_STATUS_META: Record<
+  ClaimVerificationStatus,
+  { label: string; tone: BadgeTone }
+> = {
+  VERIFIED_STRONG: { label: "Verified strong", tone: "success" },
+  VERIFIED_WEAK: { label: "Verified weak", tone: "danger" },
+  RESUME_CLAIMED: { label: "Resume claimed", tone: "primary" },
+  CONTEXT_INFERRED: { label: "Context inferred", tone: "primary" },
+  LOW_CONFIDENCE: { label: "Low confidence", tone: "warning" },
+  MISSING: { label: "Missing", tone: "neutral" },
 };
 
 const VERIFICATION_META: Record<
@@ -202,11 +221,19 @@ export const MatchResult: React.FC<MatchResultProps> = ({
     result.matchedSkills.length + result.missingSkills.length;
   const defaultImpactPct =
     totalRequirements > 0 ? Math.round((1 / totalRequirements) * 100) : 0;
-  const readiness = getReadinessLabel(result.score);
 
   const verifiedMatchCount = result.matchedSkills.filter((s) =>
     fortifiedSet.has(s.toLowerCase().trim()),
   ).length;
+
+  const hasStrongOrProjectProof =
+    verifiedMatchCount > 0 ||
+    (result.skillAudit ?? []).some(
+      (i) =>
+        i.claimStatus === "VERIFIED_STRONG" || i.hasProjectOrExperienceEvidence,
+    );
+  const readiness = getReadinessLabel(result.score, hasStrongOrProjectProof);
+
   const resumeOnlyMatchCount = Math.max(
     0,
     result.matchedSkills.length - verifiedMatchCount,
@@ -697,6 +724,125 @@ export const MatchResult: React.FC<MatchResultProps> = ({
         </SectionCard>
       )}
 
+      {/* 1C. Claim Verification Engine (6-Status Ledger + Failed Claim Alerts) */}
+      {result.skillAudit && result.skillAudit.length > 0 && (
+        <SectionCard
+          eyebrow="Claim Verification Engine"
+          title="Resume Claim vs. Interview Proof Audit"
+          description="TrueHire does not treat resume keywords as proof of expertise. Every skill is classified by verification evidence, and weak interview skills are withheld from match strengths."
+        >
+          <div className="space-y-4">
+            {/* 6-Status Summary Strip */}
+            <div className="grid gap-2.5 sm:grid-cols-3 lg:grid-cols-6">
+              {(
+                [
+                  {
+                    status: "VERIFIED_STRONG",
+                    title: "Verified strong",
+                    desc: "Proven in interview",
+                  },
+                  {
+                    status: "VERIFIED_WEAK",
+                    title: "Verified weak",
+                    desc: "Interview exposed gap",
+                  },
+                  {
+                    status: "RESUME_CLAIMED",
+                    title: "Resume claimed",
+                    desc: "Listed, unvalidated",
+                  },
+                  {
+                    status: "CONTEXT_INFERRED",
+                    title: "Context inferred",
+                    desc: "In projects only",
+                  },
+                  {
+                    status: "LOW_CONFIDENCE",
+                    title: "Low confidence",
+                    desc: "Bare/alias keyword",
+                  },
+                  {
+                    status: "MISSING",
+                    title: "Missing",
+                    desc: "Not found anywhere",
+                  },
+                ] as const
+              ).map((bucket) => {
+                const count = (result.skillAudit ?? []).filter(
+                  (i) => i.claimStatus === bucket.status,
+                ).length;
+                const meta = CLAIM_STATUS_META[bucket.status];
+                return (
+                  <Card
+                    key={bucket.status}
+                    muted
+                    padding="sm"
+                    className="space-y-1"
+                  >
+                    <div className="flex items-center justify-between gap-1">
+                      <Badge tone={meta.tone} size="sm">
+                        {bucket.title}
+                      </Badge>
+                      <span className="text-base font-semibold text-content-heading tabular-nums">
+                        {count}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-content-secondary">
+                      {bucket.desc}
+                    </p>
+                  </Card>
+                );
+              })}
+            </div>
+
+            {/* Guardrail 4: Flag repeated claims that fail interview validation */}
+            {result.skillAudit.some((i) => i.repeatedFailedClaim) && (
+              <Card
+                padding="sm"
+                className="border-status-danger-border bg-status-danger-soft/50 space-y-2"
+              >
+                <div className="flex items-center gap-2">
+                  <AlertTriangle className="h-4 w-4 shrink-0 text-status-danger" />
+                  <p className="text-xs font-semibold text-status-danger">
+                    Failed Claim Validation Alert — Resume Claims Withheld from
+                    Match Score
+                  </p>
+                </div>
+                <ul className="space-y-1 text-xs text-content-body">
+                  {result.skillAudit
+                    .filter((i) => i.repeatedFailedClaim)
+                    .map((item) => (
+                      <li
+                        key={`failed-claim-${item.skill}`}
+                        className="flex flex-wrap items-center justify-between gap-2"
+                      >
+                        <span>
+                          <strong className="font-semibold text-content-heading">
+                            {item.skill}:
+                          </strong>{" "}
+                          {item.failedClaimWarning}{" "}
+                          {item.interviewEvidence.citation
+                            ? `(${item.interviewEvidence.citation})`
+                            : ""}
+                        </span>
+                        {onPracticeSkill && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => onPracticeSkill(item.skill)}
+                          >
+                            Re-verify {item.skill}
+                          </Button>
+                        )}
+                      </li>
+                    ))}
+                </ul>
+              </Card>
+            )}
+          </div>
+        </SectionCard>
+      )}
+
       {/* 2. Matched Skills — Evidence-Linked Verification Cards */}
       <SectionCard
         eyebrow="Credited Qualifications"
@@ -716,8 +862,11 @@ export const MatchResult: React.FC<MatchResultProps> = ({
             const impactPct = audit?.impactPct ?? defaultImpactPct;
             const confidenceMeta =
               CONFIDENCE_META[audit?.confidence ?? "EXACT_MATCH"];
-            const verdictMeta =
-              VERIFICATION_META[isVerified ? "VERIFIED_STRONG" : "UNVERIFIED"];
+            const claimMeta = audit?.claimStatus
+              ? CLAIM_STATUS_META[audit.claimStatus]
+              : VERIFICATION_META[
+                  isVerified ? "VERIFIED_STRONG" : "UNVERIFIED"
+                ];
 
             return (
               <Card
@@ -734,7 +883,7 @@ export const MatchResult: React.FC<MatchResultProps> = ({
                         <CheckCircle2 className="h-4 w-4 shrink-0 text-primary" />
                       )}
                       <span className="text-sm font-semibold text-content-heading">
-                        {skill} — {verdictMeta.label}
+                        {skill} — {claimMeta.label}
                       </span>
                     </div>
                     <div className="flex flex-wrap items-center gap-1.5">

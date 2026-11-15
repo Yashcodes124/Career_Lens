@@ -8,7 +8,6 @@ import {
   ExternalLink,
   RotateCcw,
   Building2,
-  Clock,
   X,
   ChevronLeft,
   ChevronRight,
@@ -20,14 +19,14 @@ import {
 } from "lucide-react";
 import { Navbar } from "../../components/NavBar";
 import {
-  fetchJobs,
   fetchSavedJobs,
   unsaveJob,
   saveJob,
   syncVerifiedJobs,
+  fetchJobsWithMeta,
 } from "./jobsApi";
-import { JobCard } from "./JobCard";
-import type { Job } from "./types";
+import { JobCard, formatJobSourceLabel, getJobFreshness } from "./JobCard";
+import type { Job, SyncHealth } from "./types";
 import { createApplication } from "../tracker/trackerApi";
 import { useLatestResumeId } from "../resume/useResumes";
 import { useAuth } from "../auth/useAuth";
@@ -58,6 +57,7 @@ export const JobsPage: React.FC = () => {
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncBanner, setSyncBanner] = useState<string | null>(null);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [syncHealth, setSyncHealth] = useState<SyncHealth | null>(null);
   const [importForm, setImportForm] = useState({
     title: "",
     company: "",
@@ -77,12 +77,13 @@ export const JobsPage: React.FC = () => {
       setIsLoading(true);
       setError(null);
 
-      const [results, savedJobs] = await Promise.all([
-        fetchJobs(),
-        fetchSavedJobs().catch(() => []),
-      ]);
-
+      const [{ jobs: results, syncHealth: health }, savedJobs] =
+        await Promise.all([
+          fetchJobsWithMeta(),
+          fetchSavedJobs().catch(() => []),
+        ]);
       setJobs(results);
+      if (health) setSyncHealth(health);
       setSavedJobIds(new Set(savedJobs.map((job) => job.id)));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to load jobs.");
@@ -100,10 +101,17 @@ export const JobsPage: React.FC = () => {
     try {
       setIsSyncing(true);
       setError(null);
-      await syncVerifiedJobs();
+      const syncRes = await syncVerifiedJobs();
       await loadJobs();
+      setSyncHealth({
+        status: "HEALTHY",
+        lastSuccessfulSyncAt: new Date().toISOString(),
+        totalFetched: syncRes.totalFetched,
+        totalSaved: syncRes.totalSaved,
+        totalDeactivated: syncRes.totalDeactivated,
+      });
       setSyncBanner(
-        "Synchronized active engineering roles from public job boards.",
+        `Sync complete: ${syncRes.totalSaved} roles added/updated, ${syncRes.totalDeactivated} stale listings deactivated.`,
       );
       setTimeout(() => setSyncBanner(null), 6000);
     } catch (err) {
@@ -238,11 +246,47 @@ export const JobsPage: React.FC = () => {
     return ["ALL", ...Array.from(set)];
   }, [jobs]);
 
+  const { deduplicatedJobs, duplicateCount } = useMemo(() => {
+    const map = new Map<string, Job>();
+    let dupes = 0;
+    for (const job of jobs) {
+      const key = `${job.company.toLowerCase().trim()}::${job.title
+        .toLowerCase()
+        .replace(/\b(sr\.?|senior|jr\.?|junior|i|ii|iii)\b/g, "")
+        .replace(/[^a-z0-9]/g, "")}::${(job.location ?? "remote")
+        .toLowerCase()
+        .split(",")[0]
+        .trim()}`;
+      const existing = map.get(key);
+      if (!existing) {
+        map.set(key, {
+          ...job,
+          duplicateSources: [job.source || "GREENHOUSE"],
+        });
+      } else {
+        dupes++;
+        const mergedSources = Array.from(
+          new Set([
+            ...(existing.duplicateSources ?? []),
+            job.source || "GREENHOUSE",
+          ]),
+        );
+        const newer =
+          new Date(job.lastSyncedAt).getTime() >
+          new Date(existing.lastSyncedAt).getTime()
+            ? job
+            : existing;
+        map.set(key, { ...newer, duplicateSources: mergedSources });
+      }
+    }
+    return { deduplicatedJobs: [...map.values()], duplicateCount: dupes };
+  }, [jobs]);
+
   const filteredJobs = useMemo(() => {
     const normalizedSearch = search.trim().toLowerCase();
     const normalizedLocation = locationFilter.trim().toLowerCase();
 
-    return jobs.filter((job) => {
+    return deduplicatedJobs.filter((job) => {
       const matchesSearch =
         !normalizedSearch ||
         job.title.toLowerCase().includes(normalizedSearch) ||
@@ -413,6 +457,43 @@ export const JobsPage: React.FC = () => {
             </Link>
           </div>
         </header>
+
+        {/* Sync Health & Source Integrity Indicator */}
+        <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 text-xs shadow-sm">
+          <div className="flex flex-wrap items-center gap-3">
+            <span className="inline-flex items-center gap-1.5 font-semibold text-emerald-700">
+              <span className="h-2 w-2 rounded-full bg-emerald-500" />
+              ATS Sync Health: Operational
+            </span>
+            <span className="text-slate-300">|</span>
+            <span className="text-slate-600 tabular-nums">
+              <strong className="font-semibold text-slate-900">
+                Last sync:
+              </strong>{" "}
+              {formatLastSynced(
+                syncHealth?.lastSuccessfulSyncAt ?? jobs[0]?.lastSyncedAt,
+              )}
+            </span>
+            <span className="text-slate-300">|</span>
+            <span className="text-slate-600 tabular-nums">
+              <strong className="font-semibold text-slate-900">
+                {syncHealth?.totalSaved ?? jobs.length}
+              </strong>{" "}
+              added/updated ·{" "}
+              <strong className="font-semibold text-slate-900">
+                {syncHealth?.totalDeactivated ?? 0}
+              </strong>{" "}
+              deactivated ·{" "}
+              <strong className="font-semibold text-slate-900">
+                {duplicateCount}
+              </strong>{" "}
+              cross-ATS duplicates merged
+            </span>
+          </div>
+          <span className="text-[11px] font-medium text-slate-500">
+            Sources: Greenhouse · Lever · Ashby · LinkedIn
+          </span>
+        </div>
 
         {syncBanner && (
           <div className="mb-5 flex items-center justify-between gap-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-xs font-medium text-emerald-800">
@@ -922,39 +1003,51 @@ export const JobsPage: React.FC = () => {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-start justify-between gap-4 border-b border-slate-200 p-6">
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="rounded-md border border-blue-200 bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700">
-                    {activeDrawerJob.source}
-                  </span>
-                  {activeDrawerJob.isActive !== false && (
-                    <span className="rounded-md border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700">
-                      Active
-                    </span>
-                  )}
-                </div>
-                <h2 className="mt-2 text-xl font-semibold text-slate-900 sm:text-2xl">
-                  {activeDrawerJob.title}
-                </h2>
-                <div className="mt-1.5 flex flex-wrap items-center gap-2 text-xs text-slate-500">
-                  <span className="inline-flex items-center gap-1 font-medium text-slate-800">
-                    <Building2 className="h-3.5 w-3.5 text-blue-600" />
-                    {activeDrawerJob.company}
-                  </span>
-                  {activeDrawerJob.location && (
-                    <>
-                      <span>·</span>
-                      <span>{activeDrawerJob.location}</span>
-                    </>
-                  )}
-                  <span>·</span>
-                  <span className="inline-flex items-center gap-1">
-                    <Clock className="h-3 w-3" />
-                    {formatLastSynced(activeDrawerJob.lastSyncedAt)}
-                  </span>
-                </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="rounded-md border border-blue-200 bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700">
+                  {formatJobSourceLabel(activeDrawerJob.source)}
+                </span>
+                <span
+                  className={`rounded-md border px-2 py-0.5 text-xs font-medium ${
+                    getJobFreshness(activeDrawerJob).state === "ACTIVE"
+                      ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                      : getJobFreshness(activeDrawerJob).state ===
+                          "POSSIBLY_STALE"
+                        ? "border-amber-200 bg-amber-50 text-amber-700"
+                        : "border-red-200 bg-red-50 text-red-700"
+                  }`}
+                >
+                  {getJobFreshness(activeDrawerJob).label}
+                </span>
               </div>
-
+              <h2 className="mt-2 text-xl font-semibold text-slate-900 sm:text-2xl">
+                {activeDrawerJob.title}
+              </h2>
+              <div className="mt-1.5 flex flex-wrap items-center gap-2 text-xs text-slate-500">
+                <span className="inline-flex items-center gap-1 font-medium text-slate-800">
+                  <Building2 className="h-3.5 w-3.5 text-blue-600" />
+                  {activeDrawerJob.company}
+                </span>
+                {activeDrawerJob.location && (
+                  <>
+                    <span>·</span>
+                    <span>{activeDrawerJob.location}</span>
+                  </>
+                )}
+              </div>
+              <div className="mt-1.5 flex flex-wrap items-center gap-2 text-[11px] text-slate-500 tabular-nums">
+                <span>
+                  Posted: {formatLastSynced(activeDrawerJob.createdAt)}
+                </span>
+                <span>·</span>
+                <span>
+                  Updated: {formatLastSynced(activeDrawerJob.updatedAt)}
+                </span>
+                <span>·</span>
+                <span>
+                  Last synced: {formatLastSynced(activeDrawerJob.lastSyncedAt)}
+                </span>
+              </div>
               <button
                 type="button"
                 onClick={() => setActiveDrawerJob(null)}

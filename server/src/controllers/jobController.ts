@@ -8,6 +8,7 @@ import {
 import {
   syncAllSoftwareJobs,
   syncGreenhouseJobs,
+  getLatestSyncHealth,
 } from "../services/greenhouseSyncService";
 import {
   getSavedJobsService,
@@ -23,12 +24,27 @@ export const getJobsController = async (
   try {
     const filters = parseJobQuery(req.query as Record<string, unknown>);
     const { jobs, total } = await getJobsService(filters);
+    const latestSyncFromJobs =
+      jobs.length > 0
+        ? jobs
+            .map(
+              (j) => j.lastSyncedAt?.toISOString?.() ?? String(j.lastSyncedAt),
+            )
+            .sort()
+            .reverse()[0]
+        : null;
+    const health = getLatestSyncHealth();
+
     res.status(200).json({
       success: true,
       jobs,
       total,
       page: filters.page,
       pageSize: filters.pageSize,
+      syncHealth: {
+        ...health,
+        lastSuccessfulSyncAt: health.lastSuccessfulSyncAt ?? latestSyncFromJobs,
+      },
     });
   } catch (error) {
     next(error);

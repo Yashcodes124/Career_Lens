@@ -58,20 +58,43 @@ export type SkillConfidence =
   | "ALIAS_MATCH"
   | "PARTIAL_MATCH"
   | "INFERRED_MATCH"
+  | "LOW_CONFIDENCE"
   | "MISSING";
 
 export type SkillVerificationState =
   "VERIFIED_STRONG" | "WEAK" | "UNVERIFIED" | "MISSING";
 
+export type ClaimVerificationStatus =
+  | "VERIFIED_STRONG"
+  | "VERIFIED_WEAK"
+  | "RESUME_CLAIMED"
+  | "CONTEXT_INFERRED"
+  | "LOW_CONFIDENCE"
+  | "MISSING";
+
 export interface SkillEvidenceAuditItem {
   skill: string;
   verificationState: SkillVerificationState;
+  claimStatus: ClaimVerificationStatus;
+  claimStatusLabel:
+    | "Verified strong"
+    | "Verified weak"
+    | "Resume claimed"
+    | "Context inferred"
+    | "Low confidence"
+    | "Missing";
+  claimMeaning: string;
   confidence: SkillConfidence;
   impactPct: number;
   credited: boolean;
   priority: GapPriority;
+  resumeMentionCount: number;
+  hasProjectOrExperienceEvidence: boolean;
+  repeatedFailedClaim: boolean;
+  failedClaimWarning: string | null;
   resumeEvidence: {
     found: boolean;
+    explicitlyListed: boolean;
     section: string | null;
     matchedTerm: string | null;
     snippet: string | null;
@@ -487,6 +510,8 @@ export const buildSkillEvidenceAudit = (params: {
   const requiredSkills = normalizeSkills(params.jobSkills);
   if (requiredSkills.length === 0) return [];
 
+  const explicitResumeSkillSet = new Set(normalizeSkills(params.resumeSkills));
+
   const {
     normalizedStrong,
     normalizedWeak,
@@ -494,14 +519,18 @@ export const buildSkillEvidenceAudit = (params: {
     normalizedWeakCitations,
   } = normalizeInterviewEvidence(params.interview);
 
-  const mentions = params.jobDescription
+  const jobMentions = params.jobDescription
     ? countSkillMentions(params.jobDescription)
+    : null;
+  const resumeMentionsMap = params.resumeRawText
+    ? countSkillMentions(params.resumeRawText)
     : null;
 
   const impactPct = Math.max(1, Math.round((1 / requiredSkills.length) * 100));
 
   const items: SkillEvidenceAuditItem[] = requiredSkills.map((skill) => {
     const terms = getAliasesForSkill(skill);
+    const explicitlyListed = explicitResumeSkillSet.has(skill);
     const resumeInfo = findResumeSectionAndSnippet(
       skill,
       terms,
@@ -510,14 +539,29 @@ export const buildSkillEvidenceAudit = (params: {
       params.resumeParsedData,
     );
 
+    const rawMentionCount = resumeMentionsMap?.get(skill) ?? 0;
+    const resumeMentionCount = Math.max(
+      rawMentionCount,
+      explicitlyListed ? 1 : 0,
+      resumeInfo.found ? 1 : 0,
+    );
+
+    const hasProjectOrExperienceEvidence = Boolean(
+      resumeInfo.found &&
+      resumeInfo.section &&
+      (resumeInfo.section === "Experience" ||
+        resumeInfo.section === "Projects" ||
+        (resumeInfo.section === "Resume Text" && rawMentionCount > 0)),
+    );
+
     const jobHit = extractSnippetForTerms(params.jobDescription, terms);
     const mentionCount = Math.max(
-      mentions?.get(skill) ?? 0,
+      jobMentions?.get(skill) ?? 0,
       jobHit.snippet ? 1 : 0,
     );
     const priority: GapPriority = normalizedWeak.has(skill)
       ? "high"
-      : mentions
+      : jobMentions
         ? priorityFromMentions(mentionCount)
         : "medium";
 
@@ -530,76 +574,143 @@ export const buildSkillEvidenceAudit = (params: {
     const isWeak = normalizedWeak.has(skill);
 
     let verificationState: SkillVerificationState;
+    let claimStatus: ClaimVerificationStatus;
+    let claimStatusLabel: SkillEvidenceAuditItem["claimStatusLabel"];
+    let claimMeaning: string;
+    let confidence: SkillConfidence;
     let credited: boolean;
     let interviewStatus: "STRONG" | "WEAK" | "UNVERIFIED" | "MISSING";
     let interviewCitation: string | null = null;
     let interviewSummary: string;
+    let repeatedFailedClaim = false;
+    let failedClaimWarning: string | null = null;
 
     if (isWeak) {
+      // Guardrail 1 & 4: Weak interview skill is never counted as a strength; flag failed resume claims
       verificationState = "WEAK";
+      claimStatus = "VERIFIED_WEAK";
+      claimStatusLabel = "Verified weak";
+      claimMeaning =
+        "Interview exposed a gap — withheld from match strengths until re-verified.";
+      confidence = "PARTIAL_MATCH";
       credited = false;
       interviewStatus = "WEAK";
       interviewCitation =
         normalizedWeakCitations.get(skill) ?? normalizedWeak.get(skill) ?? null;
       interviewSummary =
         interviewCitation ||
-        "Flagged weak in mock interview evaluation — credit withheld until re-verified.";
+        "Interview exposed a gap — credit withheld even if claimed on resume.";
+
+      if (explicitlyListed || resumeInfo.found) {
+        repeatedFailedClaim = true;
+        failedClaimWarning =
+          resumeMentionCount >= 2
+            ? `Repeated claim failed validation: Claimed ${resumeMentionCount} times on resume (${resumeInfo.section ?? "Skills"}), but failed mock interview evaluation.`
+            : `Claim failed validation: Listed in ${resumeInfo.section ?? "Resume Skills"}, but failed mock interview evaluation.`;
+      }
     } else if (isStrong) {
+      // Guardrail 3: Only show Verified Strong when backed by interview evidence
       verificationState = "VERIFIED_STRONG";
+      claimStatus = "VERIFIED_STRONG";
+      claimStatusLabel = "Verified strong";
+      claimMeaning =
+        "Demonstrated in an interview with strong rubric evidence.";
+      confidence = resumeInfo.found
+        ? resumeInfo.isExactTerm
+          ? "EXACT_MATCH"
+          : "ALIAS_MATCH"
+        : "INFERRED_MATCH";
       credited = true;
       interviewStatus = "STRONG";
       interviewCitation =
         normalizedStrongCitations.get(skill) ??
         "Verified strong in rubric-scored mock interview evaluation";
       interviewSummary = interviewCitation;
-    } else if (resumeInfo.found) {
+    } else if (resumeInfo.found && !explicitlyListed) {
+      // Found in project/experience text, but not explicitly in resume.skills[]
+      verificationState = "UNVERIFIED";
+      claimStatus = "CONTEXT_INFERRED";
+      claimStatusLabel = "Context inferred";
+      claimMeaning = `Found in ${resumeInfo.section ?? "project/experience"} text, but not explicitly listed in skills array.`;
+      confidence = "INFERRED_MATCH";
+      credited = false;
+      interviewStatus = "UNVERIFIED";
+      interviewSummary =
+        "Inferred from project/experience text — confirm on resume and verify in an interview.";
+    } else if (resumeInfo.found || explicitlyListed) {
+      // Guardrail 2: Resume keyword is a claim, not proof of expertise.
+      // Flag LOW_CONFIDENCE if bare keyword has zero project/experience context or alias-only uncertainty.
+      const isBareKeywordOnly =
+        Boolean(params.resumeRawText) && !hasProjectOrExperienceEvidence;
+      const isUncertainAlias =
+        !resumeInfo.isExactTerm && !hasProjectOrExperienceEvidence;
+
       verificationState = "UNVERIFIED";
       credited = true;
       interviewStatus = "UNVERIFIED";
-      interviewCitation = null;
-      interviewSummary =
-        "Unverified resume claim — not yet interrogated in a mock interview.";
+
+      if (isUncertainAlias || isBareKeywordOnly) {
+        claimStatus = "LOW_CONFIDENCE";
+        claimStatusLabel = "Low confidence";
+        claimMeaning = isUncertainAlias
+          ? "Alias-matched keyword with no supporting project or experience context."
+          : "Keyword listed in Skills section only — zero project/experience context or interview proof.";
+        confidence = "LOW_CONFIDENCE";
+        interviewSummary =
+          "Low-confidence keyword claim — lacks both project context and interview verification.";
+      } else {
+        claimStatus = "RESUME_CLAIMED";
+        claimStatusLabel = "Resume claimed";
+        claimMeaning =
+          "Listed on resume with project/experience context, but never validated in an interview.";
+        confidence = resumeInfo.isExactTerm ? "EXACT_MATCH" : "ALIAS_MATCH";
+        interviewSummary =
+          "Resume claim only — not proof of expertise until verified in a mock interview.";
+      }
     } else {
       verificationState = "MISSING";
+      claimStatus = "MISSING";
+      claimStatusLabel = "Missing";
+      claimMeaning =
+        "Not present in resume skills, project text, or interview records.";
+      confidence = "MISSING";
       credited = false;
       interviewStatus = "MISSING";
-      interviewCitation = null;
       interviewSummary = "Not present on resume and not tested in interviews.";
     }
 
-    let confidence: SkillConfidence;
-    if (isWeak) {
-      confidence = "PARTIAL_MATCH";
-    } else if (resumeInfo.found && resumeInfo.isExactTerm) {
-      confidence = "EXACT_MATCH";
-    } else if (resumeInfo.found && !resumeInfo.isExactTerm) {
-      confidence = "ALIAS_MATCH";
-    } else if (!resumeInfo.found && isStrong) {
-      confidence = "INFERRED_MATCH";
-    } else {
-      confidence = "MISSING";
-    }
-
     let recommendedAction: string;
-    if (verificationState === "VERIFIED_STRONG") {
-      recommendedAction = `Verified strong (+${impactPct}% match score) — keep ${skill} prominent in your tailored summary.`;
-    } else if (verificationState === "UNVERIFIED") {
-      recommendedAction = `Start a targeted interview on ${skill} to upgrade this resume claim to Verified Strong.`;
-    } else if (verificationState === "WEAK") {
-      recommendedAction = `Retake a targeted interview on ${skill} to reclaim +${impactPct}% match score lost to prior weakness.`;
+    if (claimStatus === "VERIFIED_STRONG") {
+      recommendedAction = `Verified strong (+${impactPct}% match score) — backed by interview evidence.`;
+    } else if (claimStatus === "VERIFIED_WEAK") {
+      recommendedAction = `Retake a targeted interview on ${skill} to resolve this failed claim and reclaim +${impactPct}% match score.`;
+    } else if (claimStatus === "LOW_CONFIDENCE") {
+      recommendedAction = `Add concrete project bullets for ${skill} and pass a targeted interview to validate this low-confidence keyword.`;
+    } else if (claimStatus === "CONTEXT_INFERRED") {
+      recommendedAction = `Explicitly list ${skill} in your Skills section and verify it in a targeted interview (+${impactPct}% match score).`;
+    } else if (claimStatus === "RESUME_CLAIMED") {
+      recommendedAction = `Start a targeted interview on ${skill} to convert this unvalidated resume claim into Verified Strong.`;
     } else {
-      recommendedAction = `Complete a focused implementation project + targeted interview on ${skill} (+${impactPct}% match score).`;
+      recommendedAction = `Complete a deployment/implementation project + targeted interview on ${skill} (+${impactPct}% match score).`;
     }
 
     return {
       skill,
       verificationState,
+      claimStatus,
+      claimStatusLabel,
+      claimMeaning,
       confidence,
       impactPct,
       credited,
       priority,
+      resumeMentionCount,
+      hasProjectOrExperienceEvidence,
+      repeatedFailedClaim,
+      failedClaimWarning,
       resumeEvidence: {
         found: resumeInfo.found,
+        explicitlyListed,
         section: resumeInfo.section,
         matchedTerm: resumeInfo.matchedTerm,
         snippet: resumeInfo.snippet,
@@ -618,16 +729,18 @@ export const buildSkillEvidenceAudit = (params: {
     };
   });
 
-  const STATE_ORDER: Record<SkillVerificationState, number> = {
-    VERIFIED_STRONG: 0,
-    UNVERIFIED: 1,
-    WEAK: 2,
-    MISSING: 3,
+  const CLAIM_ORDER: Record<ClaimVerificationStatus, number> = {
+    VERIFIED_WEAK: 0, // Surface failed claims first so candidates see exposed gaps immediately
+    VERIFIED_STRONG: 1,
+    RESUME_CLAIMED: 2,
+    LOW_CONFIDENCE: 3,
+    CONTEXT_INFERRED: 4,
+    MISSING: 5,
   };
 
   return items.sort(
     (a, b) =>
-      STATE_ORDER[a.verificationState] - STATE_ORDER[b.verificationState] ||
+      CLAIM_ORDER[a.claimStatus] - CLAIM_ORDER[b.claimStatus] ||
       PRIORITY_ORDER[a.priority] - PRIORITY_ORDER[b.priority] ||
       b.jobEvidence.mentionCount - a.jobEvidence.mentionCount ||
       a.skill.localeCompare(b.skill),

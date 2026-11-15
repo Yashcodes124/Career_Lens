@@ -45,20 +45,43 @@ export type SkillConfidence =
   | "ALIAS_MATCH"
   | "PARTIAL_MATCH"
   | "INFERRED_MATCH"
+  | "LOW_CONFIDENCE"
   | "MISSING";
 
 export type SkillVerificationState =
   "VERIFIED_STRONG" | "WEAK" | "UNVERIFIED" | "MISSING";
 
+export type ClaimVerificationStatus =
+  | "VERIFIED_STRONG"
+  | "VERIFIED_WEAK"
+  | "RESUME_CLAIMED"
+  | "CONTEXT_INFERRED"
+  | "LOW_CONFIDENCE"
+  | "MISSING";
+
 export interface SkillEvidenceAuditItem {
   skill: string;
   verificationState: SkillVerificationState;
+  claimStatus: ClaimVerificationStatus;
+  claimStatusLabel:
+    | "Verified strong"
+    | "Verified weak"
+    | "Resume claimed"
+    | "Context inferred"
+    | "Low confidence"
+    | "Missing";
+  claimMeaning: string;
   confidence: SkillConfidence;
   impactPct: number;
   credited: boolean;
   priority: GapPriority;
+  resumeMentionCount: number;
+  hasProjectOrExperienceEvidence: boolean;
+  repeatedFailedClaim: boolean;
+  failedClaimWarning: string | null;
   resumeEvidence: {
     found: boolean;
+    explicitlyListed: boolean;
     section: string | null;
     matchedTerm: string | null;
     snippet: string | null;
@@ -75,6 +98,7 @@ export interface SkillEvidenceAuditItem {
   };
   recommendedAction: string;
 }
+
 export interface ScoreDecomposition {
   headlineScores: {
     matchScore: { score: number; question: string; summary: string };

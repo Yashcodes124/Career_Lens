@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   ArrowUpRight,
@@ -35,6 +35,64 @@ const getCompanyInitials = (company: string): string => {
   return `${words[0][0]}${words[1][0]}`.toUpperCase();
 };
 
+const SOURCE_DISPLAY_LABEL: Record<string, string> = {
+  GREENHOUSE: "Source: Greenhouse",
+  LEVER: "Source: Lever",
+  ASHBY: "Source: Ashby",
+  LINKEDIN: "Source: LinkedIn",
+  MANUAL: "Source: Verified Direct",
+};
+
+export const formatJobSourceLabel = (source?: string): string => {
+  const key = (source || "GREENHOUSE").toUpperCase().trim();
+  return SOURCE_DISPLAY_LABEL[key] ?? `Source: ${source || "Greenhouse"}`;
+};
+
+export const getJobFreshness = (
+  job: Job,
+): {
+  state: "ACTIVE" | "POSSIBLY_STALE" | "CLOSED";
+  label: string;
+  tone: "success" | "warning" | "danger";
+} => {
+  if (job.isActive === false) {
+    return { state: "CLOSED", label: "Closed", tone: "danger" };
+  }
+  const syncTime = job.lastSyncedAt ? new Date(job.lastSyncedAt).getTime() : 0;
+  const ageHours = syncTime ? (Date.now() - syncTime) / (1000 * 60 * 60) : 0;
+
+  if (ageHours > 72) {
+    return {
+      state: "POSSIBLY_STALE",
+      label: "Possibly stale",
+      tone: "warning",
+    };
+  }
+  return { state: "ACTIVE", label: "Active", tone: "success" };
+};
+
+const getCompanyLogoUrl = (company: string): string => {
+  const slug = company
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, "")
+    .trim();
+  return slug
+    ? `https://www.google.com/s2/favicons?domain=${slug}.com&sz=64`
+    : "";
+};
+
+const formatShortDate = (iso?: string): string => {
+  if (!iso) return "—";
+  try {
+    return new Date(iso).toLocaleDateString("en-IN", {
+      day: "numeric",
+      month: "short",
+    });
+  } catch {
+    return "—";
+  }
+};
+
 export const JobCard: React.FC<JobCardProps> = ({
   job,
   resumeId,
@@ -48,6 +106,9 @@ export const JobCard: React.FC<JobCardProps> = ({
   onToggleSave,
 }) => {
   const navigate = useNavigate();
+  const [logoFailed, setLogoFailed] = useState(false);
+  const freshness = useMemo(() => getJobFreshness(job), [job]);
+  const logoUrl = useMemo(() => getCompanyLogoUrl(job.company), [job.company]);
 
   const { computedScore, matched, missing } = useMemo(() => {
     const reqs = job.requirements ?? [];
@@ -131,9 +192,18 @@ export const JobCard: React.FC<JobCardProps> = ({
           <div className="flex items-start gap-3 min-w-0">
             <div
               aria-hidden="true"
-              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-input border border-border bg-muted text-xs font-bold text-content-heading"
+              className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-input border border-border bg-muted text-xs font-bold text-content-heading"
             >
-              {getCompanyInitials(job.company)}
+              {logoUrl && !logoFailed ? (
+                <img
+                  src={logoUrl}
+                  alt={`${job.company} logo`}
+                  className="h-6 w-6 object-contain"
+                  onError={() => setLogoFailed(true)}
+                />
+              ) : (
+                getCompanyInitials(job.company)
+              )}
             </div>
 
             <div className="min-w-0 space-y-1">
@@ -143,8 +213,16 @@ export const JobCard: React.FC<JobCardProps> = ({
                   {job.company}
                 </span>
                 <Badge tone="neutral" size="sm">
-                  {job.source || "Greenhouse"}
+                  {formatJobSourceLabel(job.source)}
                 </Badge>
+                <Badge tone={freshness.tone} size="sm">
+                  {freshness.label}
+                </Badge>
+                {job.duplicateSources && job.duplicateSources.length > 1 && (
+                  <Badge tone="primary" size="sm">
+                    Deduplicated ({job.duplicateSources.join(" + ")})
+                  </Badge>
+                )}
                 {isRemote && (
                   <Badge tone="primary" size="sm">
                     Remote
@@ -156,7 +234,7 @@ export const JobCard: React.FC<JobCardProps> = ({
                 {job.title}
               </h3>
 
-              <div className="flex flex-wrap items-center gap-3 text-xs text-content-secondary">
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-content-secondary">
                 {job.location && (
                   <span className="inline-flex items-center gap-1">
                     <MapPin className="h-3.5 w-3.5" />
@@ -168,12 +246,18 @@ export const JobCard: React.FC<JobCardProps> = ({
                     {job.salaryRange}
                   </span>
                 )}
-                {job.lastSyncedAt && (
-                  <span className="inline-flex items-center gap-1 tabular-nums">
-                    <Clock className="h-3 w-3" />
-                    Synced {new Date(job.lastSyncedAt).toLocaleDateString()}
-                  </span>
-                )}
+              </div>
+
+              {/* Posted, Updated, and Last Synced Timestamps */}
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 pt-0.5 text-[11px] text-content-secondary tabular-nums">
+                <span className="inline-flex items-center gap-1">
+                  <Clock className="h-3 w-3" />
+                  Posted {formatShortDate(job.createdAt)}
+                </span>
+                <span>·</span>
+                <span>Updated {formatShortDate(job.updatedAt)}</span>
+                <span>·</span>
+                <span>Synced {formatShortDate(job.lastSyncedAt)}</span>
               </div>
             </div>
           </div>
@@ -293,17 +377,30 @@ export const JobCard: React.FC<JobCardProps> = ({
           </Button>
         </div>
 
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() =>
-            navigate(
-              `/skill-gaps/${job.id}${resumeId ? `?resumeId=${resumeId}` : ""}`,
-            )
-          }
-        >
-          Start interview
-        </Button>
+        <div className="flex items-center gap-2">
+          {job.url && (
+            <a
+              href={job.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 rounded-md border border-border bg-surface px-2.5 py-1 text-xs font-medium text-content-body transition hover:border-primary hover:text-primary"
+            >
+              <span>Direct link</span>
+              <ArrowUpRight className="h-3.5 w-3.5" />
+            </a>
+          )}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() =>
+              navigate(
+                `/skill-gaps/${job.id}${resumeId ? `?resumeId=${resumeId}` : ""}`,
+              )
+            }
+          >
+            Start interview
+          </Button>
+        </div>
       </div>
     </Card>
   );

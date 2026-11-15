@@ -9,6 +9,20 @@ export async function fetchJobs(): Promise<Job[]> {
   return response.jobs ?? [];
 }
 
+export async function fetchJobsWithMeta(): Promise<{
+  jobs: Job[];
+  syncHealth: import("./types").SyncHealth | null;
+}> {
+  const response = await apiClient<JobsResponse>("/jobs?pageSize=100", {
+    method: "GET",
+  });
+
+  return {
+    jobs: response.jobs ?? [],
+    syncHealth: response.syncHealth ?? null,
+  };
+}
+
 export async function fetchJobById(id: string): Promise<Job> {
   const response = await apiClient<JobResponse>(`/jobs/${id}`, {
     method: "GET",
