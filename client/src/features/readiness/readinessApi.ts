@@ -27,12 +27,34 @@ export interface GlobalOffenseTarget {
   isExposedWeakness: boolean;
 }
 
+export interface SkillInterviewHistoryItem {
+  interviewId: string;
+  interviewTitle: string;
+  round: string;
+  questionOrder: number;
+  score: number | null;
+  status: "STRONG" | "WEAK";
+  feedback: string;
+  date: string;
+}
+
+export interface MatchImprovementPotential {
+  currentAvgMatchPct: number;
+  projectedAvgMatchPct: number;
+  potentialGainPct: number;
+  trackedJobsCount: number;
+  topUnlockSkill: string | null;
+}
+
 export interface ReadinessData {
   skills: ReadinessSkill[];
   nextAction: NextAction;
   defenseSummary?: GlobalDefenseSummary;
   offenseTargets?: GlobalOffenseTarget[];
+  interviewHistoryBySkill?: Record<string, SkillInterviewHistoryItem[]>;
+  matchImprovement?: MatchImprovementPotential;
 }
+
 interface ReadinessEnvelope {
   success?: boolean;
   status?: string;
@@ -47,6 +69,36 @@ export async function fetchReadinessApi(): Promise<ReadinessData> {
     return res.data;
   }
   return res as ReadinessData;
+}
+
+export type SkillProofType =
+  "GITHUB_LINK" | "PROJECT_DESCRIPTION" | "CERTIFICATION" | "RESUME_BULLET";
+
+export interface SubmitSkillProofPayload {
+  skill: string;
+  proofType: SkillProofType;
+  title?: string;
+  url?: string;
+  description: string;
+  jobId?: string;
+  resumeId?: string;
+  syncToResume?: boolean;
+}
+
+export interface SubmitSkillProofResponse {
+  skillRecord: ReadinessSkill;
+  readiness: ReadinessData;
+  updatedMatch: import("../matching/types").MatchResult | null;
+}
+
+export async function submitSkillProof(
+  payload: SubmitSkillProofPayload,
+): Promise<SubmitSkillProofResponse> {
+  const res = await apiClient.post<{
+    success: boolean;
+    data: SubmitSkillProofResponse;
+  }>("/readiness/proof", payload);
+  return res.data;
 }
 
 export const fetchReadiness = fetchReadinessApi;

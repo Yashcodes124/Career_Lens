@@ -12,6 +12,8 @@ import {
   Plus,
   RotateCcw,
   Sliders,
+  FileText,
+  TrendingUp,
 } from "lucide-react";
 import {
   createInterview,
@@ -34,6 +36,7 @@ import {
   Select,
   Skeleton,
   Tabs,
+  ProgressBar,
 } from "../../components/ui";
 
 export const InterviewsPage: React.FC = () => {
@@ -136,6 +139,45 @@ export const InterviewsPage: React.FC = () => {
       .filter((n): n is number => n !== null);
     if (scores.length === 0) return null;
     return Math.round(scores.reduce((a, b) => a + b, 0) / scores.length);
+  }, [completed]);
+
+  const progressTimeline = useMemo(() => {
+    const ordered = [...completed]
+      .sort(
+        (a, b) =>
+          new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
+      )
+      .map((session, idx) => {
+        const evalAny = session.evaluation as Record<string, any> | null;
+        const score =
+          typeof session.transcript?.finalEvaluation?.score === "number"
+            ? Math.round(session.transcript.finalEvaluation.score)
+            : typeof evalAny?.overallScore === "number"
+              ? Math.round(evalAny.overallScore)
+              : typeof evalAny?.score === "number"
+                ? Math.round(evalAny.score)
+                : 0;
+        const validated = session.transcript?.skillsValidated ?? [];
+        const invalidated = session.transcript?.skillsInvalidated ?? [];
+        return {
+          id: session.id,
+          index: idx + 1,
+          title: session.title,
+          date: session.createdAt,
+          score,
+          validated,
+          invalidated,
+        };
+      });
+
+    const firstScore = ordered[0]?.score ?? null;
+    const latestScore = ordered[ordered.length - 1]?.score ?? null;
+    const delta =
+      firstScore !== null && latestScore !== null && ordered.length >= 2
+        ? latestScore - firstScore
+        : null;
+
+    return { items: ordered, delta };
   }, [completed]);
 
   const visibleInterviews = useMemo(() => {
@@ -311,6 +353,23 @@ export const InterviewsPage: React.FC = () => {
             </div>
           )}
 
+          {session.transcript &&
+            (session.transcript.skillsValidated.length > 0 ||
+              session.transcript.skillsInvalidated.length > 0) && (
+              <div className="flex flex-wrap items-center gap-1.5 text-xs">
+                {session.transcript.skillsValidated.slice(0, 3).map((sk) => (
+                  <Badge key={`val-${sk}`} tone="success" size="sm">
+                    Validated: {sk}
+                  </Badge>
+                ))}
+                {session.transcript.skillsInvalidated.slice(0, 2).map((sk) => (
+                  <Badge key={`inv-${sk}`} tone="warning" size="sm">
+                    Gap: {sk}
+                  </Badge>
+                ))}
+              </div>
+            )}
+
           <div className="flex flex-wrap items-center gap-3 text-xs text-content-secondary tabular-nums pt-0.5">
             <span className="inline-flex items-center gap-1">
               <Calendar className="h-3.5 w-3.5" />
@@ -362,9 +421,9 @@ export const InterviewsPage: React.FC = () => {
                 variant="primary"
                 size="sm"
                 onClick={() => navigate(`/interviews/${session.id}/evaluation`)}
-                leftIcon={<CheckCircle2 className="h-3.5 w-3.5" />}
+                leftIcon={<FileText className="h-3.5 w-3.5" />}
               >
-                View evaluation
+                Transcript & evaluation
               </Button>
             </div>
           )}
@@ -459,6 +518,71 @@ export const InterviewsPage: React.FC = () => {
           </p>
         </Card>
       </section>
+
+      {/* 1B. Interview Progress Over Time */}
+      {progressTimeline.items.length > 0 && (
+        <SectionCard
+          eyebrow="Historical Trajectory"
+          title="Interview Score & Skill Validation Progress Over Time"
+          description="Track how your rubric scores and validated skills improve across consecutive mock interviews."
+          action={
+            progressTimeline.delta !== null ? (
+              <Badge
+                tone={progressTimeline.delta >= 0 ? "success" : "warning"}
+                size="sm"
+              >
+                <span className="inline-flex items-center gap-1">
+                  <TrendingUp className="h-3.5 w-3.5" />
+                  {progressTimeline.delta >= 0
+                    ? `+${progressTimeline.delta}% score growth`
+                    : `${progressTimeline.delta}% change`}
+                </span>
+              </Badge>
+            ) : undefined
+          }
+        >
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            {progressTimeline.items.slice(-4).map((item) => (
+              <Card
+                key={item.id}
+                muted
+                padding="sm"
+                interactive
+                onClick={() => navigate(`/interviews/${item.id}/evaluation`)}
+                className="cursor-pointer space-y-2"
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-[11px] font-semibold uppercase tracking-wider text-content-secondary">
+                    Session #{item.index}
+                  </span>
+                  <span className="text-[11px] text-content-secondary tabular-nums">
+                    {new Date(item.date).toLocaleDateString()}
+                  </span>
+                </div>
+                <p className="truncate text-xs font-semibold text-content-heading">
+                  {item.title}
+                </p>
+                <ProgressBar
+                  label="Rubric score"
+                  value={item.score}
+                  tone={
+                    item.score >= 75
+                      ? "success"
+                      : item.score >= 55
+                        ? "primary"
+                        : "warning"
+                  }
+                />
+                {item.validated.length > 0 && (
+                  <p className="truncate text-[11px] text-status-success">
+                    Validated: {item.validated.join(", ")}
+                  </p>
+                )}
+              </Card>
+            ))}
+          </div>
+        </SectionCard>
+      )}
 
       {/* 2. Custom Interview Builder (User-Specific Rounds & Skills) */}
       {(builderOpen || interviews.length === 0) && (

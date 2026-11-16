@@ -180,10 +180,55 @@ export const saveFinalEvaluation = async (
   });
 };
 
+export const saveInterviewTranscript = async (
+  interviewId: string,
+  transcript: Prisma.InputJsonValue,
+) => {
+  return await prisma.interview.update({
+    where: { id: interviewId },
+    data: { transcript },
+  });
+};
+
 export const getEvaluationByInterviewId = async (interviewId: string) => {
   return await prisma.evaluation.findUnique({
     where: {
       interviewId,
     },
+  });
+};
+
+
+export const insertAdaptiveFollowUpQuestion = async (params: {
+  interviewId: string;
+  afterOrder: number;
+  round: string;
+  question: string;
+}) => {
+  return await prisma.$transaction(async (tx) => {
+    const laterQuestions = await tx.interviewQuestion.findMany({
+      where: {
+        interviewId: params.interviewId,
+        order: { gt: params.afterOrder },
+      },
+      orderBy: { order: "desc" },
+    });
+
+    // Shift descending so @@unique([interviewId, order]) never collides
+    for (const q of laterQuestions) {
+      await tx.interviewQuestion.update({
+        where: { id: q.id },
+        data: { order: q.order + 1 },
+      });
+    }
+
+    return await tx.interviewQuestion.create({
+      data: {
+        interviewId: params.interviewId,
+        round: params.round,
+        question: params.question,
+        order: params.afterOrder + 1,
+      },
+    });
   });
 };

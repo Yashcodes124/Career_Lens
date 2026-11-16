@@ -691,6 +691,10 @@ export const ReadinessPage: React.FC = () => {
                 const isConfirmed = confirmedSkills.has(
                   item.skill.toLowerCase(),
                 );
+                const history =
+                  readiness?.interviewHistoryBySkill?.[
+                    item.skill.toLowerCase().trim()
+                  ] ?? [];
                 return (
                   <li
                     key={item.skill}
@@ -738,6 +742,36 @@ export const ReadinessPage: React.FC = () => {
                           Evidence:{" "}
                         </strong>
                         {item.evidenceDetail}
+                      </p>
+                      {history.length > 0 && (
+                        <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                          <span className="text-[11px] font-semibold text-content-secondary">
+                            Interview history ({history.length}):
+                          </span>
+                          {history.slice(0, 3).map((h, idx) => (
+                            <Badge
+                              key={`${h.interviewId}-q${h.questionOrder}-${idx}`}
+                              tone={
+                                h.status === "STRONG" ? "success" : "warning"
+                              }
+                              size="sm"
+                            >
+                              {h.interviewTitle} · Q{h.questionOrder}
+                              {h.score !== null ? ` (${h.score}%)` : ""} ·{" "}
+                              {new Date(h.date).toLocaleDateString()}
+                            </Badge>
+                          ))}
+                        </div>
+                      )}
+
+                      <p className="text-[11px] text-content-secondary tabular-nums">
+                        {item.updatedAt
+                          ? `Recorded ${new Date(item.updatedAt).toLocaleDateString()} · `
+                          : ""}
+                        {item.relatedJobsCount > 0
+                          ? `Match potential: +${Math.min(25, item.relatedJobsCount * 8)}% across ${item.relatedJobsCount} role(s) · `
+                          : ""}
+                        {item.recommendedAction}
                       </p>
 
                       {item.updatedAt && (

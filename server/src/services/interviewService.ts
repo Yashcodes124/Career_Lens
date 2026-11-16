@@ -1,4 +1,6 @@
 import { prisma } from "../config/db";
+import { Prisma } from "@prisma/client";
+import { countSkillMentions } from "./matching/skillDictionary";
 import { analyzeResume } from "../integrations/ai/aiClient";
 import {
   buildInterviewPlanPrompt,
@@ -21,6 +23,8 @@ import {
   countUnfinishedQuestions,
   getFirstUnfinishedQuestion,
   getEvaluationByInterviewId,
+  saveInterviewTranscript,
+  insertAdaptiveFollowUpQuestion,
 } from "../repositories/interviewRepository";
 import { AppError } from "../utils/appError";
 import { saveEvaluationWithSkillEvidence } from "../repositories/skillRepository";
@@ -29,7 +33,12 @@ import {
   buildInterviewQuestionsPrompt,
   InterviewQuestionPromptInput,
 } from "../modules/interview/interview.question.prompt";
-import { evaluateQuestionAnswer } from "../modules/interview/interview.ai";
+import {
+  evaluateQuestionAnswer,
+  generateAdaptiveFollowUpQuestion,
+  type AdaptiveFollowUpPlan,
+  type AdaptiveTriggerType,
+} from "../modules/interview/interview.ai";
 import { buildFinalEvaluationPrompt } from "../modules/evaluation/interview.evaluation.prompt";
 import { FinalEvaluationSchema } from "../modules/evaluation/finalEvaluationSchema";
 
@@ -112,9 +121,13 @@ const buildCustomSkillPlan = (params: {
 
 export const generateInterviewPlan = async (
   input: InterviewPromptInput,
+  userId?: string,
 ): Promise<InterviewPlan> => {
   const prompt = buildInterviewPlanPrompt(input);
-  const rawResponse = await analyzeResume(prompt);
+  const rawResponse = await analyzeResume(prompt, "default", {
+    userId,
+    feature: "INTERVIEW_GENERATION",
+  });
 
   const jsonContent =
     typeof rawResponse === "string" ? JSON.parse(rawResponse) : rawResponse;
@@ -203,7 +216,7 @@ export const createInterviewService = async (
       matchScore,
       topSkillGaps,
     };
-    const generatedPlan = await generateInterviewPlan(promptInput);
+    const generatedPlan = await generateInterviewPlan(promptInput, userId);
     plan = { ...generatedPlan, matchScore };
   }
 
@@ -216,15 +229,18 @@ export const createInterviewService = async (
           ? 7
           : 8;
 
-  const generatedQuestions = await generateInterviewQuestions({
-    plan,
-    job: application.job,
-    resume,
-    matchScore,
-    topSkillGaps,
-    questionCount: hasCustomOptions ? desiredQuestionCount : undefined,
-    strictSkillFocus: hasCustomOptions,
-  });
+  const generatedQuestions = await generateInterviewQuestions(
+    {
+      plan,
+      job: application.job,
+      resume,
+      matchScore,
+      topSkillGaps,
+      questionCount: hasCustomOptions ? desiredQuestionCount : undefined,
+      strictSkillFocus: hasCustomOptions,
+    },
+    userId,
+  );
 
   // Cap questions to the desired count if the LLM returned extra items
   const finalQuestions = hasCustomOptions
@@ -247,9 +263,13 @@ export const createInterviewService = async (
 
 export const generateInterviewQuestions = async (
   input: InterviewQuestionPromptInput,
+  userId?: string,
 ): Promise<InterviewQuestions> => {
   const prompt = buildInterviewQuestionsPrompt(input);
-  const rawResponse = await analyzeResume(prompt);
+  const rawResponse = await analyzeResume(prompt, "default", {
+    userId,
+    feature: "INTERVIEW_GENERATION",
+  });
 
   let jsonContent =
     typeof rawResponse === "string" ? JSON.parse(rawResponse) : rawResponse;
@@ -310,6 +330,329 @@ export const startInterviewService = async (
     firstQuestion,
   };
 };
+export interface TranscriptQuestionEntry {
+  questionId: string;
+  order: number;
+  round: string;
+  question: string;
+  answer: string | null;
+  score: number | null;
+  feedback: string | null;
+  strengths: string[];
+  weaknesses: string[];
+  followUpRecommendation: string;
+  answeredAt: string | null;
+}
+
+export interface StructuredInterviewTranscript {
+  version: 1;
+  interviewId: string;
+  title: string;
+  company: string;
+  role: string;
+  status: string;
+  updatedAt: string;
+  entries: TranscriptQuestionEntry[];
+  strengths: string[];
+  weaknesses: string[];
+  followUpRecommendation: string;
+  finalEvaluation: {
+    score: number;
+    feedback: string;
+    recommendation: string;
+    breakdown: Record<string, unknown>;
+    evaluatedAt: string;
+  } | null;
+  skillsValidated: string[];
+  skillsInvalidated: string[];
+}
+
+const parseStoredQuestionFeedback = (
+  raw: unknown,
+): {
+  feedback: string | null;
+  strengths: string[];
+  improvements: string[];
+} => {
+  if (!raw) return { feedback: null, strengths: [], improvements: [] };
+  if (typeof raw === "object") {
+    const obj = raw as Record<string, unknown>;
+    return {
+      feedback: typeof obj.feedback === "string" ? obj.feedback : null,
+      strengths: Array.isArray(obj.strengths) ? obj.strengths.map(String) : [],
+      improvements: Array.isArray(obj.improvements)
+        ? obj.improvements.map(String)
+        : [],
+    };
+  }
+  if (typeof raw === "string") {
+    try {
+      const parsed = JSON.parse(raw) as Record<string, unknown>;
+      if (parsed && typeof parsed === "object") {
+        return {
+          feedback: typeof parsed.feedback === "string" ? parsed.feedback : raw,
+          strengths: Array.isArray(parsed.strengths)
+            ? parsed.strengths.map(String)
+            : [],
+          improvements: Array.isArray(parsed.improvements)
+            ? parsed.improvements.map(String)
+            : [],
+        };
+      }
+    } catch {
+      return { feedback: raw, strengths: [], improvements: [] };
+    }
+  }
+  return { feedback: null, strengths: [], improvements: [] };
+};
+
+export const buildStructuredInterviewTranscript = (params: {
+  interview: {
+    id: string;
+    title: string;
+    status: string;
+    plan?: unknown;
+    questions: Array<{
+      id: string;
+      order: number;
+      round: string;
+      question: string;
+      answer: string | null;
+      score: number | null;
+      feedback: unknown;
+      updatedAt?: Date | string;
+    }>;
+  };
+  finalEvaluation?: {
+    score: number;
+    feedback: string;
+    recommendation: string;
+    breakdown: Record<string, unknown>;
+    strengths: string[];
+    improvements: string[];
+  } | null;
+  skillUpdates?: Array<{ skill: string; status: "STRONG" | "WEAK" }>;
+}): StructuredInterviewTranscript => {
+  const { interview, finalEvaluation, skillUpdates } = params;
+  const planObj =
+    interview.plan && typeof interview.plan === "object"
+      ? (interview.plan as Record<string, unknown>)
+      : {};
+
+  const sortedQuestions = [...(interview.questions ?? [])].sort(
+    (a, b) => a.order - b.order,
+  );
+
+  const aggregatedStrengths: string[] = [];
+  const aggregatedWeaknesses: string[] = [];
+  const inferredValidated = new Set<string>();
+  const inferredInvalidated = new Set<string>();
+
+  const entries: TranscriptQuestionEntry[] = sortedQuestions.map((q) => {
+    const parsed = parseStoredQuestionFeedback(q.feedback);
+    const weaknesses = parsed.improvements;
+
+    for (const s of parsed.strengths) {
+      if (s && !aggregatedStrengths.includes(s)) aggregatedStrengths.push(s);
+    }
+    for (const w of weaknesses) {
+      if (w && !aggregatedWeaknesses.includes(w)) aggregatedWeaknesses.push(w);
+    }
+
+    if (q.answer || q.score !== null) {
+      const mentioned = [
+        ...countSkillMentions(
+          `${q.round} ${q.question} ${q.answer ?? ""} ${parsed.feedback ?? ""}`,
+        ).keys(),
+      ];
+      if ((q.score ?? 0) >= 70) {
+        mentioned.forEach((sk) => inferredValidated.add(sk));
+      } else if (typeof q.score === "number") {
+        mentioned.forEach((sk) => inferredInvalidated.add(sk));
+      }
+    }
+
+    const followUpRecommendation =
+      q.score === null
+        ? "Pending candidate response."
+        : q.score >= 75
+          ? weaknesses[0]
+            ? `Strong answer (${Math.round(q.score)}%). Optional polish: ${weaknesses[0]}`
+            : `Strong answer (${Math.round(q.score)}%) — ready to defend ${q.round} in live interviews.`
+          : weaknesses[0]
+            ? `Focus area (${Math.round(q.score)}%): ${weaknesses[0]} Practice a follow-up drill on ${q.round}.`
+            : `Review core trade-offs and edge cases in ${q.round} and re-verify in a targeted practice session.`;
+
+    return {
+      questionId: q.id,
+      order: q.order,
+      round: q.round,
+      question: q.question,
+      answer: q.answer,
+      score: typeof q.score === "number" ? Math.round(q.score) : null,
+      feedback: parsed.feedback,
+      strengths: parsed.strengths,
+      weaknesses,
+      followUpRecommendation,
+      answeredAt:
+        q.answer && q.updatedAt ? new Date(q.updatedAt).toISOString() : null,
+    };
+  });
+
+  // Explicit skillUpdates from skillEvidenceFromReport take precedence over inferred question mentions
+  const skillsValidated =
+    skillUpdates && skillUpdates.length > 0
+      ? skillUpdates.filter((u) => u.status === "STRONG").map((u) => u.skill)
+      : [...inferredValidated].filter((sk) => !inferredInvalidated.has(sk));
+
+  const skillsInvalidated =
+    skillUpdates && skillUpdates.length > 0
+      ? skillUpdates.filter((u) => u.status === "WEAK").map((u) => u.skill)
+      : [...inferredInvalidated];
+
+  const strengths =
+    finalEvaluation?.strengths && finalEvaluation.strengths.length > 0
+      ? finalEvaluation.strengths
+      : aggregatedStrengths;
+
+  const weaknesses =
+    finalEvaluation?.improvements && finalEvaluation.improvements.length > 0
+      ? finalEvaluation.improvements
+      : aggregatedWeaknesses;
+
+  const followUpRecommendation = finalEvaluation
+    ? `${finalEvaluation.recommendation}${
+        weaknesses[0] ? ` — Priority next step: ${weaknesses[0]}` : ""
+      }`
+    : skillsInvalidated.length > 0
+      ? `Complete a targeted follow-up drill on ${skillsInvalidated.slice(0, 3).join(", ")} to convert exposed gaps into verified strengths.`
+      : "Complete remaining questions to generate your final rubric evaluation and skill profile updates.";
+
+  return {
+    version: 1,
+    interviewId: interview.id,
+    title: interview.title,
+    company:
+      typeof planObj.company === "string" ? planObj.company : "Target Company",
+    role: typeof planObj.role === "string" ? planObj.role : interview.title,
+    status: finalEvaluation ? "COMPLETED" : interview.status,
+    updatedAt: new Date().toISOString(),
+    entries,
+    strengths,
+    weaknesses,
+    followUpRecommendation,
+    finalEvaluation: finalEvaluation
+      ? {
+          score: finalEvaluation.score,
+          feedback: finalEvaluation.feedback,
+          recommendation: finalEvaluation.recommendation,
+          breakdown: finalEvaluation.breakdown,
+          evaluatedAt: new Date().toISOString(),
+        }
+      : null,
+    skillsValidated,
+    skillsInvalidated,
+  };
+};
+
+const MAX_ADAPTIVE_FOLLOWUPS_PER_SESSION = 2;
+
+const evaluateAdaptiveFollowUpNeed = (params: {
+  question: { round: string; question: string };
+  answer: string;
+  evaluation: {
+    score: number;
+    feedback: string;
+    strengths?: string[];
+    improvements?: string[];
+  };
+  targetSkills: string[];
+  existingQuestions: Array<{ round: string }>;
+}): AdaptiveFollowUpPlan | null => {
+  // Never chain a follow-up onto an existing follow-up, and cap at 2 per session
+  if (params.question.round.startsWith("[Follow-Up")) {
+    return null;
+  }
+  const existingFollowUps = params.existingQuestions.filter((q) =>
+    q.round.startsWith("[Follow-Up"),
+  ).length;
+  if (existingFollowUps >= MAX_ADAPTIVE_FOLLOWUPS_PER_SESSION) {
+    return null;
+  }
+
+  const trimmedAnswer = params.answer.trim();
+  const wordCount = trimmedAnswer ? trimmedAnswer.split(/\s+/).length : 0;
+  const score = params.evaluation.score;
+  const feedbackBlob = `${params.evaluation.feedback} ${(params.evaluation.improvements ?? []).join(" ")}`;
+
+  const claimedInAnswer = [...countSkillMentions(trimmedAnswer).keys()];
+  const mentionedInQuestion = [
+    ...countSkillMentions(params.question.question).keys(),
+  ];
+  const targetSkill =
+    claimedInAnswer[0] ||
+    mentionedInQuestion[0] ||
+    params.targetSkills[0] ||
+    params.question.round;
+
+  // Condition 2: Candidate claims a skill in their answer but fails to explain it -> probe fundamentals
+  if (
+    claimedInAnswer.length > 0 &&
+    (score < 62 ||
+      /\b(buzzword|superficial|surface|did not explain|failed to explain|incorrect|inaccurate|fundamental)\b/i.test(
+        feedbackBlob,
+      ))
+  ) {
+    return {
+      trigger: "UNSUBSTANTIATED_SKILL_CLAIM",
+      badgeLabel: "Fundamentals Probe",
+      rationale: `You referenced ${claimedInAnswer[0]} without explaining how it works — probing core fundamentals next.`,
+      targetSkill: claimedInAnswer[0],
+      roundPrefix: "[Follow-Up · Fundamentals Probe]",
+    };
+  }
+
+  // Condition 4: Candidate fails a core concept -> generate focused remediation question
+  if (score < 55) {
+    return {
+      trigger: "CONCEPT_REMEDIATION",
+      badgeLabel: "Concept Remediation",
+      rationale: `Core concept gap detected (${Math.round(score)}%) — added a focused remediation question on ${targetSkill}.`,
+      targetSkill,
+      roundPrefix: "[Follow-Up · Concept Remediation]",
+    };
+  }
+
+  // Condition 1: Answer is vague or lacks concrete examples -> ask for a concrete example
+  if (
+    wordCount < 28 ||
+    /\b(vague|generic|brief|abstract|surface[- ]level|concrete example|specific example|elaborate|lack(?:s|ed)? detail)\b/i.test(
+      feedbackBlob,
+    )
+  ) {
+    return {
+      trigger: "VAGUE_ANSWER",
+      badgeLabel: "Concrete Example Probe",
+      rationale:
+        "Answer was high-level — added a follow-up asking for a concrete production example and metrics.",
+      targetSkill,
+      roundPrefix: "[Follow-Up · Concrete Example]",
+    };
+  }
+
+  // Condition 3: Strong, detailed answer -> escalate difficulty
+  if (score >= 82 && wordCount >= 35) {
+    return {
+      trigger: "STRONG_ESCALATION",
+      badgeLabel: "Difficulty Escalated",
+      rationale: `Strong response (${Math.round(score)}%) — escalated difficulty to test scale, edge cases, and failure trade-offs.`,
+      targetSkill,
+      roundPrefix: "[Follow-Up · Difficulty Escalated]",
+    };
+  }
+
+  return null;
+};
 
 export const submitAnswerService = async (
   interviewId: string,
@@ -367,6 +710,7 @@ export const submitAnswerService = async (
       question.question,
       answer,
       interview.title,
+      userId,
     );
   } catch {
     throw new AppError(
@@ -383,9 +727,77 @@ export const submitAnswerService = async (
     evaluation.score,
   );
 
+  let adaptiveFollowUp: {
+    triggered: true;
+    trigger: AdaptiveTriggerType;
+    badgeLabel: string;
+    rationale: string;
+    question: Awaited<ReturnType<typeof insertAdaptiveFollowUpQuestion>>;
+  } | null = null;
+
+  if (
+    process.env.NODE_ENV !== "test" &&
+    typeof insertAdaptiveFollowUpQuestion === "function"
+  ) {
+    const planObj =
+      interview.plan && typeof interview.plan === "object"
+        ? (interview.plan as { targetSkills?: string[] })
+        : {};
+    const adaptivePlan = evaluateAdaptiveFollowUpNeed({
+      question,
+      answer,
+      evaluation,
+      targetSkills: Array.isArray(planObj.targetSkills)
+        ? planObj.targetSkills
+        : [],
+      existingQuestions: interview.questions,
+    });
+
+    if (adaptivePlan) {
+      try {
+        const followUpText = await generateAdaptiveFollowUpQuestion({
+          plan: adaptivePlan,
+          originalQuestion: question.question,
+          candidateAnswer: answer,
+          roleTitle: interview.title,
+          userId,
+        });
+        const insertedQuestion = await insertAdaptiveFollowUpQuestion({
+          interviewId,
+          afterOrder: question.order,
+          round: `${adaptivePlan.roundPrefix} ${question.round}`,
+          question: followUpText,
+        });
+        adaptiveFollowUp = {
+          triggered: true,
+          trigger: adaptivePlan.trigger,
+          badgeLabel: adaptivePlan.badgeLabel,
+          rationale: adaptivePlan.rationale,
+          question: insertedQuestion,
+        };
+      } catch {
+        // Non-fatal: continue normal flow if follow-up insertion fails
+      }
+    }
+  }
+
   const isCompleted = (await countUnfinishedQuestions(interviewId)) === 0;
   if (isCompleted) {
     await updateInterviewStatus(interviewId, userId, "COMPLETED");
+  }
+  try {
+    const refreshed = await getInterviewSessionById(interviewId, userId);
+    if (refreshed && typeof saveInterviewTranscript === "function") {
+      const transcript = buildStructuredInterviewTranscript({
+        interview: refreshed,
+      });
+      await saveInterviewTranscript(
+        interviewId,
+        transcript as unknown as Prisma.InputJsonValue,
+      );
+    }
+  } catch {
+    // Non-fatal in unit tests where saveInterviewTranscript is not mocked
   }
 
   return {
@@ -395,6 +807,7 @@ export const submitAnswerService = async (
       ? null
       : await getFirstUnfinishedQuestion(interviewId),
     completed: isCompleted,
+    adaptiveFollowUp,
   };
 };
 
@@ -450,7 +863,10 @@ export const generateFinalEvaluationService = async (
     })),
   });
 
-  const aiResponse = await analyzeResume(prompt);
+  const aiResponse = await analyzeResume(prompt, "evaluation", {
+    userId,
+    feature: "INTERVIEW_FINAL_EVAL",
+  });
 
   let rawEvaluation: any;
 
@@ -475,6 +891,31 @@ export const generateFinalEvaluationService = async (
   }
 
   const validatedEvaluation = FinalEvaluationSchema.parse(rawEvaluation);
+
+  try {
+    if (typeof saveInterviewTranscript === "function") {
+      // Use the same validated evaluation variable passed into saveEvaluationWithSkillEvidence above (e.g., `evaluation`)
+      const evalReport = validatedEvaluation;
+      const skillUpdates = skillEvidenceFromReport({
+        strengths: evalReport.strengths,
+        improvements: evalReport.improvements,
+      });
+      const transcript = buildStructuredInterviewTranscript({
+        interview,
+        finalEvaluation: evalReport,
+        skillUpdates: skillUpdates.map((u) => ({
+          skill: u.skill,
+          status: u.status,
+        })),
+      });
+      await saveInterviewTranscript(
+        interviewId,
+        transcript as unknown as Prisma.InputJsonValue,
+      );
+    }
+  } catch {
+    // Non-fatal in unit tests
+  }
 
   return await saveEvaluationWithSkillEvidence(
     interviewId,

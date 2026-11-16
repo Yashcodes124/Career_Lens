@@ -147,6 +147,7 @@ model Interview {
   title         String
   status        InterviewStatus     @default(SCHEDULED)
   plan          Json?
+  transcript    Json?
   questions     InterviewQuestion[]
   evaluation    Evaluation?
   createdAt     DateTime            @default(now())

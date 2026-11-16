@@ -46,10 +46,40 @@ export const saveEvaluationWithSkillEvidence = async (
     for (const item of evidence) {
       await tx.userSkill.upsert({
         where: { userId_skill: { userId, skill: item.skill } },
-        create: { userId, skill: item.skill, status: item.status, evidence: item.evidence },
+        create: {
+          userId,
+          skill: item.skill,
+          status: item.status,
+          evidence: item.evidence,
+        },
         update: { status: item.status, evidence: item.evidence },
       });
     }
     return saved;
+  });
+};
+
+export const upsertUserSkillProof = async (params: {
+  userId: string;
+  skill: string;
+  evidence: string;
+}) => {
+  return await prisma.userSkill.upsert({
+    where: {
+      userId_skill: {
+        userId: params.userId,
+        skill: params.skill,
+      },
+    },
+    create: {
+      userId: params.userId,
+      skill: params.skill,
+      status: "STRONG",
+      evidence: params.evidence,
+    },
+    update: {
+      status: "STRONG",
+      evidence: params.evidence,
+    },
   });
 };

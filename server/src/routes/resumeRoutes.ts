@@ -5,6 +5,9 @@ import {
   deleteResumeController,
   getUserResumeByIdController,
   getUserResumeController,
+  createPastedResumeController,
+  reanalyzeResumeController,
+  updateResumeSectionsController,
 } from "../controllers/resumeController";
 import { tailorResumeController } from "../controllers/resumeController";
 import { authMiddleware } from "../middleware/authMiddleware";
@@ -16,6 +19,21 @@ router.post("/", authMiddleware, uploadLimiter, uploadResumeFile, createResume);
 router.post("/:id/tailoring", authMiddleware, tailorResumeController);
 router.get("/", authMiddleware, getUserResumeController);
 router.get("/:id", authMiddleware, getUserResumeByIdController);
+
+router.post(
+  "/paste",
+  authMiddleware,
+  uploadLimiter,
+  createPastedResumeController,
+);
+router.post(
+  "/:id/reanalyze",
+  authMiddleware,
+  uploadLimiter,
+  reanalyzeResumeController,
+);
+router.patch("/:id/sections", authMiddleware, updateResumeSectionsController);
 router.delete("/:id", authMiddleware, deleteResumeController);
+
 
 export default router;

@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import {
   AlertTriangle,
@@ -15,13 +16,20 @@ import {
   Plus,
   Sparkles,
   Target,
+  Check,
+  FolderGit2,
+  ShieldCheck,
 } from "lucide-react";
 import { calculateJobMatch } from "./matchingApi";
 import type { GapPriority, MatchResult } from "./types";
 import { getResourcesForSkill, type SkillResourceLink } from "./skillResources";
 import { useResumes } from "../resume/useResumes";
 import { useReadiness } from "../readiness/useReadiness";
-import type { ReadinessSkill } from "../readiness/readinessApi";
+import {
+  type ReadinessSkill,
+  submitSkillProof,
+  type SkillProofType,
+} from "../readiness/readinessApi";
 import { useApplications } from "../tracker/useApplications";
 import type { Application } from "../tracker/types";
 import type { Job } from "../jobs/types";
@@ -45,6 +53,8 @@ import {
   Skeleton,
   SkillBadge,
   Tabs,
+  Textarea,
+  Toast,
   type BadgeTone,
   type SkillReadinessLevel,
 } from "../../components/ui";
@@ -75,6 +85,15 @@ const buildSampleQuestionsForSkill = (
   `What are the most common failure modes, performance bottlenecks, or security pitfalls when working with ${skill}?`,
   `How would you test, monitor, and debug a feature relying on ${skill} under high load?`,
 ];
+
+const buildRecommendedProjectTask = (
+  skill: string,
+  roleTitle: string,
+): { title: string; deliverable: string; verificationCriteria: string } => ({
+  title: `Build & benchmark a production ${skill} module for ${roleTitle}`,
+  deliverable: `Implement a working service or feature using ${skill} with automated tests, error/timeout handling, and a README documenting architecture trade-offs.`,
+  verificationCriteria: `Submit a public GitHub PR/repo link, project summary, certification, or quantified resume bullet below to convert ${skill} into verified evidence.`,
+});
 
 export const SkillGapPage: React.FC = () => {
   const { jobId } = useParams<{ jobId: string }>();
@@ -117,6 +136,20 @@ export const SkillGapPage: React.FC = () => {
     "Core Technical & Stack Assessment",
     "System Design & Architecture",
   ]);
+
+  const queryClient = useQueryClient();
+
+  // Preparation-to-Proof Submission State
+  const [proofType, setProofType] = useState<SkillProofType>("GITHUB_LINK");
+  const [proofTitle, setProofTitle] = useState("");
+  const [proofUrl, setProofUrl] = useState("");
+  const [proofDescription, setProofDescription] = useState("");
+  const [syncProofToResume, setSyncProofToResume] = useState(true);
+  const [isSubmittingProof, setIsSubmittingProof] = useState(false);
+  const [proofError, setProofError] = useState<string | null>(null);
+  const [proofSuccessBanner, setProofSuccessBanner] = useState<string | null>(
+    null,
+  );
 
   const [selectedFocusSkills, setSelectedFocusSkills] = useState<string[]>([]);
   const [customFocusSkill, setCustomFocusSkill] = useState("");
@@ -342,6 +375,67 @@ export const SkillGapPage: React.FC = () => {
     [activeQueue, selectedSkillName],
   );
 
+  // Reset proof inputs when switching selected gap skill
+  useEffect(() => {
+    setProofTitle("");
+    setProofUrl("");
+    setProofDescription("");
+    setProofError(null);
+  }, [selectedGapItem?.skill]);
+
+  const handleSubmitSkillProof = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedGapItem || isSubmittingProof) return;
+    setProofError(null);
+
+    try {
+      setIsSubmittingProof(true);
+      const previousScore = matchData?.score ?? null;
+
+      const result = await submitSkillProof({
+        skill: selectedGapItem.skill,
+        proofType,
+        title: proofTitle.trim() || undefined,
+        url: proofUrl.trim() || undefined,
+        description: proofDescription.trim(),
+        jobId: jobId ?? undefined,
+        resumeId: activeResumeId ?? undefined,
+        syncToResume: syncProofToResume,
+      });
+
+      if (result.updatedMatch) {
+        setMatchData(result.updatedMatch);
+      }
+
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["readiness"] }),
+        queryClient.invalidateQueries({ queryKey: ["resumes"] }),
+        queryClient.invalidateQueries({ queryKey: ["applications"] }),
+      ]);
+
+      const newScore = result.updatedMatch?.score ?? null;
+      const scoreDeltaText =
+        previousScore !== null && newScore !== null
+          ? ` Role match recalculated: ${previousScore}% → ${newScore}% (+${Math.max(0, newScore - previousScore)}%).`
+          : " Readiness profile recalculated.";
+
+      setProofSuccessBanner(
+        `Verified proof recorded for ${selectedGapItem.skill}!${scoreDeltaText}`,
+      );
+      setProofTitle("");
+      setProofUrl("");
+      setProofDescription("");
+    } catch (err: unknown) {
+      setProofError(
+        err instanceof Error
+          ? err.message
+          : "Could not submit proof. Check your fields and try again.",
+      );
+    } finally {
+      setIsSubmittingProof(false);
+    }
+  };
+
   const openPracticeModalForSkill = (skill?: string) => {
     setInterviewError(null);
     if (skill) {
@@ -541,6 +635,14 @@ export const SkillGapPage: React.FC = () => {
         />
       ) : (
         <>
+          {proofSuccessBanner && (
+            <Toast
+              tone="success"
+              title="Preparation-to-Proof Loop Updated"
+              description={proofSuccessBanner}
+              onDismiss={() => setProofSuccessBanner(null)}
+            />
+          )}
           {/* Mode Switcher: Role Skill Gaps vs. Cross-Job Skill Gaps Overview */}
           <Tabs
             activeTab={activeViewTab}
@@ -727,6 +829,180 @@ export const SkillGapPage: React.FC = () => {
                           .
                         </p>
                       </Card>
+
+                      {/* Recommended Project or Practice Task */}
+                      {(() => {
+                        const task = buildRecommendedProjectTask(
+                          selectedGapItem.skill,
+                          roleTitle,
+                        );
+                        return (
+                          <Card
+                            padding="sm"
+                            className="border-primary/30 bg-primary-soft/20 space-y-1.5"
+                          >
+                            <div className="flex items-center gap-1.5">
+                              <FolderGit2 className="h-3.5 w-3.5 text-primary" />
+                              <p className="text-xs font-semibold uppercase tracking-wider text-primary">
+                                Recommended Project / Practice Task
+                              </p>
+                            </div>
+                            <p className="text-xs font-semibold text-content-heading">
+                              {task.title}
+                            </p>
+                            <p className="text-xs leading-relaxed text-content-body">
+                              {task.deliverable}
+                            </p>
+                            <p className="text-[11px] text-content-secondary">
+                              {task.verificationCriteria}
+                            </p>
+                          </Card>
+                        );
+                      })()}
+
+                      {/* Submit Proof & Recalculate Match / Readiness */}
+                      <form
+                        onSubmit={handleSubmitSkillProof}
+                        className="space-y-3 rounded-card border border-border bg-surface p-3.5"
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-1.5">
+                            <ShieldCheck className="h-4 w-4 text-status-success" />
+                            <p className="text-xs font-semibold uppercase tracking-wider text-content-heading">
+                              Submit Proof for {selectedGapItem.skill}
+                            </p>
+                          </div>
+                          <Badge tone="success" size="sm">
+                            Live Recalculation
+                          </Badge>
+                        </div>
+
+                        <p className="text-xs text-content-secondary">
+                          Submit a GitHub link, project summary, certification,
+                          or revised resume bullet to verify{" "}
+                          <strong className="text-content-heading">
+                            {selectedGapItem.skill}
+                          </strong>{" "}
+                          and recalculate your match & readiness scores.
+                        </p>
+
+                        {proofError && (
+                          <p className="rounded-input border border-status-danger-border bg-status-danger-soft/50 p-2 text-xs text-status-danger">
+                            {proofError}
+                          </p>
+                        )}
+
+                        <Select
+                          label="Proof artifact type"
+                          value={proofType}
+                          onChange={(e) =>
+                            setProofType(e.target.value as SkillProofType)
+                          }
+                          options={[
+                            {
+                              value: "GITHUB_LINK",
+                              label: "GitHub Repository / Pull Request Link",
+                            },
+                            {
+                              value: "PROJECT_DESCRIPTION",
+                              label: "Project Implementation Description",
+                            },
+                            {
+                              value: "CERTIFICATION",
+                              label: "Certification / Credential",
+                            },
+                            {
+                              value: "RESUME_BULLET",
+                              label: "Revised Quantified Resume Bullet",
+                            },
+                          ]}
+                        />
+
+                        {proofType !== "RESUME_BULLET" && (
+                          <Input
+                            label={
+                              proofType === "CERTIFICATION"
+                                ? "Certification name"
+                                : "Project or repository title"
+                            }
+                            placeholder={
+                              proofType === "CERTIFICATION"
+                                ? "e.g., AWS Certified Solutions Architect – Associate"
+                                : `e.g., Production ${selectedGapItem.skill} Service`
+                            }
+                            value={proofTitle}
+                            onChange={(e) => setProofTitle(e.target.value)}
+                          />
+                        )}
+
+                        {(proofType === "GITHUB_LINK" ||
+                          proofType === "CERTIFICATION") && (
+                          <Input
+                            label={
+                              proofType === "GITHUB_LINK"
+                                ? "GitHub URL *"
+                                : "Credential verification URL (optional)"
+                            }
+                            type="url"
+                            placeholder="https://github.com/username/project"
+                            value={proofUrl}
+                            onChange={(e) => setProofUrl(e.target.value)}
+                          />
+                        )}
+
+                        <Textarea
+                          label={
+                            proofType === "RESUME_BULLET"
+                              ? "Revised resume bullet *"
+                              : "Concrete implementation & impact summary *"
+                          }
+                          rows={3}
+                          placeholder={
+                            proofType === "RESUME_BULLET"
+                              ? `e.g., Architected distributed ${selectedGapItem.skill} caching layer reducing p99 API latency by 42% across 15k req/s.`
+                              : `Describe what you built with ${selectedGapItem.skill}, key architecture decisions, and measurable results...`
+                          }
+                          value={proofDescription}
+                          onChange={(e) => setProofDescription(e.target.value)}
+                        />
+
+                        <label className="flex items-center gap-2 text-xs text-content-body cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={syncProofToResume}
+                            onChange={(e) =>
+                              setSyncProofToResume(e.target.checked)
+                            }
+                            className="rounded border-border text-primary focus:ring-primary"
+                          />
+                          <span>
+                            Also append skill & evidence note to my active
+                            resume
+                          </span>
+                        </label>
+
+                        <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() =>
+                              openPracticeModalForSkill(selectedGapItem.skill)
+                            }
+                          >
+                            Or verify via mock interview
+                          </Button>
+                          <Button
+                            type="submit"
+                            variant="primary"
+                            size="sm"
+                            loading={isSubmittingProof}
+                            leftIcon={<Check className="h-3.5 w-3.5" />}
+                          >
+                            Submit proof & recalculate
+                          </Button>
+                        </div>
+                      </form>
 
                       {/* Current Evidence & Status */}
                       <div className="space-y-1.5">

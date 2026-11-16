@@ -102,6 +102,43 @@ export interface InterviewEvaluation {
   createdAt: string;
 }
 
+export interface TranscriptQuestionEntry {
+  questionId: string;
+  order: number;
+  round: string;
+  question: string;
+  answer: string | null;
+  score: number | null;
+  feedback: string | null;
+  strengths: string[];
+  weaknesses: string[];
+  followUpRecommendation: string;
+  answeredAt: string | null;
+}
+
+export interface StructuredInterviewTranscript {
+  version: 1;
+  interviewId: string;
+  title: string;
+  company: string;
+  role: string;
+  status: string;
+  updatedAt: string;
+  entries: TranscriptQuestionEntry[];
+  strengths: string[];
+  weaknesses: string[];
+  followUpRecommendation: string;
+  finalEvaluation: {
+    score: number;
+    feedback: string;
+    recommendation: string;
+    breakdown: Record<string, unknown>;
+    evaluatedAt: string;
+  } | null;
+  skillsValidated: string[];
+  skillsInvalidated: string[];
+}
+
 export interface Interview {
   id: string;
   userId: string;
@@ -111,6 +148,7 @@ export interface Interview {
   plan: InterviewPlan | null;
   questions: InterviewQuestion[];
   evaluation: InterviewEvaluation | null;
+  transcript?: StructuredInterviewTranscript | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -136,6 +174,30 @@ export interface StartInterviewResponse {
     interview: Interview;
     firstQuestion: InterviewQuestion;
   };
+}
+
+export interface AdaptiveFollowUpInfo {
+  triggered: boolean;
+  trigger:
+    | "VAGUE_ANSWER"
+    | "UNSUBSTANTIATED_SKILL_CLAIM"
+    | "STRONG_ESCALATION"
+    | "CONCEPT_REMEDIATION";
+  badgeLabel: string;
+  rationale: string;
+  question: InterviewQuestion;
+}
+
+export interface SubmitAnswerData {
+  evaluation: {
+    score: number;
+    feedback: string;
+    strengths?: string[];
+    improvements?: string[];
+  };
+  nextQuestion: InterviewQuestion | null;
+  completed: boolean;
+  adaptiveFollowUp?: AdaptiveFollowUpInfo | null;
 }
 
 export interface SubmitAnswerData {

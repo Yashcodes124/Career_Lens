@@ -2,6 +2,8 @@ import "dotenv/config";
 import OpenAI from "openai";
 import { AppError } from "../../utils/appError";
 import { parseModelJson } from "../../utils/parseModelJson";
+import { sanitizeProviderError } from "./aiTelemetry";
+import type { ProviderRawResult } from "./groqClient";
 
 const DEFAULT_BASE_URL =
   "https://generativelanguage.googleapis.com/v1beta/openai/";
@@ -11,12 +13,15 @@ let cachedClient: OpenAI | null = null;
 let cachedKey = "";
 let cachedBaseUrl = "";
 
+export const isGeminiConfigured = (): boolean =>
+  Boolean(process.env.GEMINI_API_KEY || process.env.AI_API_KEY);
+
 const getClient = (): OpenAI => {
   const apiKey = process.env.GEMINI_API_KEY || process.env.AI_API_KEY;
   if (!apiKey) {
     throw new AppError(
       503,
-      "Resume analysis is not configured yet",
+      "AI service is not configured yet",
       "AI_NOT_CONFIGURED",
     );
   }
@@ -27,7 +32,7 @@ const getClient = (): OpenAI => {
       ? process.env.AI_BASE_URL
       : DEFAULT_BASE_URL);
 
-  const timeout = Number(process.env.AI_TIMEOUT_MS) || 60_000;
+  const timeout = Number(process.env.AI_TIMEOUT_MS) || 45_000;
 
   if (!cachedClient || cachedKey !== apiKey || cachedBaseUrl !== baseURL) {
     cachedClient = new OpenAI({
@@ -43,13 +48,12 @@ const getClient = (): OpenAI => {
   return cachedClient;
 };
 
-export const analyzeResumeWithGemini = async (
+export const callGeminiCompletion = async (
   prompt: string,
-): Promise<unknown> => {
+): Promise<ProviderRawResult> => {
   const model =
     process.env.GEMINI_MODEL || process.env.AI_MODEL || DEFAULT_MODEL;
 
-  let content: string | null | undefined;
   try {
     const response = await getClient().chat.completions.create({
       model,
@@ -57,35 +61,38 @@ export const analyzeResumeWithGemini = async (
       temperature: 0,
       max_tokens: 8192,
     });
-    content = response.choices[0]?.message?.content;
+    const content = response.choices[0]?.message?.content;
+    if (!content) {
+      throw new AppError(
+        502,
+        "AI returned an empty response.",
+        "AI_INVALID_OUTPUT",
+      );
+    }
+    return {
+      content,
+      model,
+      usage: {
+        promptTokens: response.usage?.prompt_tokens ?? 0,
+        completionTokens: response.usage?.completion_tokens ?? 0,
+        totalTokens: response.usage?.total_tokens ?? 0,
+      },
+    };
   } catch (error) {
-    if (error instanceof AppError) throw error;
-
-    console.error(
-      "Gemini request failed:",
-      error instanceof Error ? error.message : "unknown error",
-    );
-    throw new AppError(
-      503,
-      "Resume analysis is temporarily unavailable. Please try again.",
-      "AI_UNAVAILABLE",
-    );
+    throw sanitizeProviderError(error);
   }
+};
 
-  if (!content) {
-    throw new AppError(
-      502,
-      "Resume analysis returned no result",
-      "AI_INVALID_OUTPUT",
-    );
-  }
-
+export const analyzeResumeWithGemini = async (
+  prompt: string,
+): Promise<unknown> => {
+  const raw = await callGeminiCompletion(prompt);
   try {
-    return parseModelJson(content);
+    return parseModelJson(raw.content);
   } catch {
     throw new AppError(
       502,
-      "Resume analysis returned unreadable output",
+      "AI returned unreadable structured output.",
       "AI_INVALID_OUTPUT",
     );
   }

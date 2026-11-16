@@ -19,6 +19,7 @@ import {
 } from "./interviewApi";
 import {
   getQuestionFeedbackText,
+  parseQuestionFeedback,
   type Interview,
   type InterviewEvaluation,
 } from "./types";
@@ -285,6 +286,28 @@ export const InterviewEvaluationPage: React.FC = () => {
       }
     }
 
+    for (const sk of interview?.transcript?.skillsValidated ?? []) {
+      if (
+        !strengthened.some((s) => s.skill.toLowerCase() === sk.toLowerCase())
+      ) {
+        strengthened.push({
+          skill: sk,
+          evidence:
+            "Validated in structured interview transcript and synced to Skill Profile.",
+        });
+      }
+    }
+
+    for (const sk of interview?.transcript?.skillsInvalidated ?? []) {
+      if (!stillWeak.some((s) => s.skill.toLowerCase() === sk.toLowerCase())) {
+        stillWeak.push({
+          skill: sk,
+          evidence:
+            "Flagged weak in interview transcript — practice to re-verify.",
+        });
+      }
+    }
+
     return { strengthened, stillWeak };
   }, [plan, interview, overallScore, roleTitle]);
 
@@ -405,6 +428,12 @@ export const InterviewEvaluationPage: React.FC = () => {
               <p className="text-sm leading-relaxed text-content-body">
                 {summaryText}
               </p>
+              {interview.transcript?.followUpRecommendation && (
+                <p className="rounded-input border border-primary/20 bg-primary-soft/30 px-3 py-2 text-xs font-medium text-content-heading">
+                  Follow-up recommendation:{" "}
+                  {interview.transcript.followUpRecommendation}
+                </p>
+              )}
             </div>
 
             <div className="shrink-0">
@@ -568,27 +597,73 @@ export const InterviewEvaluationPage: React.FC = () => {
             emptyDescription="This session did not record individual question transcripts."
           >
             <div className="space-y-5">
-              {(interview.questions ?? []).map((q, idx) => (
-                <InterviewQuestionCard
-                  key={q.id || idx}
-                  questionNumber={idx + 1}
-                  totalQuestions={interview.questions.length}
-                  question={q.question}
-                  round={q.round}
-                  score={q.score}
-                  answer={q.answer || "No answer submitted for this question."}
-                >
-                  <FeedbackCard
-                    title={`Question ${idx + 1} Feedback & Suggested Improvement`}
+              {(interview.questions ?? []).map((q, idx) => {
+                const parsedFb = parseQuestionFeedback(q.feedback);
+                const transcriptEntry = interview.transcript?.entries?.find(
+                  (e) => e.questionId === q.id || e.order === q.order,
+                );
+                const qStrengths =
+                  transcriptEntry?.strengths ?? parsedFb?.strengths ?? [];
+                const qWeaknesses =
+                  transcriptEntry?.weaknesses ?? parsedFb?.improvements ?? [];
+                const followUp =
+                  transcriptEntry?.followUpRecommendation ??
+                  (qWeaknesses[0]
+                    ? `Focus area: ${qWeaknesses[0]}`
+                    : "Ensure your answer states the architectural pattern, quantifies scale/latency assumptions, and covers failure recovery.");
+
+                return (
+                  <InterviewQuestionCard
+                    key={q.id || idx}
+                    questionNumber={idx + 1}
+                    totalQuestions={interview.questions.length}
+                    question={q.question}
+                    round={q.round}
                     score={q.score}
-                    summary={getQuestionFeedbackText(
-                      q.feedback,
-                      "No detailed feedback recorded for this question.",
+                    answer={
+                      q.answer || "No answer submitted for this question."
+                    }
+                  >
+                    <FeedbackCard
+                      title={`Question ${idx + 1} Feedback & Follow-Up Coaching`}
+                      score={q.score}
+                      summary={getQuestionFeedbackText(
+                        q.feedback,
+                        "No detailed feedback recorded for this question.",
+                      )}
+                      suggestedAnswer={followUp}
+                    />
+                    {(qStrengths.length > 0 || qWeaknesses.length > 0) && (
+                      <div className="mt-3 grid gap-2 sm:grid-cols-2 text-xs">
+                        {qStrengths.length > 0 && (
+                          <div className="rounded-input border border-status-success-border bg-status-success-soft/40 p-2.5">
+                            <p className="font-semibold text-status-success">
+                              Question Strengths
+                            </p>
+                            <ul className="mt-1 list-disc pl-4 text-content-body">
+                              {qStrengths.map((s, sIdx) => (
+                                <li key={sIdx}>{s}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                        {qWeaknesses.length > 0 && (
+                          <div className="rounded-input border border-status-warning-border bg-status-warning-soft/40 p-2.5">
+                            <p className="font-semibold text-status-warning">
+                              Question Weaknesses
+                            </p>
+                            <ul className="mt-1 list-disc pl-4 text-content-body">
+                              {qWeaknesses.map((w, wIdx) => (
+                                <li key={wIdx}>{w}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                      </div>
                     )}
-                    suggestedAnswer="Ensure your answer states the architectural pattern, quantifies scale/latency assumptions, and covers failure recovery."
-                  />
-                </InterviewQuestionCard>
-              ))}
+                  </InterviewQuestionCard>
+                );
+              })}
             </div>
           </SectionCard>
 

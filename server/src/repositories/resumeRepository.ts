@@ -54,3 +54,24 @@ export const deleteResumeForUser = async (resumeId: string, userId: string) => {
     where: { id: resumeId, userId },
   });
 };
+
+// PATCH /api/resumes/:id/sections & POST /api/resumes/:id/reanalyze
+export const updateResumeForUser = async (
+  resumeId: string,
+  userId: string,
+  data: {
+    title?: string;
+    rawText?: string;
+    parsedData?: object;
+    skills?: string[];
+    experienceYrs?: number;
+  },
+) => {
+  const existing = await getResumeById(resumeId, userId);
+  if (!existing) return null;
+
+  return await prisma.resume.update({
+    where: { id: existing.id },
+    data,
+  });
+};

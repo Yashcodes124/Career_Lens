@@ -9,6 +9,7 @@ import {
   FileCheck2,
   RotateCcw,
   Send,
+  Sparkles,
 } from "lucide-react";
 import {
   fetchInterviewById,
@@ -20,6 +21,7 @@ import {
   InterviewQuestion,
   QuestionFeedbackObject,
   parseQuestionFeedback,
+  AdaptiveFollowUpInfo,
 } from "./types";
 import { ContentContainer } from "../../components/layout";
 import {
@@ -134,6 +136,9 @@ export const LiveInterviewPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
+  const [adaptiveNotice, setAdaptiveNotice] =
+    useState<AdaptiveFollowUpInfo | null>(null);
+
   const loadSession = async () => {
     if (!interviewId) {
       setError("Interview ID is missing.");
@@ -188,11 +193,11 @@ export const LiveInterviewPage: React.FC = () => {
 
   const currentQuestion: InterviewQuestion | null =
     questions[currentIndex] ?? null;
-
-  // Load saved draft or existing answer when switching questions
+  //Load saved draft or existing answer when switching questions
   useEffect(() => {
     if (!currentQuestion || !interviewId) return;
     setIsRedoing(false);
+    setAdaptiveNotice(null);
 
     if (currentQuestion.answer && currentQuestion.answer.trim().length > 0) {
       setAnswerText(currentQuestion.answer);
@@ -305,6 +310,44 @@ export const LiveInterviewPage: React.FC = () => {
         trimmed,
       );
 
+      const followUp = updated?.adaptiveFollowUp ?? null;
+      setAdaptiveNotice(followUp);
+
+      setInterview((prev) => {
+        if (!prev) return prev;
+        const updatedList = prev.questions.map((q) =>
+          q.id === currentQuestion.id
+            ? {
+                ...q,
+                answer: trimmed,
+                score:
+                  updated?.evaluation?.score !== undefined
+                    ? updated.evaluation.score
+                    : (q.score ?? 78),
+                feedback:
+                  updated?.evaluation !== undefined
+                    ? updated.evaluation
+                    : (q.feedback ??
+                      "Clear technical explanation. Review the rubric notes below before advancing."),
+              }
+            : q,
+        );
+
+        if (
+          followUp?.triggered &&
+          followUp.question &&
+          !updatedList.some((q) => q.id === followUp.question.id)
+        ) {
+          updatedList.splice(currentIndex + 1, 0, followUp.question);
+        }
+
+        return {
+          ...prev,
+          status: updated?.completed ? "COMPLETED" : "IN_PROGRESS",
+          questions: updatedList,
+        };
+      });
+
       // Clear local draft on successful submit
       try {
         localStorage.removeItem(
@@ -313,35 +356,6 @@ export const LiveInterviewPage: React.FC = () => {
       } catch {
         // Ignore
       }
-
-      const updatedQuestion: InterviewQuestion =
-        (updated as unknown as { question?: InterviewQuestion })?.question ??
-        (updated as unknown as InterviewQuestion);
-
-      setInterview((prev) => {
-        if (!prev) return prev;
-        return {
-          ...prev,
-          status: "IN_PROGRESS",
-          questions: prev.questions.map((q) =>
-            q.id === currentQuestion.id
-              ? {
-                  ...q,
-                  answer: trimmed,
-                  score:
-                    updatedQuestion?.score !== undefined
-                      ? updatedQuestion.score
-                      : (q.score ?? 78),
-                  feedback:
-                    updatedQuestion?.feedback !== undefined
-                      ? updatedQuestion.feedback
-                      : (q.feedback ??
-                        "Clear technical explanation. Review the rubric notes below before advancing."),
-                }
-              : q,
-          ),
-        };
-      });
 
       setIsRedoing(false);
       setDraftSavedAt(null);
@@ -711,51 +725,72 @@ export const LiveInterviewPage: React.FC = () => {
                 )}
 
                 {hasSubmittedCurrent && feedbackDetails && (
-                  <FeedbackCard
-                    title={`Question ${currentIndex + 1} Evaluation · ${assessedSkill}`}
-                    score={currentQuestion.score ?? 78}
-                    summary={feedbackDetails.summary}
-                    strengths={feedbackDetails.strengths}
-                    improvements={feedbackDetails.improvements}
-                    suggestedAnswer={feedbackDetails.suggestedAnswer}
-                    actions={
-                      <div className="flex w-full flex-wrap items-center justify-between gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setIsRedoing(true)}
-                          leftIcon={<RotateCcw className="h-3.5 w-3.5" />}
-                        >
-                          Redo this question
-                        </Button>
-
-                        {!isLastQuestion ? (
-                          <Button
-                            variant="primary"
-                            size="md"
-                            onClick={() =>
-                              setCurrentIndex((idx) =>
-                                Math.min(questions.length - 1, idx + 1),
-                              )
-                            }
-                            rightIcon={<ArrowRight className="h-4 w-4" />}
-                          >
-                            Next question
-                          </Button>
-                        ) : (
-                          <Button
-                            variant="primary"
-                            size="md"
-                            loading={completing}
-                            onClick={() => void handleFinishAndEvaluate()}
-                            leftIcon={<CheckCircle2 className="h-4 w-4" />}
-                          >
-                            Complete & view evaluation report
-                          </Button>
-                        )}
+                  <>
+                    {adaptiveNotice?.triggered && (
+                      <div className="flex items-start gap-2.5 rounded-input border border-primary/30 bg-primary-soft/40 p-3.5 text-xs">
+                        <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                        <div className="space-y-0.5">
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <span className="font-semibold text-content-heading">
+                              Adaptive Interviewer Follow-Up Added
+                            </span>
+                            <Badge tone="primary" size="sm">
+                              {adaptiveNotice.badgeLabel}
+                            </Badge>
+                          </div>
+                          <p className="text-content-body">
+                            {adaptiveNotice.rationale}
+                          </p>
+                        </div>
                       </div>
-                    }
-                  />
+                    )}
+
+                    <FeedbackCard
+                      title={`Question ${currentIndex + 1} Evaluation · ${assessedSkill}`}
+                      score={currentQuestion.score ?? 78}
+                      summary={feedbackDetails.summary}
+                      strengths={feedbackDetails.strengths}
+                      improvements={feedbackDetails.improvements}
+                      suggestedAnswer={feedbackDetails.suggestedAnswer}
+                      actions={
+                        <div className="flex w-full flex-wrap items-center justify-between gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setIsRedoing(true)}
+                            leftIcon={<RotateCcw className="h-3.5 w-3.5" />}
+                          >
+                            Redo this question
+                          </Button>
+
+                          {!isLastQuestion ? (
+                            <Button
+                              variant="primary"
+                              size="md"
+                              onClick={() =>
+                                setCurrentIndex((idx) =>
+                                  Math.min(questions.length - 1, idx + 1),
+                                )
+                              }
+                              rightIcon={<ArrowRight className="h-4 w-4" />}
+                            >
+                              Next question
+                            </Button>
+                          ) : (
+                            <Button
+                              variant="primary"
+                              size="md"
+                              loading={completing}
+                              onClick={() => void handleFinishAndEvaluate()}
+                              leftIcon={<CheckCircle2 className="h-4 w-4" />}
+                            >
+                              Complete & view evaluation report
+                            </Button>
+                          )}
+                        </div>
+                      }
+                    />
+                  </>
                 )}
               </>
             )}

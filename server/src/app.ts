@@ -14,6 +14,7 @@ import matchRoutes from "./routes/matchRoutes";
 import interviewRoutes from "./routes/interviewRoutes";
 import applicationRoutes from "./routes/applicationRoutes";
 import readinessRoutes from "./routes/readinessRoutes";
+import { getAiReliabilitySnapshot } from "./integrations/ai/aiTelemetry";
 
 export const app = express();
 
@@ -52,6 +53,7 @@ app.get("/api/health", async (_req: Request, res: Response) => {
       environment: env.NODE_ENV,
       database: "connected",
       aiConfigured: Boolean(env.resolvedAiApiKey),
+      aiReliability: getAiReliabilitySnapshot(),
     });
   } catch (error) {
     res.status(503).json({

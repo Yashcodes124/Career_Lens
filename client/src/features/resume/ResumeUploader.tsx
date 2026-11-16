@@ -1,6 +1,6 @@
 import React, { useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { FileText, Upload } from "lucide-react";
+import { FileText, Upload, ClipboardPaste } from "lucide-react";
 import { uploadResume } from "./resumeApi";
 import {
   Badge,
@@ -9,8 +9,11 @@ import {
   ErrorState,
   ProgressBar,
   Skeleton,
+  Input,
+  Textarea,
   Toast,
 } from "../../components/ui";
+import { pasteResume } from "./resumeApi";
 
 export interface ResumeUploaderProps {
   onUploadSuccess?: (resumeData?: unknown) => void;
@@ -34,6 +37,45 @@ export const ResumeUploader: React.FC<ResumeUploaderProps> = ({
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [showPasteFallback, setShowPasteFallback] = useState(false);
+  const [pasteTitle, setPasteTitle] = useState("");
+  const [pasteText, setPasteText] = useState("");
+  const [isPasting, setIsPasting] = useState(false);
+
+  const handlePasteSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (isPasting || pasteText.trim().length < 40) {
+      setError("Please paste at least 40 characters of your resume text.");
+      return;
+    }
+    try {
+      setIsPasting(true);
+      setError(null);
+      const resume = await pasteResume({
+        title: pasteTitle.trim() || "Pasted_Resume.txt",
+        rawText: pasteText,
+      });
+      setPasteTitle("");
+      setPasteText("");
+      setShowPasteFallback(false);
+      setSuccessMessage(
+        `Recovered and parsed ${resume.fileName || resume.title} (${resume.skills?.length ?? 0} skills extracted).`,
+      );
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["resumes"] }),
+        queryClient.invalidateQueries({ queryKey: ["readiness"] }),
+      ]);
+      onUploadSuccess?.(resume);
+    } catch (err: unknown) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Could not analyze pasted resume text.",
+      );
+    } finally {
+      setIsPasting(false);
+    }
+  };
 
   const validateFile = (file: File): string | null => {
     const validExtension = /\.(pdf|docx)$/i.test(file.name);
@@ -200,17 +242,90 @@ export const ResumeUploader: React.FC<ResumeUploaderProps> = ({
               </div>
             </div>
 
-            <Button
-              variant="primary"
-              size="md"
-              onClick={() => fileInputRef.current?.click()}
-              leftIcon={<Upload className="h-4 w-4" />}
-            >
-              Upload resume
-            </Button>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                variant="outline"
+                size="md"
+                onClick={() => {
+                  setError(null);
+                  setShowPasteFallback((v) => !v);
+                }}
+                leftIcon={<ClipboardPaste className="h-4 w-4" />}
+              >
+                {showPasteFallback
+                  ? "Hide paste fallback"
+                  : "Paste resume text"}
+              </Button>
+
+              <Button
+                variant="primary"
+                size="md"
+                onClick={() => fileInputRef.current?.click()}
+                leftIcon={<Upload className="h-4 w-4" />}
+              >
+                Upload resume
+              </Button>
+            </div>
           </div>
         )}
       </Card>
+      {showPasteFallback && (
+        <Card padding="md" className="space-y-4 border-primary/40">
+          <div className="space-y-1">
+            <p className="text-xs font-semibold uppercase tracking-wider text-primary">
+              Manual Recovery Fallback
+            </p>
+            <h3 className="text-sm font-semibold text-content-heading">
+              Paste Resume Text Directly
+            </h3>
+            <p className="text-xs text-content-secondary">
+              Use this if your PDF is scanned, uses complex multi-column tables,
+              or if AI extraction failed. TrueHire will extract your sections
+              with a deterministic skill fallback so your resume never fails to
+              save.
+            </p>
+          </div>
+
+          <form onSubmit={handlePasteSubmit} className="space-y-3">
+            <Input
+              label="Resume version title"
+              placeholder="e.g., Full_Stack_Resume_2026"
+              value={pasteTitle}
+              onChange={(e) => setPasteTitle(e.target.value)}
+            />
+            <Textarea
+              label="Full resume text *"
+              rows={7}
+              placeholder="Paste your summary, skills, work experience, projects, and education text here..."
+              value={pasteText}
+              onChange={(e) => setPasteText(e.target.value)}
+            />
+            <div className="flex items-center justify-between gap-2 pt-1">
+              <span className="text-xs text-content-secondary tabular-nums">
+                {pasteText.trim().length} characters (min 40)
+              </span>
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowPasteFallback(false)}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  variant="primary"
+                  size="sm"
+                  loading={isPasting}
+                >
+                  Analyze & save pasted resume
+                </Button>
+              </div>
+            </div>
+          </form>
+        </Card>
+      )}
     </div>
   );
 };

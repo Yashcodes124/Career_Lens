@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   Briefcase,
   Check,
@@ -10,13 +11,24 @@ import {
   Plus,
   RotateCcw,
   Sparkles,
+  AlertTriangle,
+  Edit3,
+  RefreshCw,
+  Save,
+  Trash2,
 } from "lucide-react";
-import { fetchResumeById } from "./resumeApi";
-import type {
-  ParsedEducation,
-  ParsedExperience,
-  ParsedProject,
-  ResumeSummary,
+
+import {
+  fetchResumeById,
+  reanalyzeResume,
+  updateResumeSections,
+} from "./resumeApi";
+import {
+  evaluateResumeParsingQuality,
+  type ParsedEducation,
+  type ParsedExperience,
+  type ParsedProject,
+  type ResumeSummary,
 } from "./types";
 import {
   Badge,
@@ -28,6 +40,9 @@ import {
   Skeleton,
   SkillBadge,
   Tabs,
+  ProgressBar,
+  Textarea,
+  Toast,
 } from "../../components/ui";
 
 export type ResumeRecord = ResumeSummary & {
@@ -118,6 +133,91 @@ export const ResumeParsedPreview: React.FC<ResumeParsedPreviewProps> = ({
     readCustomList(resume.id),
   );
   const [newSkill, setNewSkill] = useState("");
+  const queryClient = useQueryClient();
+  const [isReanalyzing, setIsReanalyzing] = useState(false);
+  const [isEditingSections, setIsEditingSections] = useState(false);
+  const [isSavingSections, setIsSavingSections] = useState(false);
+  const [feedbackToast, setFeedbackToast] = useState<string | null>(null);
+
+  const [editSummary, setEditSummary] = useState("");
+  const [editYears, setEditYears] = useState<number>(0);
+  const [editExperience, setEditExperience] = useState<ParsedExperience[]>([]);
+  const [editProjects, setEditProjects] = useState<ParsedProject[]>([]);
+  const [editEducation, setEditEducation] = useState<ParsedEducation[]>([]);
+
+  const parsingQuality = useMemo(
+    () => evaluateResumeParsingQuality(fullResume),
+    [fullResume],
+  );
+
+  const openSectionEditor = () => {
+    setEditSummary(parsed?.summary ?? "");
+    setEditYears(parsed?.totalExperienceYears ?? fullResume.experienceYrs ?? 0);
+    setEditExperience(
+      Array.isArray(parsed?.experience) ? [...parsed.experience] : [],
+    );
+    setEditProjects(
+      Array.isArray(parsed?.projects) ? [...parsed.projects] : [],
+    );
+    setEditEducation(
+      Array.isArray(parsed?.education) ? [...parsed.education] : [],
+    );
+    setIsEditingSections(true);
+  };
+
+  const handleReanalyze = async () => {
+    if (isReanalyzing) return;
+    try {
+      setIsReanalyzing(true);
+      const updated = await reanalyzeResume(fullResume.id);
+      setFullResume(updated);
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["resumes"] }),
+        queryClient.invalidateQueries({ queryKey: ["readiness"] }),
+      ]);
+      setFeedbackToast(
+        `Re-analyzed stored text without re-uploading (${updated.skills.length} skills extracted).`,
+      );
+    } catch (err: unknown) {
+      setFeedbackToast(
+        err instanceof Error
+          ? err.message
+          : "Could not re-analyze this resume.",
+      );
+    } finally {
+      setIsReanalyzing(false);
+    }
+  };
+
+  const handleSaveSections = async () => {
+    if (isSavingSections) return;
+    try {
+      setIsSavingSections(true);
+      const updated = await updateResumeSections(fullResume.id, {
+        summary: editSummary,
+        totalExperienceYears: editYears,
+        skills: allSkills,
+        experience: editExperience,
+        projects: editProjects,
+        education: editEducation,
+      });
+      setFullResume(updated);
+      setIsEditingSections(false);
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["resumes"] }),
+        queryClient.invalidateQueries({ queryKey: ["readiness"] }),
+      ]);
+      setFeedbackToast(
+        "Saved edited resume sections and updated skill profile.",
+      );
+    } catch (err: unknown) {
+      setFeedbackToast(
+        err instanceof Error ? err.message : "Could not save section edits.",
+      );
+    } finally {
+      setIsSavingSections(false);
+    }
+  };
 
   // Fetch full resume by ID so rawText and complete parsedData are always loaded
   useEffect(() => {
@@ -267,6 +367,29 @@ export const ResumeParsedPreview: React.FC<ResumeParsedPreviewProps> = ({
       description={`Uploaded ${new Date(fullResume.createdAt).toLocaleDateString()} · ${fileExtension} · ${allSkills.length} active skills (${confirmedCount} confirmed) · ${projectItems.length} projects · ${experienceItems.length} experience entries`}
       action={
         <div className="flex flex-wrap items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            loading={isReanalyzing}
+            onClick={() => void handleReanalyze()}
+            leftIcon={<RefreshCw className="h-3.5 w-3.5" />}
+          >
+            Re-analyze text
+          </Button>
+
+          <Button
+            variant={isEditingSections ? "secondary" : "outline"}
+            size="sm"
+            onClick={() =>
+              isEditingSections
+                ? setIsEditingSections(false)
+                : openSectionEditor()
+            }
+            leftIcon={<Edit3 className="h-3.5 w-3.5" />}
+          >
+            {isEditingSections ? "Cancel editing" : "Edit sections"}
+          </Button>
+
           {isActiveForMatching ? (
             <Badge
               tone="success"
@@ -288,6 +411,345 @@ export const ResumeParsedPreview: React.FC<ResumeParsedPreviewProps> = ({
         </div>
       }
     >
+      {feedbackToast && (
+        <div className="mb-4">
+          <Toast
+            tone="success"
+            title="Resume updated"
+            description={feedbackToast}
+            onDismiss={() => setFeedbackToast(null)}
+          />
+        </div>
+      )}
+
+      {/* Parsing Confidence, Outcome Distinction & Warnings Banner */}
+      <Card muted padding="md" className="mb-6 space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="space-y-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-xs font-semibold uppercase tracking-wider text-content-secondary">
+                Parsing Quality Score
+              </span>
+              <Badge
+                tone={
+                  parsingQuality.level === "HIGH"
+                    ? "success"
+                    : parsingQuality.level === "MEDIUM"
+                      ? "warning"
+                      : "danger"
+                }
+                size="sm"
+              >
+                {parsingQuality.score}% ({parsingQuality.level} CONFIDENCE)
+              </Badge>
+              <Badge
+                tone={
+                  parsingQuality.outcome === "PARSED_CLEAN"
+                    ? "success"
+                    : parsingQuality.outcome === "NO_RELEVANT_SKILLS"
+                      ? "warning"
+                      : "danger"
+                }
+                size="sm"
+              >
+                {parsingQuality.outcome === "PARSED_CLEAN"
+                  ? "Structure & Skills Verified"
+                  : parsingQuality.outcome === "NO_RELEVANT_SKILLS"
+                    ? "Parsed Cleanly · 0 Relevant Skills"
+                    : "AI Structure Degraded · Recovery Active"}
+              </Badge>
+            </div>
+            <p className="text-xs text-content-body">
+              {parsingQuality.outcomeSummary}
+            </p>
+          </div>
+
+          <span className="text-xs text-content-secondary tabular-nums">
+            {parsingQuality.wordCount > 0
+              ? `${parsingQuality.wordCount} words extracted`
+              : `${allSkills.length} skills indexed`}
+          </span>
+        </div>
+
+        <ProgressBar
+          value={parsingQuality.score}
+          tone={
+            parsingQuality.level === "HIGH"
+              ? "success"
+              : parsingQuality.level === "MEDIUM"
+                ? "warning"
+                : "danger"
+          }
+        />
+
+        {parsingQuality.warnings.length > 0 && (
+          <ul className="space-y-1.5 pt-1">
+            {parsingQuality.warnings.map((w) => (
+              <li
+                key={w.code}
+                className="flex items-start gap-2 rounded-input border border-border bg-surface p-2.5 text-xs"
+              >
+                <AlertTriangle
+                  className={`mt-0.5 h-3.5 w-3.5 shrink-0 ${
+                    w.severity === "danger"
+                      ? "text-status-danger"
+                      : "text-status-warning"
+                  }`}
+                />
+                <div>
+                  <strong className="font-semibold text-content-heading">
+                    {w.title}:{" "}
+                  </strong>
+                  <span className="text-content-body">{w.detail}</span>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Card>
+
+      {/* Section-Level Editor (After AI Extraction) */}
+      {isEditingSections && (
+        <Card padding="md" className="mb-6 space-y-5 border-primary">
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border pb-3">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wider text-primary">
+                Post-Extraction Recovery Editor
+              </p>
+              <h3 className="text-sm font-semibold text-content-heading">
+                Edit Extracted Resume Sections
+              </h3>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setIsEditingSections(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="primary"
+                size="sm"
+                loading={isSavingSections}
+                onClick={() => void handleSaveSections()}
+                leftIcon={<Save className="h-3.5 w-3.5" />}
+              >
+                Save section changes
+              </Button>
+            </div>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-[1fr_180px]">
+            <Textarea
+              label="Professional Summary"
+              rows={3}
+              value={editSummary}
+              onChange={(e) => setEditSummary(e.target.value)}
+            />
+            <Input
+              label="Total Experience (Years)"
+              type="number"
+              min={0}
+              max={50}
+              value={String(editYears)}
+              onChange={(e) => setEditYears(Number(e.target.value) || 0)}
+            />
+          </div>
+
+          {/* Editable Experience */}
+          <div className="space-y-2.5">
+            <div className="flex items-center justify-between">
+              <h4 className="text-xs font-semibold uppercase tracking-wider text-content-secondary">
+                Work Experience ({editExperience.length})
+              </h4>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() =>
+                  setEditExperience((prev) => [
+                    ...prev,
+                    {
+                      role: "",
+                      company: "",
+                      durationMonths: 12,
+                      description: "",
+                    },
+                  ])
+                }
+                leftIcon={<Plus className="h-3.5 w-3.5" />}
+              >
+                Add experience
+              </Button>
+            </div>
+            {editExperience.map((exp, idx) => (
+              <Card
+                key={`edit-exp-${idx}`}
+                muted
+                padding="sm"
+                className="space-y-2"
+              >
+                <div className="grid gap-2 sm:grid-cols-[1fr_1fr_130px_auto]">
+                  <Input
+                    placeholder="Role title (e.g. SDE Intern)"
+                    value={exp.role}
+                    onChange={(e) =>
+                      setEditExperience((list) =>
+                        list.map((item, i) =>
+                          i === idx ? { ...item, role: e.target.value } : item,
+                        ),
+                      )
+                    }
+                  />
+                  <Input
+                    placeholder="Company"
+                    value={exp.company}
+                    onChange={(e) =>
+                      setEditExperience((list) =>
+                        list.map((item, i) =>
+                          i === idx
+                            ? { ...item, company: e.target.value }
+                            : item,
+                        ),
+                      )
+                    }
+                  />
+                  <Input
+                    type="number"
+                    placeholder="Months"
+                    value={String(exp.durationMonths ?? "")}
+                    onChange={(e) =>
+                      setEditExperience((list) =>
+                        list.map((item, i) =>
+                          i === idx
+                            ? {
+                                ...item,
+                                durationMonths: Number(e.target.value) || null,
+                              }
+                            : item,
+                        ),
+                      )
+                    }
+                  />
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() =>
+                      setEditExperience((list) =>
+                        list.filter((_, i) => i !== idx),
+                      )
+                    }
+                  >
+                    <Trash2 className="h-3.5 w-3.5 text-status-danger" />
+                  </Button>
+                </div>
+                <Textarea
+                  rows={2}
+                  placeholder="Describe your engineering impact and technologies used..."
+                  value={exp.description}
+                  onChange={(e) =>
+                    setEditExperience((list) =>
+                      list.map((item, i) =>
+                        i === idx
+                          ? { ...item, description: e.target.value }
+                          : item,
+                      ),
+                    )
+                  }
+                />
+              </Card>
+            ))}
+          </div>
+
+          {/* Editable Projects */}
+          <div className="space-y-2.5">
+            <div className="flex items-center justify-between">
+              <h4 className="text-xs font-semibold uppercase tracking-wider text-content-secondary">
+                Projects ({editProjects.length})
+              </h4>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() =>
+                  setEditProjects((prev) => [
+                    ...prev,
+                    { name: "", description: "", technologies: [] },
+                  ])
+                }
+                leftIcon={<Plus className="h-3.5 w-3.5" />}
+              >
+                Add project
+              </Button>
+            </div>
+            {editProjects.map((proj, idx) => (
+              <Card
+                key={`edit-proj-${idx}`}
+                muted
+                padding="sm"
+                className="space-y-2"
+              >
+                <div className="grid gap-2 sm:grid-cols-[1fr_1fr_auto]">
+                  <Input
+                    placeholder="Project name"
+                    value={proj.name}
+                    onChange={(e) =>
+                      setEditProjects((list) =>
+                        list.map((item, i) =>
+                          i === idx ? { ...item, name: e.target.value } : item,
+                        ),
+                      )
+                    }
+                  />
+                  <Input
+                    placeholder="Technologies (comma-separated, e.g. React, Node.js)"
+                    value={(proj.technologies ?? []).join(", ")}
+                    onChange={(e) =>
+                      setEditProjects((list) =>
+                        list.map((item, i) =>
+                          i === idx
+                            ? {
+                                ...item,
+                                technologies: e.target.value
+                                  .split(",")
+                                  .map((t) => t.trim())
+                                  .filter(Boolean),
+                              }
+                            : item,
+                        ),
+                      )
+                    }
+                  />
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() =>
+                      setEditProjects((list) =>
+                        list.filter((_, i) => i !== idx),
+                      )
+                    }
+                  >
+                    <Trash2 className="h-3.5 w-3.5 text-status-danger" />
+                  </Button>
+                </div>
+                <Textarea
+                  rows={2}
+                  placeholder="Project architecture, features, and measurable outcome..."
+                  value={proj.description}
+                  onChange={(e) =>
+                    setEditProjects((list) =>
+                      list.map((item, i) =>
+                        i === idx
+                          ? { ...item, description: e.target.value }
+                          : item,
+                      ),
+                    )
+                  }
+                />
+              </Card>
+            ))}
+          </div>
+        </Card>
+      )}
       <Tabs
         activeTab={activeTab}
         onChange={setActiveTab}
