@@ -19,6 +19,7 @@ import {
   ScoreDecomposition,
   SkillEvidenceAuditItem,
   TacticalMatrix,
+  simulateMatchImpact,
 } from "./matchingService";
 
 export interface MatchResponseData extends MatchResult {
@@ -221,4 +222,57 @@ export const matchResumeToJob = async (
     skillAudit,
     scoreDecomposition,
   };
+};
+
+export const simulateJobMatchImpactService = async (
+  userId: string,
+  resumeId: string,
+  jobId: string,
+  selectedSkills: string[],
+) => {
+  const resume = await getResumeById(resumeId, userId);
+  if (!resume) {
+    throw new AppError(404, "Resume not found", "RESUME_NOT_FOUND");
+  }
+
+  const job = await getJobById(jobId);
+  if (!job || !job.isActive) {
+    throw new AppError(404, "Job not found", "JOB_NOT_FOUND");
+  }
+
+  const [userSkills, activeJobs] = await Promise.all([
+    listUserSkills(userId),
+    prisma.job?.findMany
+      ? prisma.job.findMany({
+          where: { isActive: true },
+          take: 250,
+          select: { requirements: true },
+        })
+      : Promise.resolve([]),
+  ]);
+
+  const interview: InterviewEvidence = {
+    strongSkills: userSkills
+      .filter((s) => s.status === "STRONG")
+      .map((s) => s.skill),
+    weakSkills: new Map(
+      userSkills
+        .filter((s) => s.status === "WEAK")
+        .map((s) => [s.skill, s.evidence] as const),
+    ),
+  };
+
+  return simulateMatchImpact({
+    resumeSkills: resume.skills,
+    resumeRawText: (resume as { rawText?: string | null }).rawText ?? null,
+    resumeParsedData: (resume as { parsedData?: unknown }).parsedData ?? null,
+    jobSkills: job.requirements,
+    jobTitle: job.title,
+    jobDescription: job.description,
+    candidateExperienceYrs:
+      (resume as { experienceYrs?: number | null }).experienceYrs ?? null,
+    interview,
+    selectedMissingSkills: selectedSkills,
+    activeCatalogJobSkills: activeJobs.map((j) => j.requirements),
+  });
 };

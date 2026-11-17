@@ -345,6 +345,8 @@ export const MatchPage: React.FC = () => {
       ) : result ? (
         <MatchResult
           result={result}
+          resumeId={activeResumeId}
+          jobId={jobId}
           jobTitle={job?.title ?? matchedApp?.job.title}
           companyName={job?.company ?? matchedApp?.job.company}
           jobFrequencyMap={jobFrequencyMap}

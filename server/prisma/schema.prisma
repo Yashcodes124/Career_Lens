@@ -201,3 +201,37 @@ model UserSkill {
   @@index([userId, status])
   @@map("user_skills")
 }
+
+model OntologyAlias {
+  id             String   @id @default(uuid())
+  rawSkill       String
+  canonicalSkill String
+  status         String   // APPROVED, REJECTED, PENDING
+  createdBy      String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@unique([rawSkill, canonicalSkill])
+  @@index([status])
+  @@map("ontology_aliases")
+}
+
+model AiRequestAudit {
+  id           String   @id @default(uuid())
+  userId       String?
+  feature      String
+  provider     String
+  model        String
+  status       String   // SUCCESS, FAILED, FALLBACK
+  latencyMs    Int
+  inputTokens  Int?
+  outputTokens Int?
+  costUsd      Float?
+  errorCode    String?
+  createdAt    DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@index([feature, createdAt])
+  @@index([status, createdAt])
+  @@map("ai_request_audits")
+}

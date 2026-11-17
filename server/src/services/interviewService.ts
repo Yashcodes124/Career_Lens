@@ -557,7 +557,7 @@ export const buildStructuredInterviewTranscript = (params: {
 
 const MAX_ADAPTIVE_FOLLOWUPS_PER_SESSION = 2;
 
-const evaluateAdaptiveFollowUpNeed = (params: {
+export const evaluateAdaptiveFollowUpNeed = (params: {
   question: { round: string; question: string };
   answer: string;
   evaluation: {
@@ -736,7 +736,7 @@ export const submitAnswerService = async (
   } | null = null;
 
   if (
-    process.env.NODE_ENV !== "test" &&
+    (process.env.NODE_ENV !== "test" || process.env.AI_E2E_MOCK === "true") &&
     typeof insertAdaptiveFollowUpQuestion === "function"
   ) {
     const planObj =

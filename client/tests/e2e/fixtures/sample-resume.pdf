@@ -1,0 +1,43 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [3 0 R] /Count 1 >>
+endobj
+3 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>
+endobj
+4 0 obj
+<< /Length 730 >>
+stream
+BT
+/F1 11 Tf
+1 0 0 1 50 740 Tm (Alex Rivera - Senior Full-Stack Engineer) Tj
+1 0 0 1 50 722 Tm (Summary: 4 years building scalable web platforms with React, TypeScript, and Node.js.) Tj
+1 0 0 1 50 704 Tm (Skills: React, TypeScript, JavaScript, Node.js, PostgreSQL, Redis) Tj
+1 0 0 1 50 686 Tm (Experience:) Tj
+1 0 0 1 50 668 Tm (Senior Software Engineer at Acme Cloud \(2022 - Present\)) Tj
+1 0 0 1 50 650 Tm (- Engineered React and TypeScript dashboards reducing p95 latency by 35%.) Tj
+1 0 0 1 50 632 Tm (- Built Node.js and PostgreSQL microservices handling 10,000 requests per second.) Tj
+1 0 0 1 50 614 Tm (Projects:) Tj
+1 0 0 1 50 596 Tm (Distributed Job Queue - Implemented Redis worker pool with idempotent retries.) Tj
+ET
+endstream
+endobj
+5 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+xref
+0 6
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000115 00000 n 
+0000000241 00000 n 
+0000001022 00000 n 
+trailer
+<< /Size 6 /Root 1 0 R >>
+startxref
+1092
+%%EOF

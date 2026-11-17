@@ -1064,5 +1064,209 @@ export const buildScoreDecomposition = (params: {
     },
   };
 };
-export { evaluateSenioritySkillAlignment };
 
+export interface SimulatedMatchImpact {
+  disclaimer: string;
+  selectedSkills: string[];
+  maxSelectableSkills: number;
+  baselineScore: number;
+  projectedScore: number;
+  scoreDeltaPct: number;
+  baselineReadinessScore: number;
+  projectedReadinessScore: number;
+  readinessDeltaPct: number;
+  requiredCoverage: {
+    beforePct: number;
+    afterPct: number;
+    metBefore: number;
+    metAfter: number;
+    total: number;
+  };
+  preferredCoverage: {
+    beforePct: number;
+    afterPct: number;
+    metBefore: number;
+    metAfter: number;
+    total: number;
+  };
+  resolvedPrerequisiteAlerts: string[];
+  remainingPrerequisiteAlerts: PrerequisiteReadinessAlert[];
+  skillStateTransitions: Array<{
+    skill: string;
+    beforeStatus: ClaimVerificationStatus;
+    afterStatus: "SIMULATED_VERIFIED" | "ALREADY_VERIFIED";
+    impactPct: number;
+  }>;
+  affectedActiveJobsCount: number;
+}
+
+export const simulateMatchImpact = (params: {
+  resumeSkills: string[];
+  resumeRawText?: string | null;
+  resumeParsedData?: unknown;
+  jobSkills: string[];
+  jobTitle?: string;
+  jobDescription?: string;
+  candidateExperienceYrs?: number | null;
+  interview?: InterviewEvidence;
+  selectedMissingSkills: string[];
+  activeCatalogJobSkills?: string[][];
+}): SimulatedMatchImpact | null => {
+  const baselineMatch = calculateMatch(
+    params.resumeSkills,
+    params.jobSkills,
+    params.jobDescription,
+    params.interview,
+  );
+  if (baselineMatch.status !== "OK" || baselineMatch.score === null) {
+    return null;
+  }
+
+  const baselineAudit = buildSkillEvidenceAudit({
+    resumeSkills: params.resumeSkills,
+    resumeRawText: params.resumeRawText,
+    resumeParsedData: params.resumeParsedData,
+    jobSkills: params.jobSkills,
+    jobDescription: params.jobDescription,
+    interview: params.interview,
+  });
+
+  const baselineDecomp = buildScoreDecomposition({
+    match: baselineMatch,
+    skillAudit: baselineAudit,
+    candidateExperienceYrs: params.candidateExperienceYrs,
+    jobTitle: params.jobTitle,
+    jobDescription: params.jobDescription,
+  });
+
+  // Enforce 1–5 selectable missing skills cap
+  const MAX_SIMULATED_SKILLS = 5;
+  const normalizedSelected = normalizeSkills(
+    params.selectedMissingSkills,
+  ).slice(0, MAX_SIMULATED_SKILLS);
+
+  // Merge selected skills as simulated interview-verified strengths (removing any WEAK penalty)
+  const existingStrong = new Set(
+    normalizeSkills(params.interview?.strongSkills ?? []),
+  );
+  const simulatedStrong = new Set([...existingStrong, ...normalizedSelected]);
+  const simulatedWeak = new Map<string, string>(
+    params.interview?.weakSkills ?? [],
+  );
+  for (const sk of normalizedSelected) {
+    simulatedWeak.delete(sk);
+  }
+
+  const simulatedInterview: InterviewEvidence = {
+    strongSkills: [...simulatedStrong],
+    weakSkills: simulatedWeak,
+    strongCitations: params.interview?.strongCitations,
+    weakCitations: params.interview?.weakCitations,
+  };
+
+  const simulatedMatch = calculateMatch(
+    params.resumeSkills,
+    params.jobSkills,
+    params.jobDescription,
+    simulatedInterview,
+  );
+
+  const simulatedAudit = buildSkillEvidenceAudit({
+    resumeSkills: params.resumeSkills,
+    resumeRawText: params.resumeRawText,
+    resumeParsedData: params.resumeParsedData,
+    jobSkills: params.jobSkills,
+    jobDescription: params.jobDescription,
+    interview: simulatedInterview,
+  });
+
+  const simulatedDecomp = buildScoreDecomposition({
+    match: simulatedMatch,
+    skillAudit: simulatedAudit,
+    candidateExperienceYrs: params.candidateExperienceYrs,
+    jobTitle: params.jobTitle,
+    jobDescription: params.jobDescription,
+  });
+
+  const baselineScore = baselineMatch.score;
+  const projectedScore = simulatedMatch.score ?? baselineScore;
+
+  const baselineReadinessScore =
+    baselineDecomp?.headlineScores.readinessScore.score ?? baselineScore;
+  const projectedReadinessScore =
+    simulatedDecomp?.headlineScores.readinessScore.score ?? projectedScore;
+
+  // Prerequisite alerts resolved by adding these skills
+  const beforeAlertTargets = new Set(
+    (baselineMatch.prerequisiteAlerts ?? []).map((a) => a.targetSkill),
+  );
+  const afterAlertTargets = new Set(
+    (simulatedMatch.prerequisiteAlerts ?? []).map((a) => a.targetSkill),
+  );
+  const resolvedPrerequisiteAlerts = [...beforeAlertTargets].filter(
+    (t) => !afterAlertTargets.has(t),
+  );
+
+  // Skill evidence state transitions
+  const auditBySkill = new Map(baselineAudit.map((a) => [a.skill, a] as const));
+  const skillStateTransitions = normalizedSelected.map((sk) => {
+    const prior = auditBySkill.get(sk);
+    const alreadyVerified = existingStrong.has(sk);
+    return {
+      skill: sk,
+      beforeStatus:
+        prior?.claimStatus ?? ("MISSING" as ClaimVerificationStatus),
+      afterStatus: alreadyVerified
+        ? ("ALREADY_VERIFIED" as const)
+        : ("SIMULATED_VERIFIED" as const),
+      impactPct: prior?.impactPct ?? 0,
+    };
+  });
+
+  // Compute how many active jobs in the catalog also require >= 1 of the simulated skills
+  let affectedActiveJobsCount = 1;
+  if (params.activeCatalogJobSkills && normalizedSelected.length > 0) {
+    const selectedSet = new Set(normalizedSelected);
+    const catalogHits = params.activeCatalogJobSkills.filter((reqList) =>
+      normalizeSkills(reqList).some((r) => selectedSet.has(r)),
+    ).length;
+    affectedActiveJobsCount = Math.max(1, catalogHits);
+  }
+
+  return {
+    disclaimer:
+      "Simulated readiness projection based on deterministic rule weights — not a guaranteed interview or hiring outcome.",
+    selectedSkills: normalizedSelected,
+    maxSelectableSkills: MAX_SIMULATED_SKILLS,
+    baselineScore,
+    projectedScore,
+    scoreDeltaPct: projectedScore - baselineScore,
+    baselineReadinessScore,
+    projectedReadinessScore,
+    readinessDeltaPct: projectedReadinessScore - baselineReadinessScore,
+    requiredCoverage: {
+      beforePct:
+        baselineDecomp?.factors.requiredSkillCoverage.score ?? baselineScore,
+      afterPct:
+        simulatedDecomp?.factors.requiredSkillCoverage.score ?? projectedScore,
+      metBefore: baselineDecomp?.factors.requiredSkillCoverage.met ?? 0,
+      metAfter: simulatedDecomp?.factors.requiredSkillCoverage.met ?? 0,
+      total: baselineDecomp?.factors.requiredSkillCoverage.total ?? 0,
+    },
+    preferredCoverage: {
+      beforePct:
+        baselineDecomp?.factors.preferredSkillCoverage.score ?? baselineScore,
+      afterPct:
+        simulatedDecomp?.factors.preferredSkillCoverage.score ?? projectedScore,
+      metBefore: baselineDecomp?.factors.preferredSkillCoverage.met ?? 0,
+      metAfter: simulatedDecomp?.factors.preferredSkillCoverage.met ?? 0,
+      total: baselineDecomp?.factors.preferredSkillCoverage.total ?? 0,
+    },
+    resolvedPrerequisiteAlerts,
+    remainingPrerequisiteAlerts: simulatedMatch.prerequisiteAlerts ?? [],
+    skillStateTransitions,
+    affectedActiveJobsCount,
+  };
+};
+
+export { evaluateSenioritySkillAlignment };

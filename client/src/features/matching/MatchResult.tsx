@@ -38,9 +38,12 @@ import {
   Tabs,
   type BadgeTone,
 } from "../../components/ui";
+import { simulateJobMatch } from "./matchingApi";
 
 export interface MatchResultProps {
   result: MatchResultType;
+  resumeId?: string | null;
+  jobId?: string;
   jobTitle?: string;
   companyName?: string;
   jobFrequencyMap?: Record<string, number>;
@@ -149,6 +152,8 @@ const buildWhyThisMatchExplanation = (
 
 export const MatchResult: React.FC<MatchResultProps> = ({
   result,
+  resumeId,
+  jobId,
   jobTitle,
   companyName,
   jobFrequencyMap = {},
@@ -218,6 +223,41 @@ export const MatchResult: React.FC<MatchResultProps> = ({
       />
     );
   }
+  // 1. Collect selectable missing or weak skills
+  const simulatableSkills = (result.skillGaps ?? []).map((g) => g.skill);
+
+  const [selectedSimSkills, setSelectedSimSkills] = useState<string[]>([]);
+  const [simulating, setSimulating] = useState(false);
+  const [simError, setSimError] = useState<string | null>(null);
+  const [simulationResult, setSimulationResult] = useState<any | null>(null);
+
+  const toggleSimSkill = (skill: string) => {
+    setSelectedSimSkills((prev) => {
+      if (prev.includes(skill)) return prev.filter((s) => s !== skill);
+      if (prev.length >= 5) return prev; // cap at 5 skills
+      return [...prev, skill];
+    });
+  };
+
+  const handleRunSimulation = async () => {
+    if (!resumeId || !jobId || selectedSimSkills.length === 0) return;
+    try {
+      setSimulating(true);
+      setSimError(null);
+      const data = await simulateJobMatch({
+        resumeId,
+        jobId,
+        selectedSkills: selectedSimSkills,
+      });
+      setSimulationResult(data);
+    } catch (err) {
+      setSimError(
+        err instanceof Error ? err.message : "Could not run match simulation.",
+      );
+    } finally {
+      setSimulating(false);
+    }
+  };
 
   const totalRequirements =
     result.matchedSkills.length + result.missingSkills.length;
@@ -418,25 +458,27 @@ export const MatchResult: React.FC<MatchResultProps> = ({
               </span>
             </div>
             <ul className="space-y-1 text-content-body">
-              {result.prerequisiteAlerts.map((alert:PrerequisiteReadinessAlert) => (
-                <li
-                  key={alert.targetSkill}
-                  className="flex flex-wrap items-center justify-between gap-2"
-                >
-                  <span>{alert.rationale}</span>
-                  {onPracticeSkill && alert.missingPrerequisites[0] && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() =>
-                        onPracticeSkill(alert.missingPrerequisites[0])
-                      }
-                    >
-                      Practice {alert.missingPrerequisites[0]}
-                    </Button>
-                  )}
-                </li>
-              ))}
+              {result.prerequisiteAlerts.map(
+                (alert: PrerequisiteReadinessAlert) => (
+                  <li
+                    key={alert.targetSkill}
+                    className="flex flex-wrap items-center justify-between gap-2"
+                  >
+                    <span>{alert.rationale}</span>
+                    {onPracticeSkill && alert.missingPrerequisites[0] && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() =>
+                          onPracticeSkill(alert.missingPrerequisites[0])
+                        }
+                      >
+                        Practice {alert.missingPrerequisites[0]}
+                      </Button>
+                    )}
+                  </li>
+                ),
+              )}
             </ul>
           </div>
         )}
@@ -1207,6 +1249,142 @@ export const MatchResult: React.FC<MatchResultProps> = ({
           })}
         </ul>
       </SectionCard>
+
+      {/* Multi-Skill Match-Impact Simulator */}
+      {resumeId && jobId && simulatableSkills.length > 0 && (
+        <SectionCard
+          eyebrow="What-If Simulator"
+          title="Multi-Skill Match-Impact Simulator"
+          description="Select 1–5 missing or weak skills to preview how verifying them impacts this role and your broader job catalog."
+        >
+          <div className="space-y-4">
+            {/* 1. Skill Selector Pills (max 5) */}
+            <div className="flex flex-wrap gap-2">
+              {simulatableSkills.map((skill) => {
+                const isSelected = selectedSimSkills.includes(skill);
+                const disabled = !isSelected && selectedSimSkills.length >= 5;
+                return (
+                  <button
+                    key={skill}
+                    type="button"
+                    disabled={disabled}
+                    onClick={() => toggleSimSkill(skill)}
+                    className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition ${
+                      isSelected
+                        ? "border-blue-600 bg-blue-50 text-blue-700"
+                        : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50 disabled:opacity-40"
+                    }`}
+                  >
+                    {isSelected ? `✓ ${skill}` : `+ ${skill}`}
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-xs text-slate-500">
+                {selectedSimSkills.length}/5 skills selected
+              </span>
+              <Button
+                variant="primary"
+                size="sm"
+                loading={simulating}
+                disabled={selectedSimSkills.length === 0}
+                onClick={() => void handleRunSimulation()}
+              >
+                Simulate impact
+              </Button>
+            </div>
+
+            {simError && (
+              <p className="text-xs text-red-600">{simError}</p>
+            )}
+
+            {/* 2. Simulation Results Panel */}
+            {simulationResult && (
+              <div className="space-y-4 rounded-xl border border-slate-200 bg-slate-50 p-4">
+                {/* Score & Readiness Deltas */}
+                <div className="grid gap-3 sm:grid-cols-3">
+                  <div className="rounded-lg border border-slate-200 bg-white p-3">
+                    <p className="text-[11px] font-medium text-slate-500">
+                      Job Match Score
+                    </p>
+                    <p className="mt-1 text-base font-semibold text-slate-900 tabular-nums">
+                      {simulationResult.baselineMatchScore ?? simulationResult.baselineScore}% →{" "}
+                      <span className="text-emerald-600">
+                        {simulationResult.projectedMatchScore ?? simulationResult.projectedScore}% (+
+                        {simulationResult.matchScoreDeltaPct ?? simulationResult.scoreDeltaPct}%)
+                      </span>
+                    </p>
+                  </div>
+
+                  <div className="rounded-lg border border-slate-200 bg-white p-3">
+                    <p className="text-[11px] font-medium text-slate-500">
+                      Readiness Score
+                    </p>
+                    <p className="mt-1 text-base font-semibold text-slate-900 tabular-nums">
+                      {simulationResult.baselineReadinessScore}% →{" "}
+                      <span className="text-emerald-600">
+                        {simulationResult.projectedReadinessScore}% (+
+                        {simulationResult.readinessDeltaPct}%)
+                      </span>
+                    </p>
+                  </div>
+
+                  <div className="rounded-lg border border-slate-200 bg-white p-3">
+                    <p className="text-[11px] font-medium text-slate-500">
+                      Catalog-Wide Impact
+                    </p>
+                    <p className="mt-1 text-base font-semibold text-blue-600 tabular-nums">
+                      {simulationResult.affectedActiveJobsCount} active jobs
+                      improved
+                    </p>
+                  </div>
+                </div>
+
+                {/* Required vs. Preferred Coverage Deltas */}
+                {(simulationResult.coverageDelta || (simulationResult.requiredCoverage && simulationResult.preferredCoverage)) && (
+                  <div className="flex flex-wrap gap-3 text-xs text-slate-700">
+                    <span>
+                      <strong>Required coverage:</strong>{" "}
+                      {simulationResult.coverageDelta?.baselineRequiredPct ?? simulationResult.requiredCoverage?.beforePct}% →{" "}
+                      {simulationResult.coverageDelta?.projectedRequiredPct ?? simulationResult.requiredCoverage?.afterPct}%
+                    </span>
+                    <span>·</span>
+                    <span>
+                      <strong>Preferred coverage:</strong>{" "}
+                      {simulationResult.coverageDelta?.baselinePreferredPct ?? simulationResult.preferredCoverage?.beforePct}% →{" "}
+                      {simulationResult.coverageDelta?.projectedPreferredPct ?? simulationResult.preferredCoverage?.afterPct}%
+                    </span>
+                  </div>
+                )}
+
+                {/* Evidence State Transitions */}
+                {((Array.isArray(simulationResult.evidenceTransitions) && simulationResult.evidenceTransitions.length > 0) ||
+                  (Array.isArray(simulationResult.skillStateTransitions) && simulationResult.skillStateTransitions.length > 0)) && (
+                    <div className="space-y-1.5">
+                      <p className="text-xs font-semibold text-slate-800">
+                        Evidence State Transitions
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        {(simulationResult.evidenceTransitions ?? simulationResult.skillStateTransitions).map((t: any) => (
+                          <Badge key={t.skill} tone="success" size="sm">
+                            {t.skill}: {t.fromState ?? t.beforeStatus} → {t.toState ?? t.afterStatus}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                {/* Mandatory Disclaimer Label */}
+                <p className="border-t border-slate-200 pt-2.5 text-[11px] font-medium text-slate-500">
+                  {simulationResult.disclaimer || "Simulated readiness projection — not a guaranteed interview outcome."}
+                </p>
+              </div>
+            )}
+          </div>
+        </SectionCard>
+      )}
 
       {/* 4. Requirement Checklist: Met / Partially Met / Missing */}
       <SectionCard

@@ -6,6 +6,7 @@ import {
   startJobSyncScheduler,
   stopJobSyncScheduler,
 } from "./services/jobSyncScheduler";
+import {hydrateOntologyFromDatabase} from "./services/matching/skillDictionary";
 
 initServerMonitoring();
 
@@ -13,6 +14,17 @@ const server = app.listen(env.PORT, () => {
   console.log(
     `[TrueHire API] Running in ${env.NODE_ENV} mode on http://localhost:${env.PORT}`,
   );
+  void hydrateOntologyFromDatabase()
+    .then(
+      ({ approvedLoaded, rejectedLoaded }: { approvedLoaded: number; rejectedLoaded: number }) => {
+      if (approvedLoaded > 0 || rejectedLoaded > 0) {
+        console.log(
+          `[Ontology] Hydrated ${approvedLoaded} approved aliases and ${rejectedLoaded} dismissed tokens from DB.`,
+        );
+      }
+      },
+    )
+    .catch(() => null);
   startJobSyncScheduler();
 });
 

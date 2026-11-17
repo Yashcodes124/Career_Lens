@@ -1,0 +1,13 @@
+{
+  "name": "career-lens-monorepo",
+  "private": true,
+  "scripts": {
+    "test:e2e": "npm --prefix client run test:e2e",
+    "dev:server": "npm --prefix server run dev",
+    "dev:client": "npm --prefix client run dev",
+    "build:server": "npm --prefix server run build",
+    "build:client": "npm --prefix client run build",
+    "test:server": "npm --prefix server test",
+    "test:client": "npm --prefix client test"
+  }
+}

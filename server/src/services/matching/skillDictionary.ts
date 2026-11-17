@@ -2,6 +2,8 @@
 // Aliases are matched with strict whole-word boundaries so "javascript" never matches "java"
 // and "digital" never matches "git".
 
+import { prisma } from "../../config/db";
+
 export type SkillFamily =
   | "frontend"
   | "backend"
@@ -2723,6 +2725,78 @@ const NOISE_STOPWORDS = new Set([
   "full time",
 ]);
 
+const dismissedTokensCache = new Set<string>();
+
+/**
+ * Hydrates approved canonicals, approved aliases, and dismissed tokens from PostgreSQL
+ * so ontology decisions survive server restarts and work across instances.
+ */
+export const hydrateOntologyFromDatabase = async (): Promise<{
+  approvedLoaded: number;
+  rejectedLoaded: number;
+}> => {
+  if (!prisma?.ontologyAlias?.findMany) {
+    return { approvedLoaded: 0, rejectedLoaded: 0 };
+  }
+
+  const rows = await prisma.ontologyAlias.findMany({
+    where: { status: { in: ["APPROVED", "REJECTED"] } },
+  });
+
+  let approvedLoaded = 0;
+  let rejectedLoaded = 0;
+  let patternsDirty = false;
+
+  for (const row of rows) {
+    const raw = row.rawSkill.toLowerCase().trim();
+    const canonical = row.canonicalSkill.toLowerCase().trim();
+    if (!raw) continue;
+
+    if (row.status === "REJECTED") {
+      dismissedTokensCache.add(raw);
+      unrecognizedReviewQueue.delete(raw);
+      rejectedLoaded++;
+      continue;
+    }
+
+    if (row.status === "APPROVED" && canonical) {
+      dismissedTokensCache.delete(raw);
+      if (raw === canonical) {
+        if (!CANONICAL_SKILL_MAP.has(canonical)) {
+          const newEntry: SkillEntry = {
+            canonical,
+            aliases: [canonical],
+            family: "backend",
+            tier: "core",
+          };
+          SKILL_DICTIONARY.push(newEntry);
+          (CANONICAL_SKILL_MAP as Map<string, SkillEntry>).set(
+            canonical,
+            newEntry,
+          );
+          patternsDirty = true;
+        }
+        ALIAS_TO_CANONICAL.set(canonical, canonical);
+      } else {
+        const target = ALIAS_TO_CANONICAL.get(canonical) ?? canonical;
+        const entry = SKILL_DICTIONARY.find((e) => e.canonical === target);
+        if (entry && !entry.aliases.includes(raw)) {
+          entry.aliases.push(raw);
+        }
+        ALIAS_TO_CANONICAL.set(raw, target);
+        patternsDirty = true;
+      }
+      approvedLoaded++;
+    }
+  }
+
+  if (patternsDirty) {
+    SEARCH_PATTERNS = buildSearchPatterns();
+  }
+
+  return { approvedLoaded, rejectedLoaded };
+};
+
 export const recordUnrecognizedSkillToken = (
   rawToken: string,
   source = "UNKNOWN",
@@ -2741,7 +2815,8 @@ export const recordUnrecognizedSkillToken = (
     cleaned.length > 42 ||
     /^\d+$/.test(cleaned) ||
     NOISE_STOPWORDS.has(cleaned) ||
-    ALIAS_TO_CANONICAL.has(cleaned)
+    ALIAS_TO_CANONICAL.has(cleaned) ||
+    dismissedTokensCache.has(cleaned)
   ) {
     return;
   }
@@ -2772,31 +2847,128 @@ export const recordUnrecognizedSkillToken = (
       status: "PENDING",
     });
   }
+
+  // Persist PENDING token asynchronously so review queue survives restarts
+  if (process.env.NODE_ENV !== "test" && prisma?.ontologyAlias?.upsert) {
+    void prisma.ontologyAlias
+      .upsert({
+        where: {
+          rawSkill_canonicalSkill: {
+            rawSkill: cleaned,
+            canonicalSkill: cleaned,
+          },
+        },
+        create: {
+          rawSkill: cleaned,
+          canonicalSkill: cleaned,
+          status: "PENDING",
+        },
+        update: {},
+      })
+      .catch(() => null);
+  }
 };
 
-export const listUnrecognizedSkillQueue = (): UnrecognizedSkillRecord[] =>
-  [...unrecognizedReviewQueue.values()].sort(
+export const listUnrecognizedSkillQueue = async (): Promise<
+  UnrecognizedSkillRecord[]
+> => {
+  if (prisma?.ontologyAlias?.findMany) {
+    try {
+      const dbRows = await prisma.ontologyAlias.findMany({
+        orderBy: { updatedAt: "desc" },
+        take: 200,
+      });
+
+      for (const row of dbRows) {
+        const key = row.rawSkill.toLowerCase().trim();
+        const mappedStatus: UnrecognizedSkillRecord["status"] =
+          row.status === "REJECTED"
+            ? "DISMISSED"
+            : row.status === "APPROVED"
+              ? row.rawSkill === row.canonicalSkill
+                ? "APPROVED_CANONICAL"
+                : "MAPPED_ALIAS"
+              : "PENDING";
+
+        const existing = unrecognizedReviewQueue.get(key);
+        if (existing) {
+          existing.status = mappedStatus;
+          if (row.status === "APPROVED") {
+            existing.resolvedTo = row.canonicalSkill;
+          }
+        } else {
+          unrecognizedReviewQueue.set(key, {
+            token: key,
+            occurrences: 1,
+            sources: ["DATABASE"],
+            sampleContexts: [],
+            firstSeenAt: row.createdAt.toISOString(),
+            lastSeenAt: row.updatedAt.toISOString(),
+            status: mappedStatus,
+            ...(row.status === "APPROVED"
+              ? { resolvedTo: row.canonicalSkill }
+              : {}),
+          });
+        }
+      }
+    } catch {
+      // Fallback to in-memory records in isolated unit tests
+    }
+  }
+
+  return [...unrecognizedReviewQueue.values()].sort(
     (a, b) =>
-      Number(a.status === "PENDING") - Number(b.status === "PENDING") * -1 ||
+      Number(b.status === "PENDING") - Number(a.status === "PENDING") ||
       b.occurrences - a.occurrences ||
       a.token.localeCompare(b.token),
   );
+};
 
-export const resolveUnrecognizedSkillToken = (params: {
+export const resolveUnrecognizedSkillToken = async (params: {
   token: string;
   action: "APPROVE_CANONICAL" | "MAP_ALIAS" | "DISMISS";
   targetCanonical?: string;
   family?: SkillFamily;
-}): UnrecognizedSkillRecord | null => {
+  createdBy?: string;
+}): Promise<UnrecognizedSkillRecord | null> => {
   const key = params.token.toLowerCase().trim();
   const record = unrecognizedReviewQueue.get(key);
 
   if (params.action === "DISMISS") {
+    dismissedTokensCache.add(key);
+    if (prisma?.ontologyAlias?.upsert) {
+      await prisma.ontologyAlias.deleteMany({
+        where: { rawSkill: key, status: "PENDING" },
+      });
+      await prisma.ontologyAlias.upsert({
+        where: {
+          rawSkill_canonicalSkill: { rawSkill: key, canonicalSkill: key },
+        },
+        create: {
+          rawSkill: key,
+          canonicalSkill: key,
+          status: "REJECTED",
+          createdBy: params.createdBy ?? null,
+        },
+        update: {
+          status: "REJECTED",
+          createdBy: params.createdBy ?? null,
+        },
+      });
+    }
     if (record) {
       record.status = "DISMISSED";
       return record;
     }
-    return null;
+    return {
+      token: key,
+      occurrences: 1,
+      sources: ["REVIEW"],
+      sampleContexts: [],
+      firstSeenAt: new Date().toISOString(),
+      lastSeenAt: new Date().toISOString(),
+      status: "DISMISSED",
+    };
   }
 
   if (params.action === "MAP_ALIAS" && params.targetCanonical) {
@@ -2808,12 +2980,45 @@ export const resolveUnrecognizedSkillToken = (params: {
       entry.aliases.push(key);
     }
     ALIAS_TO_CANONICAL.set(key, target);
+    dismissedTokensCache.delete(key);
     SEARCH_PATTERNS = buildSearchPatterns();
+
+    if (prisma?.ontologyAlias?.upsert) {
+      await prisma.ontologyAlias.deleteMany({
+        where: { rawSkill: key, status: "PENDING" },
+      });
+      await prisma.ontologyAlias.upsert({
+        where: {
+          rawSkill_canonicalSkill: { rawSkill: key, canonicalSkill: target },
+        },
+        create: {
+          rawSkill: key,
+          canonicalSkill: target,
+          status: "APPROVED",
+          createdBy: params.createdBy ?? null,
+        },
+        update: {
+          status: "APPROVED",
+          createdBy: params.createdBy ?? null,
+        },
+      });
+    }
+
     if (record) {
       record.status = "MAPPED_ALIAS";
       record.resolvedTo = target;
       return record;
     }
+    return {
+      token: key,
+      occurrences: 1,
+      sources: ["REVIEW"],
+      sampleContexts: [],
+      firstSeenAt: new Date().toISOString(),
+      lastSeenAt: new Date().toISOString(),
+      status: "MAPPED_ALIAS",
+      resolvedTo: target,
+    };
   }
 
   if (params.action === "APPROVE_CANONICAL") {
@@ -2826,14 +3031,45 @@ export const resolveUnrecognizedSkillToken = (params: {
         tier: "core",
       };
       SKILL_DICTIONARY.push(newEntry);
+      (CANONICAL_SKILL_MAP as Map<string, SkillEntry>).set(key, newEntry);
       ALIAS_TO_CANONICAL.set(key, key);
       SEARCH_PATTERNS = buildSearchPatterns();
     }
+    dismissedTokensCache.delete(key);
+
+    if (prisma?.ontologyAlias?.upsert) {
+      await prisma.ontologyAlias.upsert({
+        where: {
+          rawSkill_canonicalSkill: { rawSkill: key, canonicalSkill: key },
+        },
+        create: {
+          rawSkill: key,
+          canonicalSkill: key,
+          status: "APPROVED",
+          createdBy: params.createdBy ?? null,
+        },
+        update: {
+          status: "APPROVED",
+          createdBy: params.createdBy ?? null,
+        },
+      });
+    }
+
     if (record) {
       record.status = "APPROVED_CANONICAL";
       record.resolvedTo = key;
       return record;
     }
+    return {
+      token: key,
+      occurrences: 1,
+      sources: ["REVIEW"],
+      sampleContexts: [],
+      firstSeenAt: new Date().toISOString(),
+      lastSeenAt: new Date().toISOString(),
+      status: "APPROVED_CANONICAL",
+      resolvedTo: key,
+    };
   }
 
   return record ?? null;

@@ -124,7 +124,7 @@ router.get(
 
       const falsePositiveAudit = runFalsePositiveAudit();
       const extractionBenchmark = runExtractionAccuracyBenchmark();
-      const reviewQueue = listUnrecognizedSkillQueue();
+      const reviewQueue = await listUnrecognizedSkillQueue();
 
       res.status(200).json({
         success: true,
@@ -164,35 +164,59 @@ router.get(
 router.post(
   "/review-queue/resolve",
   authMiddleware,
-  (req: Request, res: Response) => {
-    const { token, action, targetCanonical, family } = req.body ?? {};
-    if (typeof token !== "string" || !token.trim()) {
-      return res
-        .status(400)
-        .json({ success: false, message: "token is required" });
-    }
-    if (
-      action !== "APPROVE_CANONICAL" &&
-      action !== "MAP_ALIAS" &&
-      action !== "DISMISS"
-    ) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Invalid resolution action" });
-    }
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { token, action, targetCanonical, family } = req.body ?? {};
 
-    const updated = resolveUnrecognizedSkillToken({
-      token,
-      action,
-      targetCanonical:
-        typeof targetCanonical === "string" ? targetCanonical : undefined,
-      family: typeof family === "string" ? (family as SkillFamily) : undefined,
-    });
+      if (typeof token !== "string" || !token.trim()) {
+        return res
+          .status(400)
+          .json({ success: false, message: "token is required" });
+      }
 
-    return res.status(200).json({
-      success: true,
-      data: updated,
-    });
+      if (
+        action !== "APPROVE_CANONICAL" &&
+        action !== "MAP_ALIAS" &&
+        action !== "DISMISS"
+      ) {
+        return res
+          .status(400)
+          .json({ success: false, message: "Invalid resolution action" });
+      }
+
+      if (
+        action === "MAP_ALIAS" &&
+        (typeof targetCanonical !== "string" || !targetCanonical.trim())
+      ) {
+        return res.status(400).json({
+          success: false,
+          message: "targetCanonical is required when action is MAP_ALIAS",
+        });
+      }
+
+      const validFamily =
+        typeof family === "string" &&
+        ALL_SKILL_FAMILIES.includes(family as SkillFamily)
+          ? (family as SkillFamily)
+          : undefined;
+
+      const updated = await resolveUnrecognizedSkillToken({
+        token: token.trim(),
+        action,
+        targetCanonical:
+          typeof targetCanonical === "string"
+            ? targetCanonical.trim()
+            : undefined,
+        family: validFamily,
+      });
+
+      return res.status(200).json({
+        success: true,
+        data: updated,
+      });
+    } catch (err) {
+      next(err);
+    }
   },
 );
 

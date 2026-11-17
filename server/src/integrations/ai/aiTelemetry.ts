@@ -1,4 +1,5 @@
 import { AppError } from "../../utils/appError";
+import prisma from "../../config/db";
 
 export type AiFeatureName =
   | "RESUME_ANALYSIS"
@@ -129,6 +130,35 @@ export const recordAiAudit = (
     console.log(
       `[AI_AUDIT] feature=${record.feature} provider=${record.provider} model=${record.model} status=${record.status} latency=${record.latencyMs}ms tokens=${record.totalTokens} cost=$${record.estimatedCostUsd} fallback=${record.fallbackUsed}${record.errorCode ? ` code=${record.errorCode}` : ""}`,
     );
+  }
+
+  // Durable non-blocking DB write (never blocks user request or breaks unit tests)
+  if (process.env.NODE_ENV !== "test" && prisma?.aiRequestAudit?.create) {
+    const dbStatus =
+      record.status === "FAILURE"
+        ? "FAILED"
+        : record.fallbackUsed
+          ? "FALLBACK"
+          : "SUCCESS";
+
+    void prisma.aiRequestAudit
+      .create({
+        data: {
+          userId: record.userId === "system" ? null : record.userId,
+          feature: record.feature,
+          provider: record.provider,
+          model: record.model,
+          status: dbStatus,
+          latencyMs: record.latencyMs,
+          inputTokens: record.promptTokens,
+          outputTokens: record.completionTokens,
+          costUsd: record.estimatedCostUsd,
+          errorCode: record.errorCode ?? null,
+        },
+      })
+      .catch(() => {
+        // Non-fatal: in-memory ring buffer still captures health telemetry
+      });
   }
 
   return record;

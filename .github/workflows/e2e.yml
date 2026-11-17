@@ -1,0 +1,60 @@
+name: E2E Tests
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: truehire_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/truehire_test?schema=public
+      DIRECT_URL: postgresql://postgres:postgres@localhost:5432/truehire_test?schema=public
+      JWT_SECRET: e2e-ci-super-secret-jwt-key-2026
+      CLIENT_URL: http://localhost:5173
+      VITE_API_BASE_URL: http://localhost:5000/api
+      AI_E2E_MOCK: "true"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install server & client dependencies
+        run: |
+          npm --prefix server ci
+          npm --prefix client ci
+
+      - name: Push Prisma schema to test database
+        run: |
+          npx --prefix server prisma db push --schema=server/prisma/schema.prisma
+          npx --prefix server prisma generate --schema=server/prisma/schema.prisma
+
+      - name: Install Playwright Chromium browser
+        run: npx --prefix client playwright install --with-deps chromium
+
+      - name: Run Playwright E2E test suite
+        run: npm run test:e2e
+
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: client/playwright-report/
