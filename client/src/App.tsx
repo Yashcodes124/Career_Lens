@@ -30,7 +30,9 @@ import { LiveInterviewPage } from "./features/interview/LiveInterviewPage";
 import { InterviewEvaluationPage } from "./features/interview/InterviewEvaluationPage";
 import { InterviewsPage } from "./features/interview/InterviewsPage";
 import { AppShell } from "./components/layout";
+import OntologyDashboardPage from "./features/ontology/OntologyDashboardPage";
 import { Button, Card } from "./components/ui";
+import { RoleFitRadarPage } from "./features/radar/RoleFitRadarPage";
 
 const WorkspaceRoute: React.FC<{ children: React.ReactNode }> = ({
   children,
@@ -88,6 +90,14 @@ export const App: React.FC = () => {
             }
           />
           <Route
+            path="/ontology"
+            element={
+              <WorkspaceRoute>
+                <OntologyDashboardPage />
+              </WorkspaceRoute>
+            }
+          />
+          <Route
             path="/interviews"
             element={
               <WorkspaceRoute>
@@ -124,6 +134,14 @@ export const App: React.FC = () => {
             element={
               <WorkspaceRoute>
                 <JobsPage />
+              </WorkspaceRoute>
+            }
+          />
+          <Route
+            path="/radar"
+            element={
+              <WorkspaceRoute>
+                <RoleFitRadarPage />
               </WorkspaceRoute>
             }
           />

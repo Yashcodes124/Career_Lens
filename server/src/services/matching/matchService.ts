@@ -6,6 +6,10 @@ import { upsertApplicationMatch } from "../../repositories/matchRepository";
 import { listUserSkills } from "../../repositories/skillRepository";
 import { countSkillMentions } from "./skillDictionary";
 import {
+  normalizeSkills,
+  evaluateSenioritySkillAlignment,
+} from "./skillNormalizer";
+import {
   buildScoreDecomposition,
   buildSkillEvidenceAudit,
   calculateMatch,
@@ -152,18 +156,41 @@ export const matchResumeToJob = async (
     weakCitations: citations.weakCitations,
   };
 
-  const result = calculateMatch(
-    resume.skills,
+  // Normalize with source context so unrecognized tokens populate the review queue
+  const normalizedResumeSkills = normalizeSkills(resume.skills, "RESUME_SKILL");
+  const normalizedJobRequirements = normalizeSkills(
     job.requirements,
+    "JOB_REQUIREMENT",
+  );
+
+  const result = calculateMatch(
+    normalizedResumeSkills,
+    normalizedJobRequirements,
     job.description,
     interview,
   );
+
+  const seniorityAssessment = evaluateSenioritySkillAlignment({
+    jobTitle: job.title,
+    jobDescription: job.description,
+    candidateExperienceYrs:
+      (resume as { experienceYrs?: number | null }).experienceYrs ?? null,
+    requiredSkills: normalizedJobRequirements,
+    matchedSkills: result.matchedSkills,
+  });
+
+  const enrichedResult: MatchResult = {
+    ...result,
+    seniorityAssessment,
+  };
+
   const tactical = calculateTacticalMatrix(
     resume.skills,
     job.requirements,
     job.description,
     interview,
   );
+
   const skillAudit = buildSkillEvidenceAudit({
     resumeSkills: resume.skills,
     resumeRawText: (resume as { rawText?: string | null }).rawText ?? null,
@@ -174,7 +201,7 @@ export const matchResumeToJob = async (
   });
 
   const scoreDecomposition = buildScoreDecomposition({
-    match: result,
+    match: enrichedResult,
     skillAudit,
     candidateExperienceYrs:
       (resume as { experienceYrs?: number | null }).experienceYrs ?? null,
@@ -183,11 +210,12 @@ export const matchResumeToJob = async (
   });
 
   const application = await upsertApplicationMatch(userId, jobId, {
-    matchScore: result.score,
-    skillGaps: result.skillGaps.map((gap) => gap.skill),
+    matchScore: enrichedResult.score,
+    skillGaps: enrichedResult.skillGaps.map((gap) => gap.skill),
   });
+
   return {
-    ...result,
+    ...enrichedResult,
     applicationId: application.id,
     tactical,
     skillAudit,

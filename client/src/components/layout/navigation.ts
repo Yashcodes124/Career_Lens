@@ -8,6 +8,8 @@ import {
   LayoutDashboard,
   MessageSquare,
   User,
+  Database,
+  Compass,
 } from "lucide-react";
 
 export interface NavItem {
@@ -48,6 +50,13 @@ export const NAV_ITEMS: NavItem[] = [
     matchPrefixes: ["/resume", "/tailor"],
   },
   {
+    label: "Role-Fit Radar",
+    path: "/radar",
+    group: "pipeline",
+    icon: Compass,
+    matchPrefixes: ["/radar"],
+  },
+  {
     label: "Explore Jobs",
     path: "/jobs",
     group: "pipeline",
@@ -74,6 +83,13 @@ export const NAV_ITEMS: NavItem[] = [
     group: "account",
     icon: User,
     matchPrefixes: ["/profile", "/profile-setup"],
+  },
+  {
+    label: "Skill Ontology",
+    path: "/ontology",
+    group: "workspace",
+    icon: Database,
+    matchPrefixes: ["/ontology"],
   },
 ];
 
@@ -137,6 +153,9 @@ export function getRouteContext(pathname: string): {
   }
   if (pathname === "/jobs") {
     return { section: "Pipeline", title: "Verified Jobs" };
+  }
+  if (pathname == "/radar") {
+    return { section: "Pipeline", title: "Role-Fit Radar" };
   }
   if (pathname.startsWith("/matches/")) {
     return {

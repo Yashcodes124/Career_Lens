@@ -10,7 +10,10 @@ import {
   reanalyzeResumeService,
   updateResumeSectionsService,
 } from "../services/resume/resumeService";
-import { tailorResumeService } from "../services/tailoring/tailoringService";
+import {
+  tailorResumeService,
+  applyTailoredResumeChangesService,
+} from "../services/tailoring/tailoringService";
 
 export const createResume = async (
   req: Request,
@@ -167,6 +170,32 @@ export const updateResumeSectionsController = async (
       success: true,
       message: "Resume sections updated",
       resume,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+
+export const applyTailoredResumeController = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const { acceptedSkills, acceptedBullets } = req.body ?? {};
+    const result = await applyTailoredResumeChangesService({
+      userId: req.user!.userId,
+      resumeId: req.params.id,
+      acceptedSkills: Array.isArray(acceptedSkills)
+        ? acceptedSkills.map(String)
+        : [],
+      acceptedBullets: Array.isArray(acceptedBullets) ? acceptedBullets : [],
+    });
+    res.status(200).json({
+      success: true,
+      message: "Accepted resume bullet improvements saved.",
+      data: result,
     });
   } catch (error) {
     next(error);

@@ -99,6 +99,23 @@ export interface SkillEvidenceAuditItem {
   recommendedAction: string;
 }
 
+export interface PrerequisiteReadinessAlert {
+  targetSkill: string;
+  missingPrerequisites: string[];
+  satisfiedPrerequisites: string[];
+  rationale: string;
+}
+
+export interface SenioritySkillAssessment {
+  targetSeniority: "JUNIOR" | "MID" | "SENIOR" | "STAFF_PRINCIPAL";
+  candidateSeniority: "JUNIOR" | "MID" | "SENIOR" | "STAFF_PRINCIPAL";
+  seniorityAligned: boolean;
+  advancedSkillsRequired: string[];
+  advancedSkillsMatched: string[];
+  seniorityBonusOrPenaltyPct: number;
+  summary: string;
+}
+
 export interface ScoreDecomposition {
   headlineScores: {
     matchScore: { score: number; question: string; summary: string };
@@ -161,6 +178,8 @@ export interface MatchResult {
   tactical?: TacticalMatrix | null;
   skillAudit?: SkillEvidenceAuditItem[];
   scoreDecomposition?: ScoreDecomposition | null;
+  prerequisiteAlerts?: PrerequisiteReadinessAlert[];
+  seniorityAssessment?: SenioritySkillAssessment;
 }
 
 export interface MatchResponseData extends MatchResult {

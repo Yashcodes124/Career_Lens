@@ -15,6 +15,8 @@ import interviewRoutes from "./routes/interviewRoutes";
 import applicationRoutes from "./routes/applicationRoutes";
 import readinessRoutes from "./routes/readinessRoutes";
 import { getAiReliabilitySnapshot } from "./integrations/ai/aiTelemetry";
+import ontologyRoutes from "./routes/ontologyRoutes";
+import radarRoutes from "./routes/radarRoutes";
 
 export const app = express();
 
@@ -74,6 +76,8 @@ app.use("/api/matches", matchRoutes);
 app.use("/api/interviews", interviewRoutes);
 app.use("/api/applications", applicationRoutes);
 app.use("/api/readiness", readinessRoutes);
+app.use("/api/ontology", ontologyRoutes);
+app.use("/api/radar", radarRoutes);
 
 // 404 Handler
 app.use((req: Request, _res: Response, next: NextFunction) => {

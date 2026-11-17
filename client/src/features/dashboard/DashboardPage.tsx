@@ -354,9 +354,14 @@ export const DashboardPage: React.FC = () => {
           </Button>
         }
         secondaryActions={
-          <Button variant="outline" onClick={() => navigate("/jobs")}>
-            Match against jobs
-          </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button variant="outline" onClick={() => navigate("/radar")}>
+              Role-Fit Radar
+            </Button>
+            <Button variant="outline" onClick={() => navigate("/jobs")}>
+              Match against jobs
+            </Button>
+          </div>
         }
       />
 

@@ -1,8 +1,18 @@
 // Deterministic resume-to-job matching + Offense & Defense Tactical Matrix + Evidence Audit.
 // Every number can be traced to a skill name, a count of mentions in the job description,
 // a resume snippet, or an interview question evaluation. No model is involved.
-import { normalizeSkill, normalizeSkills } from "./skillNormalizer";
-import { countSkillMentions, SKILL_DICTIONARY } from "./skillDictionary";
+import {
+  normalizeSkill,
+  normalizeSkills,
+  evaluateSenioritySkillAlignment,
+  type SenioritySkillAssessment,
+} from "./skillNormalizer";
+import {
+  countSkillMentions,
+  SKILL_DICTIONARY,
+  analyzeSkillPrerequisiteReadiness,
+  type PrerequisiteReadinessAlert,
+} from "./skillDictionary";
 
 export type GapPriority = "high" | "medium" | "low";
 
@@ -18,6 +28,8 @@ export interface MatchResult {
   matchedSkills: string[];
   missingSkills: string[];
   skillGaps: SkillGap[];
+  prerequisiteAlerts?: PrerequisiteReadinessAlert[];
+  seniorityAssessment?: SenioritySkillAssessment;
 }
 
 export type DefenseStatus =
@@ -238,12 +250,23 @@ export const calculateMatch = (
         a.skill.localeCompare(b.skill),
     );
 
+  const prerequisiteAlerts = analyzeSkillPrerequisiteReadiness(requiredSkills, [
+    ...candidateSkills,
+  ]);
+  const seniorityAssessment = evaluateSenioritySkillAlignment({
+    jobDescription,
+    requiredSkills,
+    matchedSkills,
+  });
+
   return {
     status: "OK",
     score: Math.round((matchedSkills.length / requiredSkills.length) * 100),
     matchedSkills,
     missingSkills,
     skillGaps,
+    prerequisiteAlerts,
+    seniorityAssessment,
   };
 };
 
@@ -1041,3 +1064,5 @@ export const buildScoreDecomposition = (params: {
     },
   };
 };
+export { evaluateSenioritySkillAlignment };
+

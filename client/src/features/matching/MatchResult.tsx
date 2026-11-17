@@ -14,10 +14,12 @@ import {
   MessageSquare,
   PlayCircle,
   ShieldCheck,
+  GitBranch,
 } from "lucide-react";
 import type {
   GapPriority,
   MatchResult as MatchResultType,
+  PrerequisiteReadinessAlert,
   SkillConfidence,
   SkillEvidenceAuditItem,
   SkillVerificationState,
@@ -371,6 +373,73 @@ export const MatchResult: React.FC<MatchResultProps> = ({
                 : "warning"
           }
         />
+
+        {/* Seniority-Aware Skill Alignment */}
+        {result.seniorityAssessment && (
+          <div className="flex flex-wrap items-center justify-between gap-2 rounded-input border border-border bg-muted/40 p-3 text-xs">
+            <div className="space-y-0.5">
+              <p className="font-semibold text-content-heading">
+                Seniority-Aware Skill Alignment · Target:{" "}
+                {result.seniorityAssessment.targetSeniority.replace("_", "/")}{" "}
+                (Your profile:{" "}
+                {result.seniorityAssessment.candidateSeniority.replace(
+                  "_",
+                  "/",
+                )}
+                )
+              </p>
+              <p className="text-content-body">
+                {result.seniorityAssessment.summary}
+              </p>
+            </div>
+            <Badge
+              tone={
+                result.seniorityAssessment.seniorityAligned
+                  ? "success"
+                  : "warning"
+              }
+              size="sm"
+            >
+              {result.seniorityAssessment.seniorityAligned
+                ? "Seniority Aligned"
+                : "Depth Gap"}
+            </Badge>
+          </div>
+        )}
+
+        {/* Skill Prerequisite Relationships (e.g., Kubernetes requires Docker/Linux/Networking) */}
+        {result.prerequisiteAlerts && result.prerequisiteAlerts.length > 0 && (
+          <div className="rounded-input border border-status-warning-border bg-status-warning-soft/40 p-3.5 text-xs space-y-1.5">
+            <div className="flex items-center gap-1.5 font-semibold text-status-warning">
+              <GitBranch className="h-3.5 w-3.5 shrink-0" />
+              <span>
+                Foundational Prerequisite Relationships (
+                {result.prerequisiteAlerts.length})
+              </span>
+            </div>
+            <ul className="space-y-1 text-content-body">
+              {result.prerequisiteAlerts.map((alert:PrerequisiteReadinessAlert) => (
+                <li
+                  key={alert.targetSkill}
+                  className="flex flex-wrap items-center justify-between gap-2"
+                >
+                  <span>{alert.rationale}</span>
+                  {onPracticeSkill && alert.missingPrerequisites[0] && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() =>
+                        onPracticeSkill(alert.missingPrerequisites[0])
+                      }
+                    >
+                      Practice {alert.missingPrerequisites[0]}
+                    </Button>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
       </Card>
 
       {/* 1B. Three Distinct Scores + 7-Factor Score Decomposition */}

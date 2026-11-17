@@ -4,7 +4,8 @@ import { buildTailoringSuggestions } from "../services/tailoring/tailoringServic
 const job = {
   title: "Backend Engineer",
   requirements: ["react", "docker", "aws", "kubernetes"],
-  description: "Run services in Docker. Docker images are built in CI. Docker and AWS in production.",
+  description:
+    "Run services in Docker. Docker images are built in CI. Docker and AWS in production.",
 };
 
 describe("buildTailoringSuggestions", () => {
@@ -29,7 +30,9 @@ describe("buildTailoringSuggestions", () => {
     );
 
     const gapNames = result.notOnResume.map((g) => g.skill);
-    expect(gapNames).toEqual(expect.arrayContaining(["docker", "aws", "kubernetes"]));
+    expect(gapNames).toEqual(
+      expect.arrayContaining(["docker", "aws", "kubernetes"]),
+    );
     expect(result.addToSkills).toEqual([]);
     expect(result.suggestedSkills).not.toContain("kubernetes");
     expect(result.suggestedSkills).not.toContain("aws");
@@ -37,7 +40,10 @@ describe("buildTailoringSuggestions", () => {
 
   it("ranks gaps by how often the posting names them", () => {
     const result = buildTailoringSuggestions({ skills: [], rawText: "" }, job);
-    expect(result.notOnResume[0]).toMatchObject({ skill: "docker", priority: "high" });
+    expect(result.notOnResume[0]).toMatchObject({
+      skill: "docker",
+      priority: "high",
+    });
   });
 
   it("does not repeat skills the candidate already lists", () => {
@@ -46,6 +52,43 @@ describe("buildTailoringSuggestions", () => {
       job,
     );
     expect(result.addToSkills.map((s) => s.skill)).not.toContain("docker");
-    expect(result.suggestedSkills.filter((s) => s.toLowerCase() === "docker")).toHaveLength(1);
+    expect(
+      result.suggestedSkills.filter((s) => s.toLowerCase() === "docker"),
+    ).toHaveLength(1);
+  });
+});
+
+describe("P1.13 Resume Bullet Coach & Non-Fabrication Guardrails", () => {
+  it("detects vague phrases ('worked on', 'responsible for') and suggests stronger action verbs without inventing metrics", () => {
+    const result = buildTailoringSuggestions(
+      {
+        skills: ["React", "Docker"],
+        rawText: [
+          "Experience",
+          "- Worked on building REST APIs and microservices in Docker.",
+          "- Was responsible for maintaining React frontend components.",
+        ].join("\n"),
+      },
+      job,
+    );
+
+    expect(result.bulletSuggestions.length).toBe(2);
+
+    const apiBullet = result.bulletSuggestions.find((b) =>
+      b.originalBullet.includes("Worked on"),
+    );
+    expect(apiBullet).toBeDefined();
+    expect(apiBullet?.vaguePhrasesDetected).toContain("worked on");
+    expect(apiBullet?.suggestedBullet).toContain("Engineered and shipped");
+    expect(apiBullet?.needsUserMetric).toBe(true);
+    // Strict non-fabrication: suggested bullet must NOT invent any fake percentage or number
+    expect(apiBullet?.suggestedBullet).not.toMatch(/\d+%/);
+
+    const reactBullet = result.bulletSuggestions.find((b) =>
+      b.originalBullet.includes("responsible for"),
+    );
+    expect(reactBullet).toBeDefined();
+    expect(reactBullet?.vaguePhrasesDetected).toContain("was responsible for");
+    expect(reactBullet?.suggestedBullet).toContain("Owned and delivered");
   });
 });
