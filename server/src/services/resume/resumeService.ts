@@ -19,6 +19,10 @@ import {
 } from "../../integrations/ai/resumeSchema";
 import { AppError } from "../../utils/appError";
 import { countSkillMentions } from "../matching/skillDictionary";
+import {
+  recordFeatureEvent,
+  recordResumeParseAudit,
+} from "../telemetry/telemetryService";
 
 const MIN_READABLE_CHARACTERS = 40;
 const MAX_ANALYSIS_ATTEMPTS = 2;
@@ -82,6 +86,7 @@ export const createResumeService = async (
   userId: string,
   file: Express.Multer.File,
 ) => {
+  const startedAt = Date.now();
   const format = getResumeFormat(file.originalname);
   if (!format) {
     throw new AppError(
@@ -93,6 +98,20 @@ export const createResumeService = async (
 
   const rawText = await extractTextFromDocument(file.buffer, file.originalname);
   if (rawText.replace(/\s/g, "").length < MIN_READABLE_CHARACTERS) {
+    recordResumeParseAudit({
+      userId,
+      mimeType: RESUME_MIME_TYPES[format],
+      status: "FAILED",
+      qualityScore: 0,
+      textLength: rawText.length,
+      warnings: ["NO_READABLE_TEXT"],
+      durationMs: Date.now() - startedAt,
+    });
+    recordFeatureEvent({
+      userId,
+      event: "resume_parse_failed",
+      metadata: { format },
+    });
     throw new AppError(
       422,
       "No readable text was found. Scanned PDFs are not supported yet. Upload a text-based PDF or a DOCX file.",
@@ -100,20 +119,67 @@ export const createResumeService = async (
     );
   }
 
-  const analysis = await analyzeResumeText(rawText, userId);
-  const skills = cleanSkillList(analysis.skills);
+  let analysis: ResumeAnalysis;
+  try {
+    analysis = await analyzeResumeText(rawText, userId);
+  } catch (err) {
+    recordResumeParseAudit({
+      userId,
+      mimeType: RESUME_MIME_TYPES[format],
+      status: "FAILED",
+      qualityScore: 0,
+      textLength: rawText.length,
+      warnings: ["NO_READABLE_TEXT"],
+      durationMs: Date.now() - startedAt,
+    });
+    recordFeatureEvent({
+      userId,
+      event: "resume_parse_failed",
+      metadata: { format },
+    });
+    throw err;
+  }
 
-  return createResume({
+  const skills = cleanSkillList(analysis.skills);
+  const parsingQuality = computeResumeParsingQuality({
+    rawText,
+    skills,
+    parsedData: analysis,
+    fileSize: file.size,
+  });
+
+  const created = await createResume({
     userId,
     title: file.originalname.slice(0, MAX_TITLE_LENGTH),
     fileName: file.originalname,
     mimeType: RESUME_MIME_TYPES[format],
     fileSize: file.size,
     rawText,
-    parsedData: { ...analysis, skills },
+    parsedData: { ...analysis, skills, parsingQuality },
     skills,
     experienceYrs: clampExperienceYears(analysis.totalExperienceYears),
   });
+
+  recordResumeParseAudit({
+    userId,
+    resumeId: created.id,
+    mimeType: RESUME_MIME_TYPES[format],
+    status: parsingQuality.level === "LOW" ? "LOW_QUALITY" : "SUCCESS",
+    qualityScore: parsingQuality.score,
+    textLength: rawText.length,
+    warnings: parsingQuality.warnings,
+    durationMs: Date.now() - startedAt,
+  });
+  recordFeatureEvent({
+    userId,
+    event: "resume_uploaded",
+    metadata: {
+      skillsCount: skills.length,
+      qualityScore: parsingQuality.score,
+    },
+  });
+
+  return created;
 };
 
 export const getUserResumeService = async (userId: string) => {
@@ -329,8 +395,23 @@ export const createPastedResumeService = async (
   userId: string,
   input: { title?: string; rawText: string },
 ) => {
+  const startedAt = Date.now();
   const rawText = (input.rawText ?? "").trim();
   if (rawText.replace(/\s/g, "").length < MIN_READABLE_CHARACTERS) {
+    recordResumeParseAudit({
+      userId,
+      mimeType: "text/plain",
+      status: "FAILED",
+      qualityScore: 0,
+      textLength: rawText.length,
+      warnings: ["NO_READABLE_TEXT"],
+      durationMs: Date.now() - startedAt,
+    });
+    recordFeatureEvent({
+      userId,
+      event: "resume_parse_failed",
+      metadata: { format: "txt", source: "paste" },
+    });
     throw new AppError(
       422,
       "Paste at least 40 characters of readable resume text.",
@@ -361,7 +442,7 @@ export const createPastedResumeService = async (
     fileSize: Buffer.byteLength(rawText, "utf8"),
   });
 
-  return createResume({
+  const created = await createResume({
     userId,
     title,
     fileName: title.endsWith(".txt") ? title : `${title}.txt`,
@@ -372,6 +453,28 @@ export const createPastedResumeService = async (
     skills: mergedSkills,
     experienceYrs: clampExperienceYears(analysis.totalExperienceYears),
   });
+
+  recordResumeParseAudit({
+    userId,
+    resumeId: created.id,
+    mimeType: "text/plain",
+    status: parsingQuality.level === "LOW" ? "LOW_QUALITY" : "SUCCESS",
+    qualityScore: parsingQuality.score,
+    textLength: rawText.length,
+    warnings: parsingQuality.warnings,
+    durationMs: Date.now() - startedAt,
+  });
+  recordFeatureEvent({
+    userId,
+    event: "resume_uploaded",
+    metadata: {
+      source: "paste",
+      skillsCount: mergedSkills.length,
+      qualityScore: parsingQuality.score,
+    },
+  });
+
+  return created;
 };
 
 export const reanalyzeResumeService = async (
@@ -379,6 +482,7 @@ export const reanalyzeResumeService = async (
   resumeId: string,
   overrideRawText?: string,
 ) => {
+  const startedAt = Date.now();
   const existing = await getResumeById(resumeId, userId);
   if (!existing) {
     throw new AppError(404, "Resume not found", "RESUME_NOT_FOUND");
@@ -386,6 +490,21 @@ export const reanalyzeResumeService = async (
 
   const rawText = (overrideRawText?.trim() || existing.rawText || "").trim();
   if (rawText.replace(/\s/g, "").length < MIN_READABLE_CHARACTERS) {
+    recordResumeParseAudit({
+      userId,
+      resumeId,
+      mimeType: existing.mimeType,
+      status: "FAILED",
+      qualityScore: 0,
+      textLength: rawText.length,
+      warnings: ["NO_READABLE_TEXT"],
+      durationMs: Date.now() - startedAt,
+    });
+    recordFeatureEvent({
+      userId,
+      event: "resume_parse_failed",
+      metadata: { resumeId },
+    });
     throw new AppError(
       422,
       "Stored resume text is too short to re-analyze. Paste full resume text first.",
@@ -422,6 +541,28 @@ export const reanalyzeResumeService = async (
   if (!updated) {
     throw new AppError(404, "Resume not found", "RESUME_NOT_FOUND");
   }
+
+  recordResumeParseAudit({
+    userId,
+    resumeId,
+    mimeType: existing.mimeType,
+    status: parsingQuality.level === "LOW" ? "LOW_QUALITY" : "SUCCESS",
+    qualityScore: parsingQuality.score,
+    textLength: rawText.length,
+    warnings: parsingQuality.warnings,
+    durationMs: Date.now() - startedAt,
+  });
+  recordFeatureEvent({
+    userId,
+    event: "resume_reanalyzed",
+    metadata: {
+      resumeId,
+      skillsCount: skills.length,
+      qualityScore: parsingQuality.score,
+    },
+  });
+
+  return updated;
   return updated;
 };
 

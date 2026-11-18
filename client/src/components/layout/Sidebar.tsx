@@ -9,9 +9,12 @@ export const Sidebar: React.FC = () => {
   const location = useLocation();
   const { user, logout } = useAuth();
 
-  const workspaceItems = NAV_ITEMS.filter((i) => i.group === "workspace");
-  const pipelineItems = NAV_ITEMS.filter((i) => i.group === "pipeline");
-  const accountItems = NAV_ITEMS.filter((i) => i.group === "account");
+  const navItems = NAV_ITEMS.filter(
+    (item) => !item.adminOnly || user?.role === "ADMIN",
+  );
+  const workspaceItems = navItems.filter((i) => i.group === "workspace");
+  const pipelineItems = navItems.filter((i) => i.group === "pipeline");
+  const accountItems = navItems.filter((i) => i.group === "account");
 
   const renderGroup = (title: string, items: NavItem[]) => (
     <div className="space-y-1">

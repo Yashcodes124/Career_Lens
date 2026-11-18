@@ -9,6 +9,7 @@ import { adaptLeverJobs } from "../integrations/jobs/lever/leverAdapter";
 import { fetchAshbyJobs } from "../integrations/jobs/ashby/ashbyClient";
 import { adaptAshbyJobs } from "../integrations/jobs/ashby/ashbyAdapter";
 import { upsertJobs } from "../repositories/jobRepository";
+import { recordJobSyncAudit } from "./telemetry/telemetryService";
 
 const SOFTWARE_ROLE_REGEX =
   /\b(software|engineer|developer|sde|full[- ]?stack|backend|front[- ]?end|devops|sre|site reliability|platform|cloud|data engineer|machine learning|ml|ai|security|systems|architect|qa|sdet|mobile|ios|android|web|api|distributed|database|infrastructure)\b/i;
@@ -350,42 +351,87 @@ export const syncGreenhouseJobs = async (
   boardToken: string,
   company: string,
 ) => {
-  // 1. Fetch and validate Greenhouse jobs
-  const response = await fetchGreenhouseJobs(boardToken);
+  const startedAt = Date.now();
+  try {
+    // 1. Fetch and validate Greenhouse jobs
+    const response = await fetchGreenhouseJobs(boardToken);
 
-  // 2. Convert Greenhouse jobs into our canonical Job format
-  const allJobs = adaptGreenhouseJobs(response.jobs, company);
-  const filteredJobs = filterSoftwareJobs(allJobs, 25);
-  const jobs = filteredJobs.length > 0 ? filteredJobs : allJobs.slice(0, 20);
+    // 2. Convert Greenhouse jobs into our canonical Job format
+    const allJobs = adaptGreenhouseJobs(response.jobs, company);
+    const filteredJobs = filterSoftwareJobs(allJobs, 25);
+    const candidateJobs =
+      filteredJobs.length > 0 ? filteredJobs : allJobs.slice(0, 20);
 
-  // 3. Persist jobs using upsert
-  const savedJobs = await upsertJobs(jobs);
+    const deduped = deduplicateCanonicalJobs(candidateJobs);
+    const jobs = deduped.uniqueJobs;
+    const duplicatesFound = deduped.duplicatesRemoved;
 
-  // 4. Mark stale jobs for this company as inactive
-  const externalIds = jobs.map((job) => job.externalId);
+    const externalIds = jobs.map((job) => job.externalId);
+    const existing =
+      externalIds.length > 0
+        ? await prisma.job.findMany({
+            where: { externalId: { in: externalIds } },
+            select: { externalId: true },
+          })
+        : [];
+    const existingSet = new Set(existing.map((e) => e.externalId));
+    const jobsCreated = jobs.filter((j) => !existingSet.has(j.externalId)).length;
+    const jobsUpdated = jobs.filter((j) => existingSet.has(j.externalId)).length;
 
-  const staleJobs = await prisma.job.updateMany({
-    where: {
+    // 3. Persist jobs using upsert
+    const savedJobs = await upsertJobs(jobs);
+
+    // 4. Mark stale jobs for this company as inactive
+    const staleJobs = await prisma.job.updateMany({
+      where: {
+        source: "GREENHOUSE",
+        company,
+        ...(externalIds.length > 0
+          ? {
+              externalId: {
+                notIn: externalIds,
+              },
+            }
+          : {}),
+      },
+      data: {
+        isActive: false,
+      },
+    });
+
+    recordJobSyncAudit({
       source: "GREENHOUSE",
-      company,
-      ...(externalIds.length > 0
-        ? {
-            externalId: {
-              notIn: externalIds,
-            },
-          }
-        : {}),
-    },
-    data: {
-      isActive: false,
-    },
-  });
+      boardToken,
+      status: "SUCCESS",
+      jobsFetched: jobs.length,
+      jobsCreated,
+      jobsUpdated,
+      jobsDeactivated: staleJobs.count,
+      duplicatesFound,
+      durationMs: Date.now() - startedAt,
+    });
 
-  return {
-    totalFetched: jobs.length,
-    totalSaved: savedJobs.length,
-    totalDeactivated: staleJobs.count,
-  };
+    return {
+      totalFetched: jobs.length,
+      totalSaved: savedJobs.length,
+      totalDeactivated: staleJobs.count,
+    };
+  } catch (err: unknown) {
+    const errorMessage = err instanceof Error ? err.message : String(err);
+    recordJobSyncAudit({
+      source: "GREENHOUSE",
+      boardToken,
+      status: "FAILED",
+      jobsFetched: 0,
+      jobsCreated: 0,
+      jobsUpdated: 0,
+      jobsDeactivated: 0,
+      duplicatesFound: 0,
+      durationMs: Date.now() - startedAt,
+      errorMessage: errorMessage.slice(0, 300),
+    });
+    throw err;
+  }
 };
 
 export const syncLeverJobs = async (siteToken: string, company: string) => {
@@ -493,65 +539,159 @@ export const syncAllSoftwareJobs = async () => {
   let liveSaved = 0;
 
   // 3. Sync live Greenhouse software boards concurrently
+  const ghStartedAt = Date.now();
+  let ghDuplicates = 0;
+  let ghFetched = 0;
+  let ghSaved = 0;
+  let ghFailed = 0;
   const ghResults = await Promise.allSettled(
     GREENHOUSE_SOFTWARE_BOARDS.map(async ({ token, company }) => {
       const response = await fetchGreenhouseJobs(token);
       const adapted = adaptGreenhouseJobs(response.jobs, company);
       const jobs = filterSoftwareJobs(adapted, 10);
-      const saved = await upsertJobs(jobs);
-      return { fetched: jobs.length, saved: saved.length };
+      const deduped = deduplicateCanonicalJobs(jobs);
+      const saved = await upsertJobs(deduped.uniqueJobs);
+      return {
+        fetched: jobs.length,
+        saved: saved.length,
+        duplicates: deduped.duplicatesRemoved,
+      };
     }),
   );
 
   for (const res of ghResults) {
     if (res.status === "fulfilled") {
-      liveFetched += res.value.fetched;
-      liveSaved += res.value.saved;
+      ghFetched += res.value.fetched;
+      ghSaved += res.value.saved;
+      ghDuplicates += res.value.duplicates;
+    } else {
+      ghFailed++;
     }
   }
+  liveFetched += ghFetched;
+  liveSaved += ghSaved;
+
+  recordJobSyncAudit({
+    source: "GREENHOUSE",
+    status:
+      ghFailed === 0
+        ? "SUCCESS"
+        : ghFailed === ghResults.length
+          ? "FAILED"
+          : "PARTIAL",
+    jobsFetched: ghFetched,
+    jobsCreated: ghSaved,
+    jobsUpdated: 0,
+    jobsDeactivated: 0,
+    duplicatesFound: ghDuplicates,
+    durationMs: Date.now() - ghStartedAt,
+  });
 
   // 4. Sync live Lever software boards concurrently
+  const leverStartedAt = Date.now();
+  let leverDuplicates = 0;
+  let leverFetched = 0;
+  let leverSaved = 0;
+  let leverFailed = 0;
   const leverResults = await Promise.allSettled(
     LEVER_SOFTWARE_BOARDS.map(async ({ token, company }) => {
       const response = await fetchLeverJobs(token);
       const adapted = adaptLeverJobs(response, company);
       const jobs = filterSoftwareJobs(adapted, 10);
-      const saved = await upsertJobs(jobs);
-      return { fetched: jobs.length, saved: saved.length };
+      const deduped = deduplicateCanonicalJobs(jobs);
+      const saved = await upsertJobs(deduped.uniqueJobs);
+      return {
+        fetched: jobs.length,
+        saved: saved.length,
+        duplicates: deduped.duplicatesRemoved,
+      };
     }),
   );
 
   for (const res of leverResults) {
     if (res.status === "fulfilled") {
-      liveFetched += res.value.fetched;
-      liveSaved += res.value.saved;
+      leverFetched += res.value.fetched;
+      leverSaved += res.value.saved;
+      leverDuplicates += res.value.duplicates;
+    } else {
+      leverFailed++;
     }
   }
+  liveFetched += leverFetched;
+  liveSaved += leverSaved;
+
+  recordJobSyncAudit({
+    source: "LEVER",
+    status:
+      leverFailed === 0
+        ? "SUCCESS"
+        : leverFailed === leverResults.length
+          ? "FAILED"
+          : "PARTIAL",
+    jobsFetched: leverFetched,
+    jobsCreated: leverSaved,
+    jobsUpdated: 0,
+    jobsDeactivated: 0,
+    duplicatesFound: leverDuplicates,
+    durationMs: Date.now() - leverStartedAt,
+  });
 
   // 5. Sync live Ashby software boards concurrently
+  const ashbyStartedAt = Date.now();
+  let ashbyDuplicates = 0;
+  let ashbyFetched = 0;
+  let ashbySaved = 0;
+  let ashbyFailed = 0;
   const ashbyResults = await Promise.allSettled(
     ASHBY_SOFTWARE_BOARDS.map(async ({ token, company }) => {
       const response = await fetchAshbyJobs(token);
       const adapted = adaptAshbyJobs(response.jobs, company);
       const jobs = filterSoftwareJobs(adapted, 10);
-      const saved = await upsertJobs(jobs);
-      return { fetched: jobs.length, saved: saved.length };
+      const deduped = deduplicateCanonicalJobs(jobs);
+      const saved = await upsertJobs(deduped.uniqueJobs);
+      return {
+        fetched: jobs.length,
+        saved: saved.length,
+        duplicates: deduped.duplicatesRemoved,
+      };
     }),
   );
 
   for (const res of ashbyResults) {
     if (res.status === "fulfilled") {
-      liveFetched += res.value.fetched;
-      liveSaved += res.value.saved;
+      ashbyFetched += res.value.fetched;
+      ashbySaved += res.value.saved;
+      ashbyDuplicates += res.value.duplicates;
+    } else {
+      ashbyFailed++;
     }
   }
+  liveFetched += ashbyFetched;
+  liveSaved += ashbySaved;
 
+  recordJobSyncAudit({
+    source: "ASHBY",
+    status:
+      ashbyFailed === 0
+        ? "SUCCESS"
+        : ashbyFailed === ashbyResults.length
+          ? "FAILED"
+          : "PARTIAL",
+    jobsFetched: ashbyFetched,
+    jobsCreated: ashbySaved,
+    jobsUpdated: 0,
+    jobsDeactivated: 0,
+    duplicatesFound: ashbyDuplicates,
+    durationMs: Date.now() - ashbyStartedAt,
+  });
+
+  const totalDuplicates = ghDuplicates + leverDuplicates + ashbyDuplicates;
   const nowIso = new Date().toISOString();
   const summary = {
     totalFetched: curatedSaved.length + liveFetched,
     totalSaved: curatedSaved.length + liveSaved,
     totalDeactivated: deactivatedExcluded.count,
-    duplicatesRemoved: 0,
+    duplicatesRemoved: totalDuplicates,
     lastSuccessfulSyncAt: nowIso,
   };
 

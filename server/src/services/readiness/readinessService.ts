@@ -9,6 +9,7 @@ import { normalizeSkills } from "../matching/skillNormalizer";
 import { countSkillMentions } from "../matching/skillDictionary";
 import { matchResumeToJob } from "../matching/matchService";
 import { AppError } from "../../utils/appError";
+import { recordFeatureEvent } from "../telemetry/telemetryService";
 import { decideNextAction } from "./nextAction";
 
 export interface GlobalDefenseSummary {
@@ -386,6 +387,16 @@ export const submitSkillProofService = async (
       // Non-fatal if job is inactive or not found
     }
   }
+
+  recordFeatureEvent({
+    userId,
+    event: "skill_proof_submitted",
+    metadata: {
+      skill: canonicalSkill,
+      proofType: input.proofType,
+      jobId: input.jobId,
+    },
+  });
 
   return {
     skillRecord,

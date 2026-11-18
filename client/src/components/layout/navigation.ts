@@ -10,6 +10,7 @@ import {
   User,
   Database,
   Compass,
+  ShieldCheck,
 } from "lucide-react";
 
 export interface NavItem {
@@ -18,9 +19,18 @@ export interface NavItem {
   group: "workspace" | "pipeline" | "account";
   icon: React.ComponentType<{ className?: string }>;
   matchPrefixes: string[];
+  adminOnly?: boolean;
 }
 
 export const NAV_ITEMS: NavItem[] = [
+  {
+    label: "Admin Ops",
+    path: "/admin",
+    group: "account",
+    icon: ShieldCheck,
+    matchPrefixes: ["/admin"],
+    adminOnly: true,
+  },
   {
     label: "Dashboard",
     path: "/dashboard",

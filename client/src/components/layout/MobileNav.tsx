@@ -14,6 +14,10 @@ export const MobileNav: React.FC<MobileNavProps> = ({ open, onClose }) => {
   const location = useLocation();
   const { user, logout } = useAuth();
 
+  const navItems = NAV_ITEMS.filter(
+    (item) => !item.adminOnly || user?.role === "ADMIN",
+  );
+
   // Close mobile drawer automatically when route changes
   useEffect(() => {
     if (open) {
@@ -62,7 +66,7 @@ export const MobileNav: React.FC<MobileNavProps> = ({ open, onClose }) => {
       }
     >
       <nav aria-label="Mobile Navigation" className="space-y-1">
-        {NAV_ITEMS.map((item) => {
+        {navItems.map((item) => {
           const active = isNavItemActive(location.pathname, item);
           const Icon = item.icon;
           return (

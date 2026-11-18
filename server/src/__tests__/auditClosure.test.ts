@@ -19,6 +19,8 @@ import {
 import { prisma } from "../config/db";
 import * as groqClient from "../integrations/ai/groqClient";
 import * as nvidiaClient from "../integrations/ai/nvidiaClient";
+import * as geminiClient from "../integrations/ai/geminiClient";
+import * as ollamaClient from "../integrations/ai/ollamaClient";
 import { analyzeResume } from "../integrations/ai/aiClient";
 
 describe("Audit Closure Verification Suite (Items 1–14)", () => {
@@ -147,7 +149,7 @@ describe("Audit Closure Verification Suite (Items 1–14)", () => {
           round: "Core Technical",
           question: "How do you scale APIs?",
         },
-        answer: "We just used Kafka and Redis for everything.",
+        answer: "We just used Kafka for everything.",
         evaluation: {
           score: 58,
           feedback:
@@ -294,6 +296,7 @@ describe("Audit Closure Verification Suite (Items 1–14)", () => {
         .spyOn(prisma.resume, "update")
         .mockResolvedValue({} as never);
       vi.spyOn(prisma.application, "findMany").mockResolvedValue([]);
+      vi.spyOn(prisma.interview, "findMany").mockResolvedValue([]);
 
       const result = await submitSkillProofService("user-1", {
         skill: "Docker",
@@ -350,6 +353,10 @@ describe("Audit Closure Verification Suite (Items 1–14)", () => {
   // 6. OntologyAlias persistence across server restarts
   describe("6. OntologyAlias DB persistence & restart hydration", () => {
     it("persists approved alias and reloads it into ALIAS_TO_CANONICAL on startup hydration", async () => {
+      vi.spyOn(prisma.ontologyAlias, "deleteMany").mockResolvedValue({
+        count: 0,
+      });
+
       const upsertSpy = vi
         .spyOn(prisma.ontologyAlias, "upsert")
         .mockResolvedValue({
@@ -408,6 +415,8 @@ describe("Audit Closure Verification Suite (Items 1–14)", () => {
       process.env.AI_TEST_FAILOVER = "true";
       vi.spyOn(groqClient, "isGroqConfigured").mockReturnValue(true);
       vi.spyOn(nvidiaClient, "isNvidiaConfigured").mockReturnValue(true);
+      vi.spyOn(geminiClient, "isGeminiConfigured").mockReturnValue(false);
+      vi.spyOn(ollamaClient, "isOllamaConfigured").mockReturnValue(false);
 
       vi.spyOn(groqClient, "callGroqCompletion").mockRejectedValue(
         Object.assign(new Error("Request timed out"), { code: "ETIMEDOUT" }),
@@ -429,6 +438,8 @@ describe("Audit Closure Verification Suite (Items 1–14)", () => {
       process.env.AI_TEST_FAILOVER = "true";
       vi.spyOn(groqClient, "isGroqConfigured").mockReturnValue(true);
       vi.spyOn(nvidiaClient, "isNvidiaConfigured").mockReturnValue(false);
+      vi.spyOn(geminiClient, "isGeminiConfigured").mockReturnValue(false);
+      vi.spyOn(ollamaClient, "isOllamaConfigured").mockReturnValue(false);
 
       const groqSpy = vi
         .spyOn(groqClient, "callGroqCompletion")

@@ -7,6 +7,16 @@ const rateLimitPayload = (message: string) => ({
   error: message,
 });
 
+export const adminLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 60,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: rateLimitPayload(
+    "Admin API rate limit reached. Please wait a minute and try again.",
+  ),
+});
+
 export const globalRateLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 300,

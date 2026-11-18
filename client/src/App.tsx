@@ -3,11 +3,13 @@ import {
   BrowserRouter as Router,
   Routes,
   Route,
+  Navigate,
   useNavigate,
   useLocation,
 } from "react-router-dom";
 import {
   AuthProvider,
+  useAuth,
   LoginForm,
   RegisterForm,
   ProfileSetupForm,
@@ -33,6 +35,7 @@ import { AppShell } from "./components/layout";
 import OntologyDashboardPage from "./features/ontology/OntologyDashboardPage";
 import { Button, Card } from "./components/ui";
 import { RoleFitRadarPage } from "./features/radar/RoleFitRadarPage";
+import { AdminDashboardPage } from "./features/admin/AdminDashboardPage";
 
 const WorkspaceRoute: React.FC<{ children: React.ReactNode }> = ({
   children,
@@ -42,11 +45,29 @@ const WorkspaceRoute: React.FC<{ children: React.ReactNode }> = ({
   </ProtectedRoute>
 );
 
+const AdminRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { user, isLoading } = useAuth();
+  if (isLoading) return null;
+  if (user?.role !== "ADMIN") {
+    return <Navigate to="/dashboard" replace />;
+  }
+  return <WorkspaceRoute>{children}</WorkspaceRoute>;
+};
+
 export const App: React.FC = () => {
   return (
     <AuthProvider>
       <Router>
         <Routes>
+          <Route
+            path="/admin"
+            element={
+              <AdminRoute>
+                <AdminDashboardPage />
+              </AdminRoute>
+            }
+          />
+
           {/* Public Routes */}
           <Route path="/" element={<LandingPage />} />
           <Route path="/login" element={<LoginPage />} />

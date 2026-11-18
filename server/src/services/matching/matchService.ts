@@ -1,5 +1,6 @@
 import { AppError } from "../../utils/appError";
 import { prisma } from "../../config/db";
+import { recordFeatureEvent } from "../telemetry/telemetryService";
 import { getResumeById } from "../../repositories/resumeRepository";
 import { getJobById } from "../../repositories/jobRepository";
 import { upsertApplicationMatch } from "../../repositories/matchRepository";
@@ -215,6 +216,16 @@ export const matchResumeToJob = async (
     skillGaps: enrichedResult.skillGaps.map((gap) => gap.skill),
   });
 
+  recordFeatureEvent({
+    userId,
+    event: "match_generated",
+    metadata: {
+      jobId,
+      score: enrichedResult.score,
+      status: enrichedResult.status,
+    },
+  });
+
   return {
     ...enrichedResult,
     applicationId: application.id,
@@ -261,6 +272,15 @@ export const simulateJobMatchImpactService = async (
         .map((s) => [s.skill, s.evidence] as const),
     ),
   };
+
+  recordFeatureEvent({
+    userId,
+    event: "simulator_used",
+    metadata: {
+      jobId,
+      selectedCount: selectedSkills.length,
+    },
+  });
 
   return simulateMatchImpact({
     resumeSkills: resume.skills,

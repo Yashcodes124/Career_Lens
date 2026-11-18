@@ -3,6 +3,7 @@
 
 import { prisma } from "../../config/db";
 import { listUserSkills } from "../../repositories/skillRepository";
+import { recordFeatureEvent } from "../telemetry/telemetryService";
 import { calculateMatch, type InterviewEvidence } from "./matchingService";
 import { normalizeSkills } from "./skillNormalizer";
 import { extractJobSkills } from "./jobSkillExtractor";
@@ -393,6 +394,16 @@ export const getRoleFitRadarService = async (
     jobs,
     applicationsByJobId,
     savedJobIds,
+  });
+
+  recordFeatureEvent({
+    userId,
+    event: "radar_viewed",
+    metadata: {
+      resumeId: resume.id,
+      evaluatedJobsCount: jobs.length,
+      bestFitCount: radar.summary.bestFitCount,
+    },
   });
 
   return {

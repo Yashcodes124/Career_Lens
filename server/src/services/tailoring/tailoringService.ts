@@ -9,6 +9,7 @@ import { getJobById } from "../../repositories/jobRepository";
 import { listUserSkills } from "../../repositories/skillRepository";
 import { countSkillMentions } from "../matching/skillDictionary";
 import { normalizeSkills } from "../matching/skillNormalizer";
+import { recordFeatureEvent } from "../telemetry/telemetryService";
 import type { GapPriority } from "../matching/matchingService";
 
 export interface AddSuggestion {
@@ -525,6 +526,17 @@ export const applyTailoredResumeChangesService = async (params: {
     skills: nextSkills,
     rawText: updatedRawText,
   });
+
+  if (appliedBulletsCount > 0) {
+    recordFeatureEvent({
+      userId: params.userId,
+      event: "bullet_suggestion_accepted",
+      metadata: {
+        resumeId: params.resumeId,
+        appliedBulletsCount,
+      },
+    });
+  }
 
   return {
     resume: updated,

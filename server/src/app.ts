@@ -7,6 +7,7 @@ import { prisma } from "./config/db";
 import { AppError } from "./utils/appError";
 import { globalRateLimiter } from "./middleware/rateLimit";
 
+import adminRoutes from "./routes/adminRoutes";
 import authRoutes from "./routes/auth";
 import resumeRoutes from "./routes/resumeRoutes";
 import jobRoutes from "./routes/jobRoutes";
@@ -69,6 +70,7 @@ app.get("/api/health", async (_req: Request, res: Response) => {
 });
 
 // Mount canonical domain route modules
+app.use("/api/admin", adminRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/resumes", resumeRoutes);
 app.use("/api/jobs", jobRoutes);

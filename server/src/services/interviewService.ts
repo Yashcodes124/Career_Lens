@@ -1,5 +1,6 @@
 import { prisma } from "../config/db";
 import { Prisma } from "@prisma/client";
+import { recordFeatureEvent } from "./telemetry/telemetryService";
 import { countSkillMentions } from "./matching/skillDictionary";
 import { analyzeResume } from "../integrations/ai/aiClient";
 import {
@@ -254,6 +255,15 @@ export const createInterviewService = async (
     { userId, applicationId, title, plan },
     finalQuestions,
   );
+
+  recordFeatureEvent({
+    userId,
+    event: "interview_created",
+    metadata: {
+      interviewId: interview.id,
+      applicationId,
+    },
+  });
 
   return await prisma.interview.findUnique({
     where: { id: interview.id },
@@ -784,6 +794,11 @@ export const submitAnswerService = async (
   const isCompleted = (await countUnfinishedQuestions(interviewId)) === 0;
   if (isCompleted) {
     await updateInterviewStatus(interviewId, userId, "COMPLETED");
+    recordFeatureEvent({
+      userId,
+      event: "interview_completed",
+      metadata: { interviewId },
+    });
   }
   try {
     const refreshed = await getInterviewSessionById(interviewId, userId);
@@ -917,10 +932,21 @@ export const generateFinalEvaluationService = async (
     // Non-fatal in unit tests
   }
 
-  return await saveEvaluationWithSkillEvidence(
+  const savedEvaluation = await saveEvaluationWithSkillEvidence(
     interviewId,
     userId,
     validatedEvaluation,
     skillEvidenceFromReport(validatedEvaluation),
   );
+
+  recordFeatureEvent({
+    userId,
+    event: "evaluation_generated",
+    metadata: {
+      interviewId,
+      score: validatedEvaluation.score,
+    },
+  });
+
+  return savedEvaluation;
 };

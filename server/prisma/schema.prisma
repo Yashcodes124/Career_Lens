@@ -235,3 +235,49 @@ model AiRequestAudit {
   @@index([status, createdAt])
   @@map("ai_request_audits")
 }
+
+model JobSyncAudit {
+  id              String    @id @default(uuid())
+  source          JobSource
+  boardToken      String?
+  status          String    // SUCCESS, PARTIAL, FAILED
+  jobsFetched     Int
+  jobsCreated     Int
+  jobsUpdated     Int
+  jobsDeactivated Int
+  duplicatesFound Int
+  durationMs      Int
+  errorMessage    String?
+  createdAt       DateTime  @default(now())
+
+  @@index([source, createdAt])
+  @@map("job_sync_audits")
+}
+
+model ResumeParseAudit {
+  id           String   @id @default(uuid())
+  userId       String?
+  resumeId     String?
+  mimeType     String?
+  status       String   // SUCCESS, FAILED, LOW_QUALITY
+  qualityScore Int?
+  textLength   Int
+  warnings     Json?
+  durationMs   Int
+  createdAt    DateTime @default(now())
+
+  @@index([status, createdAt])
+  @@map("resume_parse_audits")
+}
+
+model FeatureUsageEvent {
+  id        String   @id @default(uuid())
+  userId    String?
+  event     String
+  metadata  Json?
+  createdAt DateTime @default(now())
+
+  @@index([event, createdAt])
+  @@index([userId, createdAt])
+  @@map("feature_usage_events")
+}
