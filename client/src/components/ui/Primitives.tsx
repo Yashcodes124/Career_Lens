@@ -1,4 +1,5 @@
 import React, { useEffect, useId, useState } from "react";
+import { motion } from "framer-motion";
 import {
   AlertCircle,
   Bookmark,
@@ -71,7 +72,7 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         type={type}
         disabled={disabled || loading}
         aria-busy={loading}
-        className={`inline-flex items-center justify-center font-medium transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 ${variants[variant]} ${sizes[size]} ${fullWidth ? "w-full" : ""} ${className}`}
+        className={`inline-flex items-center justify-center whitespace-nowrap font-medium transition-all duration-150 ease-editorial active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-canvas disabled:pointer-events-none disabled:opacity-50 ${variants[variant]} ${sizes[size]} ${fullWidth ? "w-full" : ""} ${className}`}
         {...props}
       >
         {loading ? (
@@ -478,11 +479,11 @@ export const Card = React.forwardRef<HTMLDivElement, CardProps>(
     return (
       <div
         ref={ref}
-        className={`rounded-card border border-border ${
+        className={`rounded-card border border-border theme-surface-transition ${
           muted ? "bg-muted" : "bg-surface shadow-card"
         } ${
           interactive
-            ? "transition-colors duration-150 hover:border-border-strong"
+            ? "transition-all duration-200 ease-editorial hover:-translate-y-0.5 hover:border-border-strong hover:shadow-elevated"
             : ""
         } ${paddings[padding]} ${className}`}
         {...props}
@@ -637,12 +638,15 @@ export const Modal: React.FC<ModalProps> = ({
       aria-describedby={description ? descId : undefined}
     >
       <div
-        className="fixed inset-0 bg-content-heading/40 transition-opacity"
+        className="fixed inset-0 bg-black/60 backdrop-blur-[2px] transition-opacity"
         onClick={onClose}
         aria-hidden="true"
       />
-      <div
-        className={`relative z-10 flex max-h-[90vh] w-full flex-col overflow-hidden rounded-card border border-border bg-surface shadow-sm ${sizes[size]}`}
+      <motion.div
+        initial={{ opacity: 0, scale: 0.97, y: 8 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+        className={`relative z-10 flex max-h-[90vh] w-full flex-col overflow-hidden rounded-card border border-border bg-surface shadow-elevated ${sizes[size]}`}
       >
         <div className="flex items-start justify-between gap-4 border-b border-border px-5 py-4 sm:px-6">
           <div className="space-y-1">
@@ -675,7 +679,7 @@ export const Modal: React.FC<ModalProps> = ({
             {footer}
           </div>
         )}
-      </div>
+      </motion.div>
     </div>
   );
 };
@@ -730,12 +734,15 @@ export const Drawer: React.FC<DrawerProps> = ({
       aria-labelledby={titleId}
     >
       <div
-        className="fixed inset-0 bg-content-heading/40"
+        className="fixed inset-0 bg-black/60 backdrop-blur-[2px]"
         onClick={onClose}
         aria-hidden="true"
       />
-      <div
-        className={`relative z-10 flex h-full w-full flex-col bg-surface border-border ${widthClassName} ${
+      <motion.div
+        initial={{ opacity: 0, x: side === "right" ? 28 : -28 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ duration: 0.24, ease: [0.16, 1, 0.3, 1] }}
+        className={`relative z-10 flex h-full w-full flex-col bg-surface border-border shadow-elevated ${widthClassName} ${
           side === "right" ? "ml-auto border-l" : "mr-auto border-r"
         }`}
       >
@@ -768,7 +775,7 @@ export const Drawer: React.FC<DrawerProps> = ({
             {footer}
           </div>
         )}
-      </div>
+      </motion.div>
     </div>
   );
 };
@@ -851,9 +858,16 @@ export const Tabs: React.FC<TabsProps> = ({
         })}
       </div>
       {activeItem?.content !== undefined && (
-        <div role="tabpanel" className="pt-4">
+        <motion.div
+          key={currentTab}
+          role="tabpanel"
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+          className="pt-4"
+        >
           {activeItem.content}
-        </div>
+        </motion.div>
       )}
     </div>
   );

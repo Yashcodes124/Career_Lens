@@ -1,9 +1,45 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="dark" class="dark">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>TrueHire — Verified Job Discovery & Interview Readiness</title>
+    <meta
+      name="description"
+      content="Compare your resume against verified engineering roles, rank skill gaps, and build interview-backed readiness."
+    />
+    <meta
+      property="og:title"
+      content="TrueHire — Verified Job Discovery & Interview Readiness"
+    />
+    <meta
+      property="og:description"
+      content="Compare your resume against verified engineering roles, rank skill gaps, and build interview-backed readiness."
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <script>
+      (function () {
+        try {
+          var stored = window.localStorage.getItem("truehire_theme");
+          var theme = stored === "swiss" ? "swiss" : "dark";
+          var root = document.documentElement;
+          root.dataset.theme = theme;
+          if (theme === "dark") {
+            root.classList.add("dark");
+          } else {
+            root.classList.remove("dark");
+          }
+        } catch (e) {
+          document.documentElement.dataset.theme = "dark";
+          document.documentElement.classList.add("dark");
+        }
+      })();
+    </script>
   </head>
   <body class="bg-canvas text-content-body antialiased">
     <div id="root"></div>

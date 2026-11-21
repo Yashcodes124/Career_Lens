@@ -1,5 +1,5 @@
-import app from "./app";
 import { env } from "./config/env";
+import app from "./app";
 import { prisma } from "./config/db";
 import { initServerMonitoring } from "./config/sentry";
 import {

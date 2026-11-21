@@ -4,6 +4,7 @@ import helmet from "helmet";
 import { ZodError } from "zod";
 import { env } from "./config/env";
 import { prisma } from "./config/db";
+import { captureServerException } from "./config/sentry";
 import { AppError } from "./utils/appError";
 import { globalRateLimiter } from "./middleware/rateLimit";
 
@@ -147,6 +148,7 @@ app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
   }
 
   console.error("[Unhandled Server Error]:", err);
+  captureServerException(err);
   const fallbackMessage =
     env.NODE_ENV === "production"
       ? "An unexpected server error occurred"

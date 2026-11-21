@@ -11,6 +11,7 @@ import {
   X,
 } from "lucide-react";
 import { apiClient } from "../../lib/api-client";
+import { useAuth } from "../auth/useAuth";
 import { ContentContainer, PageHeader } from "../../components/layout";
 import {
   Badge,
@@ -108,6 +109,8 @@ interface OntologyDashboardData {
 }
 
 export const OntologyDashboardPage: React.FC = () => {
+  const { user } = useAuth();
+  const isAdmin = user?.role === "ADMIN";
   const [data, setData] = useState<OntologyDashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -488,7 +491,7 @@ export const OntologyDashboardPage: React.FC = () => {
                         )}
                       </div>
 
-                      {item.status === "PENDING" && (
+                      {item.status === "PENDING" && isAdmin && (
                         <div className="flex flex-wrap items-center gap-2 shrink-0">
                           <Input
                             placeholder="Map alias to (e.g. react)"
@@ -526,13 +529,19 @@ export const OntologyDashboardPage: React.FC = () => {
                           <Button
                             variant="ghost"
                             size="sm"
+                            aria-label={`Dismiss ${item.token}`}
                             onClick={() =>
                               void handleResolveToken(item.token, "DISMISS")
                             }
                           >
-                            <X className="h-3.5 w-3.5" />
+                            <X className="h-3.5 w-3.5" aria-hidden="true" />
                           </Button>
                         </div>
+                      )}
+                      {item.status === "PENDING" && !isAdmin && (
+                        <Badge tone="neutral" size="sm">
+                          Admin review required
+                        </Badge>
                       )}
                     </li>
                   ))}

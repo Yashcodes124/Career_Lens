@@ -147,7 +147,7 @@ export const AdminDashboardPage: React.FC = () => {
         }
         secondaryActions={
           <Select
-            label=""
+            aria-label="Select telemetry time range"
             value={rangeDays}
             onChange={(e) => setRangeDays(e.target.value)}
             options={[
@@ -752,6 +752,7 @@ export const AdminDashboardPage: React.FC = () => {
                               <Button
                                 variant="ghost"
                                 size="sm"
+                                aria-label={`Dismiss ${item.token}`}
                                 onClick={() =>
                                   void handleResolveQueueItem(
                                     item.token,
@@ -759,7 +760,7 @@ export const AdminDashboardPage: React.FC = () => {
                                   )
                                 }
                               >
-                                <X className="h-3.5 w-3.5" />
+                                <X className="h-3.5 w-3.5" aria-hidden="true" />
                               </Button>
                             </div>
                           </li>

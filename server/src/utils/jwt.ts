@@ -6,6 +6,7 @@ export interface JwtPayload {
   userId: string;
   email: string;
   role: string;
+  tokenType?: "access" | "refresh";
 }
 
 export interface RefreshJwtPayload extends JwtPayload {
@@ -13,32 +14,44 @@ export interface RefreshJwtPayload extends JwtPayload {
   jti: string;
 }
 
-const REFRESH_EXPIRES_IN =
-  (process.env.JWT_REFRESH_EXPIRES_IN as jwt.SignOptions["expiresIn"]) || "7d";
-
 export function signToken(payload: JwtPayload): string {
-  return jwt.sign(payload, env.JWT_SECRET, {
+  const accessPayload = {
+    userId: payload.userId,
+    email: payload.email,
+    role: payload.role,
+    tokenType: "access" as const,
+  };
+  return jwt.sign(accessPayload, env.JWT_SECRET, {
     expiresIn: env.JWT_EXPIRES_IN as jwt.SignOptions["expiresIn"],
   });
 }
 
 export function verifyToken(token: string): JwtPayload {
-  return jwt.verify(token, env.JWT_SECRET) as JwtPayload;
+  const decoded = jwt.verify(token, env.JWT_SECRET) as JwtPayload;
+  if (decoded.tokenType === "refresh") {
+    throw new Error("Refresh tokens cannot be used as access tokens");
+  }
+  return decoded;
 }
 
 export function signRefreshToken(payload: JwtPayload): string {
   const refreshPayload: RefreshJwtPayload = {
-    ...payload,
+    userId: payload.userId,
+    email: payload.email,
+    role: payload.role,
     tokenType: "refresh",
     jti: crypto.randomUUID(),
   };
-  return jwt.sign(refreshPayload, env.JWT_SECRET, {
-    expiresIn: REFRESH_EXPIRES_IN,
+  return jwt.sign(refreshPayload, env.resolvedJwtRefreshSecret, {
+    expiresIn: env.JWT_REFRESH_EXPIRES_IN as jwt.SignOptions["expiresIn"],
   });
 }
 
 export function verifyRefreshToken(token: string): RefreshJwtPayload {
-  const decoded = jwt.verify(token, env.JWT_SECRET) as RefreshJwtPayload;
+  const decoded = jwt.verify(
+    token,
+    env.resolvedJwtRefreshSecret,
+  ) as RefreshJwtPayload;
   if (decoded.tokenType !== "refresh") {
     throw new Error("Invalid token type");
   }
@@ -47,4 +60,11 @@ export function verifyRefreshToken(token: string): RefreshJwtPayload {
 
 export function hashToken(token: string): string {
   return crypto.createHash("sha256").update(token).digest("hex");
+}
+
+export function tokenHashesMatch(a: string, b: string): boolean {
+  const bufA = Buffer.from(a, "utf8");
+  const bufB = Buffer.from(b, "utf8");
+  if (bufA.length !== bufB.length) return false;
+  return crypto.timingSafeEqual(bufA, bufB);
 }

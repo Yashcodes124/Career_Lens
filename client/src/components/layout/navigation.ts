@@ -120,12 +120,18 @@ export function getRouteContext(pathname: string): {
   if (pathname === "/readiness" || pathname === "/skills") {
     return { section: "Workspace", title: "Skill Readiness" };
   }
-  if (pathname.startsWith("/skill-gaps/")) {
+  if (pathname.startsWith("/skill-gaps/") || pathname.startsWith("/skill-gap/")) {
     return {
       section: "Readiness",
       title: "Skill Gap Analysis",
       parentPath: "/readiness",
     };
+  }
+  if (pathname === "/ontology") {
+    return { section: "Workspace", title: "Skill Ontology" };
+  }
+  if (pathname === "/admin") {
+    return { section: "Account", title: "Admin Operations" };
   }
   if (pathname === "/interviews") {
     return { section: "Workspace", title: "Mock Interviews" };
@@ -164,7 +170,7 @@ export function getRouteContext(pathname: string): {
   if (pathname === "/jobs") {
     return { section: "Pipeline", title: "Verified Jobs" };
   }
-  if (pathname == "/radar") {
+  if (pathname === "/radar") {
     return { section: "Pipeline", title: "Role-Fit Radar" };
   }
   if (pathname.startsWith("/matches/")) {

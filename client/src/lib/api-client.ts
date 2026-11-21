@@ -1,6 +1,5 @@
 const API_BASE_URL =
-  (import.meta.env.VITE_API_BASE_URL as string | undefined) ||
-  "http://localhost:5000/api";
+  (import.meta.env.VITE_API_BASE_URL as string | undefined) || "/api";
 
 const AUTH_TOKEN_KEY = "truehire_auth_token";
 const REFRESH_TOKEN_KEY = "truehire_refresh_token";
@@ -110,10 +109,18 @@ export async function apiClient<T>(
     const newAccessToken = await tryRefreshAccessToken();
     if (newAccessToken) {
       const retryHeaders = buildHeaders(newAccessToken).headers;
-      response = await fetch(`${API_BASE_URL}${endpoint}`, {
-        ...options,
-        headers: retryHeaders,
-      });
+      try {
+        response = await fetch(`${API_BASE_URL}${endpoint}`, {
+          ...options,
+          headers: retryHeaders,
+        });
+      } catch {
+        throw new ApiError(
+          "Cannot reach the server. Check your connection and try again.",
+          0,
+          "NETWORK_ERROR",
+        );
+      }
     } else {
       clearAuthToken();
       window.dispatchEvent(new Event("truehire:unauthorized"));
@@ -131,7 +138,17 @@ export async function apiClient<T>(
     );
   }
 
-  const payload = (await response.json()) as T;
+  if (response.status === 204) {
+    return undefined as T;
+  }
+
+  let payload: T;
+  if (typeof response.text === "function") {
+    const rawText = await response.text();
+    payload = (rawText.trim().length > 0 ? JSON.parse(rawText) : undefined) as T;
+  } else {
+    payload = (await response.json()) as T;
+  }
 
   // Automatically store refreshToken if returned by login/register
   if (

@@ -1,5 +1,6 @@
 import { Router, Request, Response, NextFunction } from "express";
 import { authMiddleware } from "../middleware/authMiddleware";
+import { requireRole } from "../middleware/requireRole";
 import { prisma } from "../config/db";
 import {
   ALL_SKILL_FAMILIES,
@@ -20,9 +21,10 @@ const router = Router();
 router.get(
   "/dashboard",
   authMiddleware,
-  async (_req: Request, res: Response, next: NextFunction) => {
+  async (req: Request, res: Response, next: NextFunction) => {
     try {
-      // 1. Scan active jobs and recent resumes to populate live unrecognized skill tokens & INSUFFICIENT_DATA jobs
+      const isAdmin = req.user?.role === "ADMIN";
+      // 1. Scan active jobs and scoped resumes (never expose other users' resumes to non-admins)
       const [jobs, resumes] = await Promise.all([
         prisma.job.findMany({
           where: { isActive: true },
@@ -38,7 +40,8 @@ router.get(
           },
         }),
         prisma.resume.findMany({
-          take: 50,
+          where: isAdmin ? undefined : { userId: req.user!.userId },
+          take: isAdmin ? 50 : 10,
           orderBy: { createdAt: "desc" },
           select: { id: true, skills: true },
         }),
@@ -90,7 +93,11 @@ router.get(
       }
 
       for (const r of resumes) {
-        normalizeSkills(r.skills ?? [], "RESUME_SKILL", `Resume ${r.id}`);
+        normalizeSkills(
+          r.skills ?? [],
+          "RESUME_SKILL",
+          isAdmin ? "Candidate Resume Pool" : "Your Resume",
+        );
       }
 
       // 2. Compute family breakdown & alias coverage
@@ -164,6 +171,7 @@ router.get(
 router.post(
   "/review-queue/resolve",
   authMiddleware,
+  requireRole("ADMIN"),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { token, action, targetCanonical, family } = req.body ?? {};

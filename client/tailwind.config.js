@@ -1,62 +1,69 @@
 /** @type {import('tailwindcss').Config} */
 export default {
+  darkMode: "class",
   content: ["./index.html", "./src/**/*.{js,ts,jsx,tsx}"],
   theme: {
     extend: {
       colors: {
-        canvas: "var(--bg-canvas)", // #f6f8fb
-        surface: "var(--bg-surface)", // #ffffff
-        muted: "var(--bg-muted)", // #f1f5f9
+        canvas: "var(--bg-canvas)",
+        surface: "var(--bg-surface)",
+        muted: "var(--bg-muted)",
         border: {
-          DEFAULT: "var(--border-default)", // #e2e8f0
-          subtle: "var(--border-subtle)", // #e2e8f0
-          strong: "var(--border-strong)", // #cbd5e1
+          DEFAULT: "var(--border-default)",
+          subtle: "var(--border-subtle)",
+          strong: "var(--border-strong)",
         },
         primary: {
-          DEFAULT: "var(--primary)", // #2563eb
-          hover: "var(--primary-hover)", // #1d4ed8
-          soft: "var(--primary-soft)", // #eff6ff
+          DEFAULT: "var(--primary)",
+          hover: "var(--primary-hover)",
+          soft: "var(--primary-soft)",
+          foreground: "var(--primary-foreground)",
         },
         content: {
-          heading: "var(--text-heading)", // #0f172a
-          body: "var(--text-body)", // #334155
-          secondary: "var(--text-secondary)", // #64748b
+          heading: "var(--text-heading)",
+          body: "var(--text-body)",
+          secondary: "var(--text-secondary)",
         },
         status: {
           success: {
-            DEFAULT: "var(--status-success)", // #15803d
-            soft: "var(--status-success-soft)", // #f0fdf4
-            border: "var(--status-success-border)", // #bbf7d0
+            DEFAULT: "var(--status-success)",
+            soft: "var(--status-success-soft)",
+            border: "var(--status-success-border)",
           },
           warning: {
-            DEFAULT: "var(--status-warning)", // #b45309
-            soft: "var(--status-warning-soft)", // #fffbeb
-            border: "var(--status-warning-border)", // #fde68a
+            DEFAULT: "var(--status-warning)",
+            soft: "var(--status-warning-soft)",
+            border: "var(--status-warning-border)",
           },
           danger: {
-            DEFAULT: "var(--status-danger)", // #b91c1c
-            soft: "var(--status-danger-soft)", // #fef2f2
-            border: "var(--status-danger-border)", // #fecaca
+            DEFAULT: "var(--status-danger)",
+            soft: "var(--status-danger-soft)",
+            border: "var(--status-danger-border)",
           },
         },
       },
       fontFamily: {
+        display: ["var(--font-display)"],
         sans: ["var(--font-sans)"],
         mono: ["var(--font-mono)"],
       },
       borderRadius: {
-        card: "var(--radius-card)", // 12px
-        input: "var(--radius-input)", // 10px
-        sm: "var(--radius-sm)", // 6px
-        md: "var(--radius-sm)", // 6px
-        lg: "var(--radius-input)", // 10px
-        xl: "var(--radius-card)", // 12px
+        card: "var(--radius-card)",
+        input: "var(--radius-input)",
+        sm: "var(--radius-sm)",
+        md: "var(--radius-sm)",
+        lg: "var(--radius-input)",
+        xl: "var(--radius-card)",
       },
       boxShadow: {
         xs: "var(--shadow-xs)",
         sm: "var(--shadow-sm)",
         card: "var(--shadow-card)",
+        elevated: "var(--shadow-elevated)",
         DEFAULT: "var(--shadow-sm)",
+      },
+      transitionTimingFunction: {
+        editorial: "cubic-bezier(0.16, 1, 0.3, 1)",
       },
       spacing: {
         1: "4px",

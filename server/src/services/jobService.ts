@@ -23,11 +23,34 @@ export const getJobsService = async (filters: JobQuery) => {
   return await getJobs(filters);
 };
 
+export const sanitizeExternalHttpUrl = (raw?: string | null): string | null => {
+  const trimmed = raw?.trim();
+  if (!trimmed) return null;
+  try {
+    const parsed = new URL(trimmed);
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+      throw new AppError(
+        400,
+        "Job posting URL must use http:// or https://.",
+        "INVALID_URL",
+      );
+    }
+    return parsed.toString();
+  } catch (err) {
+    if (err instanceof AppError) throw err;
+    throw new AppError(
+      400,
+      "Job posting URL is not a valid web address.",
+      "INVALID_URL",
+    );
+  }
+};
+
 export const getJobByIdService = async (id: string) => {
   const job = await getJobById(id);
 
   if (!job) {
-    throw new Error("Job not found");
+    throw new AppError(404, "Job not found", "JOB_NOT_FOUND");
   }
 
   return job;
@@ -58,6 +81,7 @@ export const importExternalJobService = async (
     );
   }
 
+  const safeUrl = sanitizeExternalHttpUrl(input.url);
   const source = normalizeJobSource(input.source);
   const requirements = extractJobSkills(`${title}\n${description}`);
 
@@ -70,6 +94,6 @@ export const importExternalJobService = async (
     description,
     requirements,
     salaryRange: input.salaryRange?.trim() || null,
-    url: input.url?.trim() || null,
+    url: safeUrl,
   });
 };

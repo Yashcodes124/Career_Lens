@@ -1,82 +1,166 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
   /* ==========================================================================
-     1. SINGLE SOURCE OF TRUTH: LIGHT DESIGN TOKENS
+     1. THEME 1 (DEFAULT): OBSIDIAN DARK
+     Deep obsidian neutral canvas (#090C10) + elevated slate surface (#11161E)
+     + disciplined cobalt sapphire accent (#3B82F6). Zero neon glare.
      ========================================================================== */
   :root,
-  html,
-  html[data-theme="daylight"],
-  html[data-theme="obsidian"],
-  html[data-theme="vengeance"],
-  html[data-theme="arctic"],
+  html[data-theme="dark"],
   html.dark {
-    color-scheme: light;
+    color-scheme: dark;
 
-    /* Surface & Background Tokens */
-    --bg-canvas: #f6f8fb;
-    --bg-surface: #ffffff;
-    --bg-muted: #f1f5f9;
+    /* Surface & Background Tokens (60-30-10 discipline) */
+    --bg-canvas: #090c10;
+    --bg-surface: #11161e;
+    --bg-muted: #18202b;
 
-    /* Legacy variable aliases so existing components never break before Phase 2–6 */
+    /* Legacy variable aliases */
     --bg-base: var(--bg-canvas);
     --bg-surface-1: var(--bg-surface);
     --bg-surface-2: var(--bg-muted);
     --bg-surface-3: var(--border-default);
 
-    /* Border Tokens */
-    --border-default: #e2e8f0;
-    --border-subtle: #e2e8f0;
+    /* Border Tokens (crisp hairline contrast) */
+    --border-default: #222d3d;
+    --border-subtle: #1c2635;
     --border-hairline: var(--border-default);
-    --border-strong: #cbd5e1;
+    --border-strong: #34445c;
 
-    /* Primary Brand / Action Tokens */
-    --primary: #2563eb;
-    --primary-hover: #1d4ed8;
-    --primary-soft: #eff6ff;
+    /* Primary Brand / Action Tokens (10% accent budget) */
+    --primary: #3b82f6;
+    --primary-hover: #60a5fa;
+    --primary-soft: rgba(59, 130, 246, 0.14);
+    --primary-foreground: #ffffff;
     --accent-primary: var(--primary);
 
-    /* Typography Hierarchy Tokens */
-    --text-heading: #0f172a;
-    --text-body: #334155;
-    --text-secondary: #64748b;
+    /* Typography Hierarchy Tokens (WCAG AA/AAA on obsidian surfaces) */
+    --text-heading: #f1f5f9;
+    --text-body: #cbd5e1;
+    --text-secondary: #8b9bb0;
     --text-primary: var(--text-heading);
     --text-muted: var(--text-secondary);
 
-    /* Semantic Status Tokens */
-    --status-success: #15803d;
-    --status-success-soft: #f0fdf4;
-    --status-success-border: #bbf7d0;
+    /* Semantic Status Tokens (calibrated for dark surfaces) */
+    --status-success: #4ade80;
+    --status-success-soft: rgba(34, 197, 94, 0.12);
+    --status-success-border: rgba(74, 222, 128, 0.28);
 
-    --status-warning: #b45309;
-    --status-warning-soft: #fffbeb;
-    --status-warning-border: #fde68a;
+    --status-warning: #fbbf24;
+    --status-warning-soft: rgba(245, 158, 11, 0.12);
+    --status-warning-border: rgba(251, 191, 36, 0.28);
 
-    --status-danger: #b91c1c;
-    --status-danger-soft: #fef2f2;
-    --status-danger-border: #fecaca;
+    --status-danger: #fb7185;
+    --status-danger-soft: rgba(244, 63, 94, 0.14);
+    --status-danger-border: rgba(251, 113, 133, 0.3);
 
     /* Radius Scale */
     --radius-card: 12px;
     --radius-input: 10px;
     --radius-sm: 6px;
 
-    /* Subtle Shadow Scale (No heavy or neon glows) */
-    --shadow-xs: 0 1px 2px 0 rgba(15, 23, 42, 0.03);
-    --shadow-sm: 0 1px 3px 0 rgba(15, 23, 42, 0.04), 0 1px 2px -1px rgba(15, 23, 42, 0.02);
-    --shadow-card: 0 1px 3px 0 rgba(15, 23, 42, 0.04), 0 1px 2px -1px rgba(15, 23, 42, 0.02);
+    /* Elevation & Specular Edge Tokens */
+    --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.35);
+    --shadow-sm:
+      0 2px 8px -2px rgba(0, 0, 0, 0.45),
+      0 1px 0 0 rgba(255, 255, 255, 0.03) inset;
+    --shadow-card:
+      0 4px 16px -4px rgba(0, 0, 0, 0.45),
+      0 1px 0 0 rgba(255, 255, 255, 0.035) inset;
+    --shadow-elevated:
+      0 14px 36px -10px rgba(0, 0, 0, 0.65),
+      0 1px 0 0 rgba(255, 255, 255, 0.05) inset;
 
-    /* Typography & Spacing */
-    --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    /* Scrollbar */
+    --scrollbar-thumb: #2b384c;
+    --scrollbar-thumb-hover: #425572;
+
+    /* Optical typography compensation for dark mode */
+    --body-tracking: 0.005em;
+
+    /* Typography Stack */
+    --font-display: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    --font-sans: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   }
 
   /* ==========================================================================
-     2. GLOBAL TYPOGRAPHY & BASE ELEMENT STYLES
+     2. THEME 2: SWISS IVORY & KLEIN COBALT (2-COLOR DESIGNER THEME)
+     International Typographic Style: warm architectural ivory paper (#F5F3EE)
+     + crisp white cards (#FFFFFF) + deep ink (#111318) paired with ONE
+     authoritative Swiss Klein Cobalt accent (#1D4ED8).
+     ========================================================================== */
+  html[data-theme="swiss"] {
+    color-scheme: light;
+
+    /* Surface & Background Tokens */
+    --bg-canvas: #f5f3ee;
+    --bg-surface: #ffffff;
+    --bg-muted: #ece8df;
+
+    /* Legacy variable aliases */
+    --bg-base: var(--bg-canvas);
+    --bg-surface-1: var(--bg-surface);
+    --bg-surface-2: var(--bg-muted);
+    --bg-surface-3: var(--border-default);
+
+    /* Border Tokens */
+    --border-default: #ddd7ca;
+    --border-subtle: #e6e1d6;
+    --border-hairline: var(--border-default);
+    --border-strong: #c2b9a8;
+
+    /* Primary Brand / Action Tokens (Klein Cobalt) */
+    --primary: #1d4ed8;
+    --primary-hover: #1e3a8a;
+    --primary-soft: #e8eefd;
+    --primary-foreground: #ffffff;
+    --accent-primary: var(--primary);
+
+    /* Typography Hierarchy Tokens */
+    --text-heading: #111318;
+    --text-body: #2c313a;
+    --text-secondary: #59606d;
+    --text-primary: var(--text-heading);
+    --text-muted: var(--text-secondary);
+
+    /* Semantic Status Tokens */
+    --status-success: #15803d;
+    --status-success-soft: #eef9f2;
+    --status-success-border: #b7e4c7;
+
+    --status-warning: #b45309;
+    --status-warning-soft: #fdf6e7;
+    --status-warning-border: #f3d59b;
+
+    --status-danger: #b91c1c;
+    --status-danger-soft: #fdf0f0;
+    --status-danger-border: #f5c2c2;
+
+    /* Elevation Tokens */
+    --shadow-xs: 0 1px 2px 0 rgba(17, 19, 24, 0.04);
+    --shadow-sm:
+      0 2px 6px -1px rgba(17, 19, 24, 0.06),
+      0 1px 2px -1px rgba(17, 19, 24, 0.03);
+    --shadow-card:
+      0 2px 10px -2px rgba(17, 19, 24, 0.06),
+      0 1px 2px 0 rgba(17, 19, 24, 0.03);
+    --shadow-elevated:
+      0 14px 32px -8px rgba(17, 19, 24, 0.12),
+      0 4px 10px -4px rgba(17, 19, 24, 0.06);
+
+    /* Scrollbar */
+    --scrollbar-thumb: #c9c1b2;
+    --scrollbar-thumb-hover: #9f9685;
+
+    --body-tracking: 0em;
+  }
+
+  /* ==========================================================================
+     3. GLOBAL TYPOGRAPHY & BASE ELEMENT STYLES
      ========================================================================== */
   *,
   *::before,
@@ -86,30 +170,42 @@
 
   html {
     font-family: var(--font-sans);
-    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     background-color: var(--bg-canvas);
     color: var(--text-body);
     scroll-behavior: smooth;
+    transition:
+      background-color 220ms cubic-bezier(0.16, 1, 0.3, 1),
+      color 180ms cubic-bezier(0.16, 1, 0.3, 1);
   }
 
   body {
     min-height: 100vh;
-    background-color: var(--bg-canvas) !important;
-    background-image: none !important;
-    color: var(--text-body) !important;
+    background-color: var(--bg-canvas);
+    color: var(--text-body);
     font-family: var(--font-sans);
     font-size: 0.9375rem;
+    letter-spacing: var(--body-tracking);
     line-height: 1.6;
     overflow-x: hidden;
+    transition:
+      background-color 220ms cubic-bezier(0.16, 1, 0.3, 1),
+      color 180ms cubic-bezier(0.16, 1, 0.3, 1);
   }
 
-  h1, h2, h3, h4, h5, h6 {
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-family: var(--font-display);
     color: var(--text-heading);
     font-weight: 600;
-    letter-spacing: -0.02em;
-    line-height: 1.25;
+    letter-spacing: -0.025em;
+    line-height: 1.2;
+    text-wrap: balance;
   }
 
   p {
@@ -139,6 +235,10 @@
     border: 1px solid var(--border-default);
     border-radius: var(--radius-input);
     font-family: var(--font-sans);
+    transition:
+      border-color 150ms ease,
+      background-color 180ms ease,
+      box-shadow 150ms ease;
   }
 
   input::placeholder,
@@ -151,11 +251,11 @@
   }
 
   /* ==========================================================================
-     3. ACCESSIBLE FOCUS-VISIBLE, SELECTION & SCROLLBAR STYLES
+     4. ACCESSIBLE FOCUS-VISIBLE, SELECTION & SCROLLBAR STYLES
      ========================================================================== */
   :focus-visible {
-    outline: 2px solid var(--primary) !important;
-    outline-offset: 2px !important;
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
   }
 
   ::selection {
@@ -173,32 +273,21 @@
   }
 
   ::-webkit-scrollbar-thumb {
-    background: #cbd5e1;
+    background: var(--scrollbar-thumb);
     border-radius: var(--radius-sm);
     border: 2px solid var(--bg-canvas);
   }
 
   ::-webkit-scrollbar-thumb:hover {
-    background: var(--text-secondary);
+    background: var(--scrollbar-thumb-hover);
   }
 }
 
 /* ============================================================================
-   4. UTILITY CLASSES & TRANSITIONAL COMPATIBILITY SAFEGUARDS
-   Ensures all existing pages remain 100% readable in the single light theme
-   prior to page-level refactoring in Phases 2–6.
+   5. UTILITY CLASSES & COMPOSITOR-ONLY INTERACTION POLISH
    ============================================================================ */
 .tabular-nums {
   font-variant-numeric: tabular-nums;
-}
-
-/* Neutralize legacy decorative grids, shimmer beams, and heavy hover effects */
-.bg-architectural-grid {
-  background-image: none !important;
-}
-
-.shimmer-sweep {
-  display: none !important;
 }
 
 .interactive-card {
@@ -206,11 +295,49 @@
   border: 1px solid var(--border-default);
   border-radius: var(--radius-card);
   box-shadow: var(--shadow-card);
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  transition:
+    transform 180ms cubic-bezier(0.16, 1, 0.3, 1),
+    border-color 180ms cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow 200ms cubic-bezier(0.16, 1, 0.3, 1),
+    background-color 180ms ease;
 }
 
 .interactive-card:hover {
-  transform: none;
+  transform: translateY(-2px);
   border-color: var(--border-strong);
-  box-shadow: var(--shadow-sm);
+  box-shadow: var(--shadow-elevated);
+}
+
+.theme-surface-transition {
+  transition:
+    background-color 220ms cubic-bezier(0.16, 1, 0.3, 1),
+    border-color 200ms cubic-bezier(0.16, 1, 0.3, 1),
+    color 180ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Subtle editorial grid texture for Swiss & Obsidian hero backdrops (low opacity, non-distracting) */
+.bg-architectural-grid {
+  background-image:
+    linear-gradient(to right, var(--border-subtle) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--border-subtle) 1px, transparent 1px);
+  background-size: 48px 48px;
+}
+
+/* Respect user motion preferences strictly */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  .interactive-card:hover {
+    transform: none;
+  }
 }

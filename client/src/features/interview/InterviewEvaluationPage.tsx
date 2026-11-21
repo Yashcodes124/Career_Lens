@@ -9,6 +9,8 @@ import {
   Calendar,
   CheckCircle2,
   Clock,
+  Copy,
+  Download,
   FileText,
   RotateCcw,
   Target,
@@ -37,6 +39,7 @@ import {
   SectionCard,
   Skeleton,
   SkillBadge,
+  Toast,
 } from "../../components/ui";
 
 export const InterviewEvaluationPage: React.FC = () => {
@@ -50,6 +53,7 @@ export const InterviewEvaluationPage: React.FC = () => {
   );
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   const loadEvaluation = async () => {
     if (!interviewId) {
@@ -313,6 +317,80 @@ export const InterviewEvaluationPage: React.FC = () => {
 
   const weakestSkill = skillUpdates.stillWeak[0]?.skill;
 
+  const buildMarkdownReport = () => {
+    const lines: string[] = [
+      `# TrueHire Interview Evaluation Report`,
+      ``,
+      `- **Role:** ${roleTitle}`,
+      `- **Company:** ${companyName}`,
+      `- **Date:** ${new Date(interview?.createdAt || Date.now()).toLocaleDateString()}`,
+      `- **Duration:** ${durationMinutes} minutes`,
+      `- **Overall Score:** ${overallScore}/100`,
+      ``,
+      `## Executive Summary`,
+      summaryText,
+      ``,
+      `## Rubric Breakdown`,
+      ...scoreBreakdown.map((dim) => `- **${dim.label}:** ${dim.value}%`),
+      ``,
+      `## Strengths`,
+      ...strengths.map((item) => `- ${item}`),
+      ``,
+      `## Improvement Areas`,
+      ...improvements.map((item) => `- ${item}`),
+      ``,
+      `## Skill Updates`,
+      `### Strengthened`,
+      ...(skillUpdates.strengthened.length > 0
+        ? skillUpdates.strengthened.map((s) => `- **${s.skill}:** ${s.evidence}`)
+        : [`- None recorded`]),
+      ``,
+      `### Still Weak`,
+      ...(skillUpdates.stillWeak.length > 0
+        ? skillUpdates.stillWeak.map((s) => `- **${s.skill}:** ${s.evidence}`)
+        : [`- None flagged`]),
+      ``,
+      `## Question-by-Question Transcript`,
+      ...(interview?.questions ?? []).flatMap((q, idx) => [
+        `### Q${idx + 1} (${q.round}) — Score: ${q.score ?? "N/A"}%`,
+        `**Question:** ${q.question}`,
+        ``,
+        `**Your Answer:** ${q.answer || "No answer submitted."}`,
+        ``,
+        `**Feedback:** ${getQuestionFeedbackText(q.feedback, "No detailed feedback recorded.")}`,
+        ``,
+      ]),
+    ];
+    return lines.join("\n");
+  };
+
+  const handleCopyReport = async () => {
+    try {
+      await navigator.clipboard.writeText(buildMarkdownReport());
+      setToastMessage("Evaluation report copied to clipboard.");
+    } catch {
+      setToastMessage("Unable to copy report to clipboard.");
+    }
+  };
+
+  const handleDownloadReport = () => {
+    const markdown = buildMarkdownReport();
+    const blob = new Blob([markdown], { type: "text/markdown;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const slug = `${companyName}-${roleTitle}`
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-|-$/g, "");
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `interview-evaluation-${slug || "report"}.md`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+    setToastMessage("Downloaded Markdown evaluation report.");
+  };
+
   return (
     <ContentContainer size="xl" className="space-y-6">
       {/* 1. Header */}
@@ -350,17 +428,46 @@ export const InterviewEvaluationPage: React.FC = () => {
           </Button>
         }
         secondaryActions={
-          interviewId ? (
-            <Button
-              variant="outline"
-              onClick={() => navigate(`/interviews/${interviewId}/prep`)}
-              leftIcon={<RotateCcw className="h-4 w-4" />}
-            >
-              Retake interview
-            </Button>
-          ) : undefined
+          <div className="flex flex-wrap items-center gap-2">
+            {interview && (
+              <>
+                <Button
+                  variant="outline"
+                  onClick={() => void handleCopyReport()}
+                  leftIcon={<Copy className="h-4 w-4" />}
+                >
+                  Copy report
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={handleDownloadReport}
+                  leftIcon={<Download className="h-4 w-4" />}
+                >
+                  Export (.md)
+                </Button>
+              </>
+            )}
+            {interviewId && (
+              <Button
+                variant="outline"
+                onClick={() => navigate(`/interviews/${interviewId}/prep`)}
+                leftIcon={<RotateCcw className="h-4 w-4" />}
+              >
+                Retake interview
+              </Button>
+            )}
+          </div>
         }
       />
+
+      {toastMessage && (
+        <Toast
+          tone="success"
+          title="Evaluation report"
+          description={toastMessage}
+          onDismiss={() => setToastMessage(null)}
+        />
+      )}
 
       {error && (
         <ErrorState

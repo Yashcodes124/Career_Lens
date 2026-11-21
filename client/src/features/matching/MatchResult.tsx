@@ -1269,10 +1269,10 @@ export const MatchResult: React.FC<MatchResultProps> = ({
                     type="button"
                     disabled={disabled}
                     onClick={() => toggleSimSkill(skill)}
-                    className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition ${
+                    className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition-all duration-150 ${
                       isSelected
-                        ? "border-blue-600 bg-blue-50 text-blue-700"
-                        : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50 disabled:opacity-40"
+                        ? "border-primary bg-primary-soft text-primary"
+                        : "border-border bg-surface text-content-body hover:border-border-strong hover:bg-muted disabled:opacity-40"
                     }`}
                   >
                     {isSelected ? `✓ ${skill}` : `+ ${skill}`}
@@ -1282,7 +1282,7 @@ export const MatchResult: React.FC<MatchResultProps> = ({
             </div>
 
             <div className="flex items-center justify-between gap-3">
-              <span className="text-xs text-slate-500">
+              <span className="text-xs text-content-secondary">
                 {selectedSimSkills.length}/5 skills selected
               </span>
               <Button
@@ -1297,45 +1297,45 @@ export const MatchResult: React.FC<MatchResultProps> = ({
             </div>
 
             {simError && (
-              <p className="text-xs text-red-600">{simError}</p>
+              <p className="text-xs text-status-danger">{simError}</p>
             )}
 
             {/* 2. Simulation Results Panel */}
             {simulationResult && (
-              <div className="space-y-4 rounded-xl border border-slate-200 bg-slate-50 p-4">
+              <div className="space-y-4 rounded-xl border border-border bg-muted p-4">
                 {/* Score & Readiness Deltas */}
                 <div className="grid gap-3 sm:grid-cols-3">
-                  <div className="rounded-lg border border-slate-200 bg-white p-3">
-                    <p className="text-[11px] font-medium text-slate-500">
+                  <div className="rounded-lg border border-border bg-surface p-3">
+                    <p className="text-[11px] font-medium text-content-secondary">
                       Job Match Score
                     </p>
-                    <p className="mt-1 text-base font-semibold text-slate-900 tabular-nums">
+                    <p className="mt-1 text-base font-semibold text-content-heading tabular-nums">
                       {simulationResult.baselineMatchScore ?? simulationResult.baselineScore}% →{" "}
-                      <span className="text-emerald-600">
+                      <span className="text-status-success">
                         {simulationResult.projectedMatchScore ?? simulationResult.projectedScore}% (+
                         {simulationResult.matchScoreDeltaPct ?? simulationResult.scoreDeltaPct}%)
                       </span>
                     </p>
                   </div>
 
-                  <div className="rounded-lg border border-slate-200 bg-white p-3">
-                    <p className="text-[11px] font-medium text-slate-500">
+                  <div className="rounded-lg border border-border bg-surface p-3">
+                    <p className="text-[11px] font-medium text-content-secondary">
                       Readiness Score
                     </p>
-                    <p className="mt-1 text-base font-semibold text-slate-900 tabular-nums">
+                    <p className="mt-1 text-base font-semibold text-content-heading tabular-nums">
                       {simulationResult.baselineReadinessScore}% →{" "}
-                      <span className="text-emerald-600">
+                      <span className="text-status-success">
                         {simulationResult.projectedReadinessScore}% (+
                         {simulationResult.readinessDeltaPct}%)
                       </span>
                     </p>
                   </div>
 
-                  <div className="rounded-lg border border-slate-200 bg-white p-3">
-                    <p className="text-[11px] font-medium text-slate-500">
+                  <div className="rounded-lg border border-border bg-surface p-3">
+                    <p className="text-[11px] font-medium text-content-secondary">
                       Catalog-Wide Impact
                     </p>
-                    <p className="mt-1 text-base font-semibold text-blue-600 tabular-nums">
+                    <p className="mt-1 text-base font-semibold text-primary tabular-nums">
                       {simulationResult.affectedActiveJobsCount} active jobs
                       improved
                     </p>
@@ -1344,15 +1344,15 @@ export const MatchResult: React.FC<MatchResultProps> = ({
 
                 {/* Required vs. Preferred Coverage Deltas */}
                 {(simulationResult.coverageDelta || (simulationResult.requiredCoverage && simulationResult.preferredCoverage)) && (
-                  <div className="flex flex-wrap gap-3 text-xs text-slate-700">
+                  <div className="flex flex-wrap gap-3 text-xs text-content-body">
                     <span>
-                      <strong>Required coverage:</strong>{" "}
+                      <strong className="text-content-heading">Required coverage:</strong>{" "}
                       {simulationResult.coverageDelta?.baselineRequiredPct ?? simulationResult.requiredCoverage?.beforePct}% →{" "}
                       {simulationResult.coverageDelta?.projectedRequiredPct ?? simulationResult.requiredCoverage?.afterPct}%
                     </span>
                     <span>·</span>
                     <span>
-                      <strong>Preferred coverage:</strong>{" "}
+                      <strong className="text-content-heading">Preferred coverage:</strong>{" "}
                       {simulationResult.coverageDelta?.baselinePreferredPct ?? simulationResult.preferredCoverage?.beforePct}% →{" "}
                       {simulationResult.coverageDelta?.projectedPreferredPct ?? simulationResult.preferredCoverage?.afterPct}%
                     </span>
@@ -1363,7 +1363,7 @@ export const MatchResult: React.FC<MatchResultProps> = ({
                 {((Array.isArray(simulationResult.evidenceTransitions) && simulationResult.evidenceTransitions.length > 0) ||
                   (Array.isArray(simulationResult.skillStateTransitions) && simulationResult.skillStateTransitions.length > 0)) && (
                     <div className="space-y-1.5">
-                      <p className="text-xs font-semibold text-slate-800">
+                      <p className="text-xs font-semibold text-content-heading">
                         Evidence State Transitions
                       </p>
                       <div className="flex flex-wrap gap-2">
@@ -1377,7 +1377,7 @@ export const MatchResult: React.FC<MatchResultProps> = ({
                   )}
 
                 {/* Mandatory Disclaimer Label */}
-                <p className="border-t border-slate-200 pt-2.5 text-[11px] font-medium text-slate-500">
+                <p className="border-t border-border pt-2.5 text-[11px] font-medium text-content-secondary">
                   {simulationResult.disclaimer || "Simulated readiness projection — not a guaranteed interview outcome."}
                 </p>
               </div>

@@ -102,7 +102,7 @@ export const getReadinessService = async (userId: string) => {
       prisma.application?.findMany
         ? prisma.application.findMany({
             where: { userId },
-            select: { skillGaps: true },
+            select: { matchScore: true, skillGaps: true },
           })
         : Promise.resolve([]),
     ]);
@@ -172,15 +172,8 @@ export const getReadinessService = async (userId: string) => {
       )
       .slice(0, 5);
 
-    // Compute match improvement potential across scored applications
-    const scoredApps = await (prisma.application?.findMany
-      ? prisma.application.findMany({
-          where: { userId },
-          select: { matchScore: true, skillGaps: true },
-        })
-      : Promise.resolve([]));
-
-    const validScores = scoredApps
+    // Compute match improvement potential across scored applications (reusing single query result)
+    const validScores = (applications ?? [])
       .map((a) => a.matchScore)
       .filter((s): s is number => typeof s === "number");
 

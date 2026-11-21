@@ -2,7 +2,7 @@ import React, { useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { LogOut } from "lucide-react";
 import { useAuth } from "../../features/auth/useAuth";
-import { Badge, Button, Drawer } from "../ui";
+import { Badge, Button, Drawer, ThemeToggle } from "../ui";
 import { isNavItemActive, NAV_ITEMS } from "./navigation";
 
 export interface MobileNavProps {
@@ -39,30 +39,38 @@ export const MobileNav: React.FC<MobileNavProps> = ({ open, onClose }) => {
           : "Career Readiness Workspace"
       }
       footer={
-        user ? (
-          <div className="w-full space-y-2">
-            <div className="flex items-center justify-between text-xs">
-              <span className="font-medium text-content-heading truncate">
-                {user.name || user.email}
-              </span>
-              <Badge tone="primary" size="sm">
-                Active
-              </Badge>
-            </div>
-            <Button
-              variant="outline"
-              size="sm"
-              fullWidth
-              onClick={() => {
-                onClose();
-                void logout();
-              }}
-              leftIcon={<LogOut className="h-3.5 w-3.5" />}
-            >
-              Log out
-            </Button>
+        <div className="w-full space-y-3">
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-content-secondary">
+              Theme
+            </span>
+            <ThemeToggle variant="segmented" />
           </div>
-        ) : undefined
+          {user && (
+            <div className="space-y-2 border-t border-border pt-3">
+              <div className="flex items-center justify-between text-xs">
+                <span className="font-medium text-content-heading truncate">
+                  {user.name || user.email}
+                </span>
+                <Badge tone="primary" size="sm">
+                  Active
+                </Badge>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                fullWidth
+                onClick={() => {
+                  onClose();
+                  void logout();
+                }}
+                leftIcon={<LogOut className="h-3.5 w-3.5" />}
+              >
+                Log out
+              </Button>
+            </div>
+          )}
+        </div>
       }
     >
       <nav aria-label="Mobile Navigation" className="space-y-1">

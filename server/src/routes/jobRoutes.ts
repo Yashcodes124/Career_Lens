@@ -16,7 +16,12 @@ const router = Router();
 router.get("/", authMiddleware, getJobsController);
 router.get("/saved", authMiddleware, getSavedJobsController);
 
-router.post("/sync", authMiddleware, syncGreenhouseController);
+router.post(
+  "/sync",
+  authMiddleware,
+  requireRole("ADMIN"),
+  syncGreenhouseController,
+);
 router.post(
   "/sync/greenhouse",
   authMiddleware,

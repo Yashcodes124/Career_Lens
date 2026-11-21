@@ -773,14 +773,6 @@ export const ReadinessPage: React.FC = () => {
                           : ""}
                         {item.recommendedAction}
                       </p>
-
-                      {item.updatedAt && (
-                        <p className="text-[11px] text-content-secondary tabular-nums">
-                          Recorded{" "}
-                          {new Date(item.updatedAt).toLocaleDateString()} ·{" "}
-                          {item.recommendedAction}
-                        </p>
-                      )}
                     </div>
 
                     <div className="flex flex-wrap items-center gap-2 shrink-0">

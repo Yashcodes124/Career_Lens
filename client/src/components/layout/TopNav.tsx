@@ -1,22 +1,27 @@
 import React from "react";
 import { Link, useLocation } from "react-router-dom";
-import { ChevronRight, LogOut, Menu } from "lucide-react";
+import { ChevronRight, LogOut, Menu, Search } from "lucide-react";
 import { useAuth } from "../../features/auth/useAuth";
-import { Badge, Button } from "../ui";
+import { Badge, Button, ThemeToggle } from "../ui";
 import { getRouteContext, isNavItemActive, NAV_ITEMS } from "./navigation";
 
 export interface TopNavProps {
   onOpenMobileNav: () => void;
+  onOpenCommandPalette?: () => void;
   showHorizontalLinks?: boolean;
 }
 
 export const TopNav: React.FC<TopNavProps> = ({
   onOpenMobileNav,
+  onOpenCommandPalette,
   showHorizontalLinks = false,
 }) => {
   const location = useLocation();
   const { user, logout } = useAuth();
   const routeContext = getRouteContext(location.pathname);
+  const visibleNavItems = NAV_ITEMS.filter(
+    (item) => !item.adminOnly || user?.role === "ADMIN",
+  );
 
   return (
     <header className="sticky top-0 z-20 h-16 border-b border-border bg-surface">
@@ -75,7 +80,7 @@ export const TopNav: React.FC<TopNavProps> = ({
             aria-label="Horizontal Workspace Navigation"
             className="hidden items-center gap-1 lg:flex"
           >
-            {NAV_ITEMS.map((item) => {
+            {visibleNavItems.map((item) => {
               const active = isNavItemActive(location.pathname, item);
               return (
                 <Link
@@ -95,8 +100,23 @@ export const TopNav: React.FC<TopNavProps> = ({
           </nav>
         )}
 
-        {/* Right: Target Role + Profile Link + Sign Out */}
-        <div className="flex items-center gap-2.5 shrink-0">
+        {/* Right: Quick Jump + Theme Toggle + Target Role + Profile Link + Sign Out */}
+        <div className="flex items-center gap-2 shrink-0">
+          {onOpenCommandPalette && (
+            <button
+              type="button"
+              onClick={onOpenCommandPalette}
+              aria-label="Open quick navigation (Command+K)"
+              className="hidden items-center gap-2 rounded-input border border-border bg-muted/60 px-2.5 py-1.5 text-xs text-content-secondary transition-colors hover:border-border-strong hover:bg-muted hover:text-content-heading focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary sm:inline-flex"
+            >
+              <Search className="h-3.5 w-3.5" aria-hidden="true" />
+              <span>Quick jump</span>
+              <kbd className="rounded border border-border bg-surface px-1.5 py-0.5 font-mono text-[10px] font-medium text-content-secondary">
+                ⌘K
+              </kbd>
+            </button>
+          )}
+          <ThemeToggle variant="compact" />
           {user?.targetRole && (
             <Badge
               tone="neutral"

@@ -155,7 +155,7 @@ export const submitAnswerController = async (
   try {
     const userId = req.user?.userId;
     const { interviewId, questionId } = req.params;
-    const { answer } = req.body;
+    const { answer } = req.body ?? {};
 
     if (!userId) {
       return res
@@ -163,7 +163,7 @@ export const submitAnswerController = async (
         .json({ success: false, message: "Unauthorized access" });
     }
 
-    if (!answer || answer.trim() === "") {
+    if (typeof answer !== "string" || answer.trim() === "") {
       return res
         .status(400)
         .json({ success: false, message: "Answer string is required" });

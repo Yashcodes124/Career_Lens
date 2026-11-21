@@ -8,6 +8,7 @@ import {
   signRefreshToken,
   verifyRefreshToken,
   hashToken,
+  tokenHashesMatch,
 } from "../utils/jwt.js";
 import {
   RegisterInput,
@@ -15,6 +16,8 @@ import {
   UpdateProfileInput,
 } from "../validators/authValidator.js";
 import { prisma } from "../config/db.js";
+
+const normalizeEmail = (email: string): string => email.trim().toLowerCase();
 
 export interface UserResponse {
   id: string;
@@ -56,12 +59,18 @@ export class AuthService {
     refreshTokenHash: string | null,
   ): Promise<void> {
     if (this.userRepo === userRepository && process.env.NODE_ENV !== "test") {
-      await prisma.user
-        .update({
+      try {
+        await prisma.user.update({
           where: { id: userId },
           data: { refreshTokenHash },
-        })
-        .catch(() => undefined);
+        });
+      } catch (err) {
+        console.error(
+          "[AuthService] Failed to persist refreshTokenHash:",
+          err instanceof Error ? err.message : err,
+        );
+        throw err;
+      }
     }
   }
 
@@ -83,23 +92,25 @@ export class AuthService {
   }
 
   async register(input: RegisterInput): Promise<AuthResult> {
-    const existing = await this.userRepo.findByEmail(input.email);
+    const normalizedEmail = normalizeEmail(input.email);
+    const existing = await this.userRepo.findByEmail(normalizedEmail);
     if (existing) {
       throw new Error("User with this email already exists");
     }
 
     const hashedPassword = await hashPassword(input.password);
     const user = await this.userRepo.create({
-      email: input.email,
+      email: normalizedEmail,
       passwordHash: hashedPassword,
-      name: input.name,
+      name: input.name.trim(),
     });
 
     return this.issueTokens(user);
   }
 
   async login(input: LoginInput): Promise<AuthResult> {
-    const user = await this.userRepo.findByEmail(input.email);
+    const normalizedEmail = normalizeEmail(input.email);
+    const user = await this.userRepo.findByEmail(normalizedEmail);
     if (!user) {
       throw new Error("Invalid email or password");
     }
@@ -130,13 +141,23 @@ export class AuthService {
     }
 
     const incomingHash = hashToken(rawRefreshToken);
+    const hasRefreshField = "refreshTokenHash" in (user as object);
     const storedHash = (user as any).refreshTokenHash as
-      string | null | undefined;
+      | string
+      | null
+      | undefined;
 
-    if (storedHash && storedHash !== incomingHash) {
-      // Possible token reuse: revoke stored hash
-      await this.persistRefreshTokenHash(user.id, null);
-      throw new Error("Invalid or expired refresh token");
+    // Require an active stored hash whenever the persistence layer tracks refreshTokenHash.
+    // A null hash means the session was logged out or revoked and MUST NOT mint fresh tokens.
+    if (hasRefreshField) {
+      if (!storedHash) {
+        throw new Error("Invalid or expired refresh token");
+      }
+      if (!tokenHashesMatch(storedHash, incomingHash)) {
+        // Token reuse detected: revoke active session hash
+        await this.persistRefreshTokenHash(user.id, null);
+        throw new Error("Invalid or expired refresh token");
+      }
     }
 
     return this.issueTokens(user);
@@ -173,15 +194,18 @@ export class AuthService {
     } = {};
 
     if (input.name) {
-      updateData.name = input.name;
+      updateData.name = input.name.trim();
     }
 
-    if (input.email && input.email !== user.email) {
-      const existing = await this.userRepo.findByEmail(input.email);
-      if (existing) {
-        throw new Error("Email is already taken by another user");
+    if (input.email) {
+      const normalizedEmail = normalizeEmail(input.email);
+      if (normalizedEmail !== user.email.toLowerCase()) {
+        const existing = await this.userRepo.findByEmail(normalizedEmail);
+        if (existing) {
+          throw new Error("Email is already taken by another user");
+        }
+        updateData.email = normalizedEmail;
       }
-      updateData.email = input.email;
     }
 
     if (input.password) {
@@ -201,6 +225,12 @@ export class AuthService {
     }
 
     const updatedUser = await this.userRepo.update(userId, updateData);
+
+    // Revoke active refresh sessions when credentials change
+    if (input.password) {
+      await this.persistRefreshTokenHash(userId, null);
+    }
+
     return this.sanitizeUser(updatedUser);
   }
 }

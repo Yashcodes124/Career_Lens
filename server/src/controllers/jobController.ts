@@ -51,7 +51,11 @@ export const getJobsController = async (
   }
 };
 
-export const getJobByIdController = async (req: Request, res: Response) => {
+export const getJobByIdController = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
   try {
     const job = await getJobByIdService(req.params.id);
 
@@ -60,29 +64,24 @@ export const getJobByIdController = async (req: Request, res: Response) => {
       job,
     });
   } catch (error) {
-    if (error instanceof Error && error.message === "Job not found") {
-      res.status(404).json({
-        success: false,
-        message: "Job not found",
-      });
-      return;
-    }
-
-    console.error("Get job error:", error);
-
-    res.status(500).json({
-      success: false,
-      message: "Failed to fetch job",
-    });
+    next(error);
   }
 };
 
-export const syncGreenhouseController = async (req: Request, res: Response) => {
+export const syncGreenhouseController = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
   try {
-    const explicitBoardToken = (
-      req.body?.boardToken as string | undefined
-    )?.trim();
-    const explicitCompany = (req.body?.company as string | undefined)?.trim();
+    const explicitBoardToken =
+      typeof req.body?.boardToken === "string"
+        ? req.body.boardToken.trim()
+        : undefined;
+    const explicitCompany =
+      typeof req.body?.company === "string"
+        ? req.body.company.trim()
+        : undefined;
 
     const result = explicitBoardToken
       ? await syncGreenhouseJobs(
@@ -97,12 +96,7 @@ export const syncGreenhouseController = async (req: Request, res: Response) => {
       ...result,
     });
   } catch (error) {
-    console.error("Job sync error:", error);
-
-    res.status(500).json({
-      success: false,
-      message: "Failed to sync jobs",
-    });
+    next(error);
   }
 };
 
@@ -164,7 +158,11 @@ export const unsaveJobController = async (
   }
 };
 
-export const getSavedJobsController = async (req: Request, res: Response) => {
+export const getSavedJobsController = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
   try {
     const userId = req.user!.userId;
 
@@ -175,11 +173,6 @@ export const getSavedJobsController = async (req: Request, res: Response) => {
       jobs,
     });
   } catch (error) {
-    console.error("Get saved jobs error:", error);
-
-    res.status(500).json({
-      success: false,
-      message: "Failed to fetch saved jobs",
-    });
+    next(error);
   }
 };

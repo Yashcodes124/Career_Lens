@@ -1,9 +1,11 @@
-import React, { createContext, useContext, useState } from "react";
+import React, { createContext, useContext, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { CommandPalette } from "./CommandPalette";
 import { ContentContainer } from "./ContentContainer";
 import { MobileNav } from "./MobileNav";
 import { Sidebar } from "./Sidebar";
 import { TopNav } from "./TopNav";
+import { ThemeToggle } from "../ui";
 
 const AppShellContext = createContext<boolean>(false);
 
@@ -24,6 +26,19 @@ export const AppShell: React.FC<AppShellProps> = ({
 }) => {
   const isAlreadyInsideShell = useAppShell();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
+
+  useEffect(() => {
+    if (isAlreadyInsideShell || variant !== "workspace") return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
+        event.preventDefault();
+        setCommandPaletteOpen((open) => !open);
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [isAlreadyInsideShell, variant]);
 
   // Prevent double-wrapping if a page in Phases 4–6 also wraps itself in <AppShell>
   if (isAlreadyInsideShell) {
@@ -45,14 +60,18 @@ export const AppShell: React.FC<AppShellProps> = ({
                 </span>
                 <span>TrueHire</span>
               </Link>
-              {variant === "auth" && (
-                <Link
-                  to="/"
-                  className="text-xs font-medium text-content-secondary hover:text-content-heading focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-sm px-2 py-1"
-                >
-                  Back to home
-                </Link>
-              )}
+              <div className="flex items-center gap-3">
+                <ThemeToggle variant="segmented" className="hidden sm:inline-flex" />
+                <ThemeToggle variant="compact" className="sm:hidden" />
+                {variant === "auth" && (
+                  <Link
+                    to="/"
+                    className="whitespace-nowrap rounded-sm px-2 py-1 text-xs font-medium text-content-secondary transition-colors hover:text-content-heading focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                  >
+                    Back to home
+                  </Link>
+                )}
+              </div>
             </div>
           </header>
 
@@ -88,7 +107,10 @@ export const AppShell: React.FC<AppShellProps> = ({
 
         {/* Main Content Column */}
         <div className="flex min-h-screen flex-col lg:pl-64">
-          <TopNav onOpenMobileNav={() => setMobileNavOpen(true)} />
+          <TopNav
+            onOpenMobileNav={() => setMobileNavOpen(true)}
+            onOpenCommandPalette={() => setCommandPaletteOpen(true)}
+          />
 
           <main id="main-content" className="flex-1">
             {padded ? (
@@ -100,6 +122,11 @@ export const AppShell: React.FC<AppShellProps> = ({
             )}
           </main>
         </div>
+
+        <CommandPalette
+          open={commandPaletteOpen}
+          onClose={() => setCommandPaletteOpen(false)}
+        />
       </div>
     </AppShellContext.Provider>
   );

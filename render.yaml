@@ -13,6 +13,8 @@ services:
         value: 5000
       - key: JWT_EXPIRES_IN
         value: 7d
+      - key: JWT_REFRESH_EXPIRES_IN
+        value: 7d
       - key: AI_PROVIDER
         value: groq
       - key: AI_BASE_URL
@@ -20,11 +22,11 @@ services:
       - key: AI_MODEL
         value: qwen/qwen3.8-27b
       - key: NVIDIA_MODEL
-        value: meta/llama-3.1-70b-instruct
+        value: meta/llama-3.3-70b-instruct
       - key: AI_TIMEOUT_MS
         value: 60000
       - key: GREENHOUSE_BOARDS
-        value: stripe,razorpay,swiggy,zomato,zerodha,cloudflare,vercel
+        value: stripe,razorpay,postman,browserstack,chargebee,druva,clevertap,zerodha,cloudflare,vercel,datadog
       - key: GREENHOUSE_BOARD_TOKEN
         value: stripe
       - key: GREENHOUSE_COMPANY
@@ -34,6 +36,8 @@ services:
       - key: DIRECT_URL
         sync: false
       - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_REFRESH_SECRET
         generateValue: true
       - key: CLIENT_URL
         sync: false

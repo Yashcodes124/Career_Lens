@@ -7,7 +7,7 @@ import {
   CheckCircle2,
   Clock,
   FileCheck2,
-  RotateCcw,
+  Lock,
   Send,
   Sparkles,
 } from "lucide-react";
@@ -132,7 +132,6 @@ export const LiveInterviewPage: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(true);
   const [submitting, setSubmitting] = useState<boolean>(false);
   const [completing, setCompleting] = useState<boolean>(false);
-  const [isRedoing, setIsRedoing] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
@@ -196,7 +195,6 @@ export const LiveInterviewPage: React.FC = () => {
   //Load saved draft or existing answer when switching questions
   useEffect(() => {
     if (!currentQuestion || !interviewId) return;
-    setIsRedoing(false);
     setAdaptiveNotice(null);
 
     if (currentQuestion.answer && currentQuestion.answer.trim().length > 0) {
@@ -288,8 +286,8 @@ export const LiveInterviewPage: React.FC = () => {
 
   const hasSubmittedCurrent = Boolean(
     currentQuestion?.answer &&
-    currentQuestion.answer.trim().length > 0 &&
-    !isRedoing,
+      currentQuestion.answer.trim().length > 0 &&
+      currentQuestion.feedback != null,
   );
 
   const handleSubmitAnswer = async () => {
@@ -357,7 +355,6 @@ export const LiveInterviewPage: React.FC = () => {
         // Ignore
       }
 
-      setIsRedoing(false);
       setDraftSavedAt(null);
     } catch (err: unknown) {
       setError(
@@ -681,19 +678,6 @@ export const LiveInterviewPage: React.FC = () => {
                             Previous question
                           </Button>
                         )}
-                        {isRedoing && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            disabled={submitting}
-                            onClick={() => {
-                              setIsRedoing(false);
-                              setAnswerText(currentQuestion.answer ?? "");
-                            }}
-                          >
-                            Cancel redo
-                          </Button>
-                        )}
                       </div>
 
                       <Button
@@ -754,14 +738,10 @@ export const LiveInterviewPage: React.FC = () => {
                       suggestedAnswer={feedbackDetails.suggestedAnswer}
                       actions={
                         <div className="flex w-full flex-wrap items-center justify-between gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setIsRedoing(true)}
-                            leftIcon={<RotateCcw className="h-3.5 w-3.5" />}
-                          >
-                            Redo this question
-                          </Button>
+                          <span className="inline-flex items-center gap-1.5 rounded-input border border-border bg-muted px-2.5 py-1 text-xs font-medium text-content-secondary">
+                            <Lock className="h-3.5 w-3.5" aria-hidden="true" />
+                            Answer locked &amp; scored
+                          </span>
 
                           {!isLastQuestion ? (
                             <Button

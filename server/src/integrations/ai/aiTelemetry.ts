@@ -53,6 +53,7 @@ const MODEL_COST_PER_1M: Record<string, { input: number; output: number }> = {
 };
 
 const MAX_AUDIT_LOGS = 250;
+const MAX_TRACKED_USERS = 500;
 const auditLogs: AiAuditEntry[] = [];
 const usageByUser = new Map<string, AiUsageBucket>();
 const usageByFeature = new Map<AiFeatureName, AiUsageBucket>();
@@ -100,7 +101,13 @@ export const recordAiAudit = (
     auditLogs.length = MAX_AUDIT_LOGS;
   }
 
-  // Update per-user usage
+  // Update per-user usage (bounded FIFO eviction to prevent unbounded memory growth)
+  if (!usageByUser.has(record.userId) && usageByUser.size >= MAX_TRACKED_USERS) {
+    const oldestKey = usageByUser.keys().next().value;
+    if (oldestKey !== undefined) {
+      usageByUser.delete(oldestKey);
+    }
+  }
   const userBucket = usageByUser.get(record.userId) ?? createEmptyBucket();
   userBucket.requests += 1;
   if (record.status === "SUCCESS") userBucket.successes += 1;

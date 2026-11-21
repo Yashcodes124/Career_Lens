@@ -28,14 +28,8 @@ export async function updateProfileApi(payload: UpdateProfilePayload): Promise<U
   });
 }
 
-
-
-
-
-
-
-
-
-
-
-
+export async function logoutApi(): Promise<{ message: string }> {
+  return apiClient<{ message: string }>('/auth/logout', {
+    method: 'POST',
+  });
+}

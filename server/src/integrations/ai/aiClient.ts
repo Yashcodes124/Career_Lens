@@ -335,7 +335,10 @@ const runDeterministicE2eMock = (
   return payload;
 };
 
-  if (process.env.AI_E2E_MOCK === "true") {
+  if (
+    process.env.AI_E2E_MOCK === "true" &&
+    process.env.NODE_ENV !== "production"
+  ) {
     return runDeterministicE2eMock(
       prompt,
       context?.feature ?? "GENERAL",

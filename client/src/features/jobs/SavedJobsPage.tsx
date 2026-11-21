@@ -29,13 +29,10 @@ import {
   Tabs,
   Toast,
 } from "../../components/ui";
-
-const decodeHtml = (html: string): string => {
-  if (!html) return "";
-  const textarea = document.createElement("textarea");
-  textarea.innerHTML = html;
-  return textarea.value;
-};
+import {
+  getSafeExternalUrl,
+  sanitizeJobDescriptionHtml,
+} from "../../lib/sanitize";
 
 export const SavedJobsPage: React.FC = () => {
   const navigate = useNavigate();
@@ -324,9 +321,9 @@ export const SavedJobsPage: React.FC = () => {
                 >
                   Add to tracker
                 </Button>
-                {selectedJob.url && (
+                {getSafeExternalUrl(selectedJob.url) && (
                   <a
-                    href={selectedJob.url}
+                    href={getSafeExternalUrl(selectedJob.url)!}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="inline-flex h-8 items-center gap-1 rounded-sm border border-border bg-surface px-3 text-xs font-medium text-content-body hover:bg-muted"
@@ -424,7 +421,9 @@ export const SavedJobsPage: React.FC = () => {
                       <div
                         className="prose prose-slate max-w-none text-sm leading-relaxed text-content-body"
                         dangerouslySetInnerHTML={{
-                          __html: decodeHtml(selectedJob.description),
+                          __html: sanitizeJobDescriptionHtml(
+                            selectedJob.description,
+                          ),
                         }}
                       />
                     </Card>

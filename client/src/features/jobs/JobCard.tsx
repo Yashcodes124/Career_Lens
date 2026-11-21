@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import type { Job } from "./types";
 import { Badge, Button, Card } from "../../components/ui";
+import { getSafeExternalUrl } from "../../lib/sanitize";
 
 export interface JobCardProps {
   job: Job;
@@ -378,9 +379,9 @@ export const JobCard: React.FC<JobCardProps> = ({
         </div>
 
         <div className="flex items-center gap-2">
-          {job.url && (
+          {getSafeExternalUrl(job.url) && (
             <a
-              href={job.url}
+              href={getSafeExternalUrl(job.url)!}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-1 rounded-md border border-border bg-surface px-2.5 py-1 text-xs font-medium text-content-body transition hover:border-primary hover:text-primary"

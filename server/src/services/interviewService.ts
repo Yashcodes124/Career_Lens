@@ -28,6 +28,7 @@ import {
   insertAdaptiveFollowUpQuestion,
 } from "../repositories/interviewRepository";
 import { AppError } from "../utils/appError";
+import { parseModelJson } from "../utils/parseModelJson";
 import { saveEvaluationWithSkillEvidence } from "../repositories/skillRepository";
 import { skillEvidenceFromReport } from "./skills/skillEvidence";
 import {
@@ -120,6 +121,21 @@ const buildCustomSkillPlan = (params: {
   };
 };
 
+const parseAiJsonPayload = (rawResponse: unknown, errorMessage: string): unknown => {
+  if (typeof rawResponse !== "string") {
+    return rawResponse;
+  }
+  try {
+    const parsed = parseModelJson<unknown>(rawResponse);
+    if (typeof parsed === "string") {
+      return parseModelJson<unknown>(parsed);
+    }
+    return parsed;
+  } catch {
+    throw new AppError(502, errorMessage, "AI_INVALID_OUTPUT");
+  }
+};
+
 export const generateInterviewPlan = async (
   input: InterviewPromptInput,
   userId?: string,
@@ -130,8 +146,10 @@ export const generateInterviewPlan = async (
     feature: "INTERVIEW_GENERATION",
   });
 
-  const jsonContent =
-    typeof rawResponse === "string" ? JSON.parse(rawResponse) : rawResponse;
+  const jsonContent = parseAiJsonPayload(
+    rawResponse,
+    "The interview plan could not be generated. Try again.",
+  );
 
   const parsed = InterviewPlanSchema.safeParse(jsonContent);
   if (!parsed.success) {
@@ -281,18 +299,21 @@ export const generateInterviewQuestions = async (
     feature: "INTERVIEW_GENERATION",
   });
 
-  let jsonContent =
-    typeof rawResponse === "string" ? JSON.parse(rawResponse) : rawResponse;
+  const jsonContent = parseAiJsonPayload(
+    rawResponse,
+    "Interview questions could not be generated. Please retry.",
+  );
 
-  if (typeof jsonContent === "string") {
-    const cleaned = jsonContent
-      .replace(/```json/g, "")
-      .replace(/```/g, "")
-      .trim();
-    jsonContent = JSON.parse(cleaned);
+  const parsed = InterviewQuestionsSchema.safeParse(jsonContent);
+  if (!parsed.success) {
+    throw new AppError(
+      502,
+      "Interview questions could not be generated. Please retry.",
+      "AI_INVALID_OUTPUT",
+    );
   }
 
-  return InterviewQuestionsSchema.parse(jsonContent);
+  return parsed.data;
 };
 
 export const generateInterviewSessionByIdService = async (
@@ -301,7 +322,7 @@ export const generateInterviewSessionByIdService = async (
 ) => {
   const interview = await getInterviewSessionById(interviewId, userId);
   if (!interview) {
-    throw new Error("Interview session not found");
+    throw new AppError(404, "Interview session not found", "INTERVIEW_NOT_FOUND");
   }
   return interview;
 };
@@ -312,28 +333,30 @@ export const startInterviewService = async (
 ) => {
   const interview = await getInterviewSessionById(interviewId, userId);
   if (!interview) {
-    throw new Error("Interview session not found");
+    throw new AppError(404, "Interview session not found", "INTERVIEW_NOT_FOUND");
   }
 
   if (interview.status === "IN_PROGRESS") {
-    const error = new Error("Interview is already in progress");
-    (error as any).statusCode = 400;
-    throw error;
+    throw new AppError(
+      400,
+      "Interview is already in progress",
+      "INVALID_INTERVIEW_STATE",
+    );
   }
 
   if (interview.status === "COMPLETED" || interview.status === "CANCELLED") {
-    const error = new Error(
+    throw new AppError(
+      400,
       `Cannot start an interview that is ${interview.status.toLowerCase()}`,
+      "INVALID_INTERVIEW_STATE",
     );
-    (error as any).statusCode = 400;
-    throw error;
   }
 
   await updateInterviewStatus(interviewId, userId, "IN_PROGRESS");
 
   const updatedInterview = await getInterviewSessionById(interviewId, userId);
   const firstQuestion =
-    updatedInterview?.questions.find((q) => q.order == 1) || null;
+    updatedInterview?.questions.find((q) => q.order === 1) || null;
 
   return {
     interview: updatedInterview,
@@ -883,17 +906,10 @@ export const generateFinalEvaluationService = async (
     feature: "INTERVIEW_FINAL_EVAL",
   });
 
-  let rawEvaluation: any;
-
-  if (typeof aiResponse === "string") {
-    const cleanedResponse = aiResponse
-      .replace(/```json/g, "")
-      .replace(/```/g, "")
-      .trim();
-    rawEvaluation = JSON.parse(cleanedResponse);
-  } else {
-    rawEvaluation = aiResponse;
-  }
+  const rawEvaluation = parseAiJsonPayload(
+    aiResponse,
+    "The final evaluation report could not be generated. Please retry.",
+  ) as Record<string, any>;
 
   if (rawEvaluation?.breakdown) {
     if (
@@ -905,19 +921,31 @@ export const generateFinalEvaluationService = async (
     }
   }
 
-  const validatedEvaluation = FinalEvaluationSchema.parse(rawEvaluation);
+  const parsedEvaluation = FinalEvaluationSchema.safeParse(rawEvaluation);
+  if (!parsedEvaluation.success) {
+    throw new AppError(
+      502,
+      "The final evaluation report could not be generated. Please retry.",
+      "AI_INVALID_OUTPUT",
+    );
+  }
+
+  const validatedEvaluation = parsedEvaluation.data;
+  const skillUpdates = skillEvidenceFromReport(validatedEvaluation);
+
+  // Persist authoritative evaluation + skill evidence first so failed writes never leave a phantom transcript.
+  const savedEvaluation = await saveEvaluationWithSkillEvidence(
+    interviewId,
+    userId,
+    validatedEvaluation,
+    skillUpdates,
+  );
 
   try {
     if (typeof saveInterviewTranscript === "function") {
-      // Use the same validated evaluation variable passed into saveEvaluationWithSkillEvidence above (e.g., `evaluation`)
-      const evalReport = validatedEvaluation;
-      const skillUpdates = skillEvidenceFromReport({
-        strengths: evalReport.strengths,
-        improvements: evalReport.improvements,
-      });
       const transcript = buildStructuredInterviewTranscript({
         interview,
-        finalEvaluation: evalReport,
+        finalEvaluation: validatedEvaluation,
         skillUpdates: skillUpdates.map((u) => ({
           skill: u.skill,
           status: u.status,
@@ -929,15 +957,8 @@ export const generateFinalEvaluationService = async (
       );
     }
   } catch {
-    // Non-fatal in unit tests
+    // Non-fatal: authoritative evaluation & skill evidence are already saved
   }
-
-  const savedEvaluation = await saveEvaluationWithSkillEvidence(
-    interviewId,
-    userId,
-    validatedEvaluation,
-    skillEvidenceFromReport(validatedEvaluation),
-  );
 
   recordFeatureEvent({
     userId,

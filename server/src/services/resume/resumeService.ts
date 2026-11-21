@@ -129,7 +129,7 @@ export const createResumeService = async (
       status: "FAILED",
       qualityScore: 0,
       textLength: rawText.length,
-      warnings: ["NO_READABLE_TEXT"],
+      warnings: ["AI_ANALYSIS_FAILED"],
       durationMs: Date.now() - startedAt,
     });
     recordFeatureEvent({
@@ -562,7 +562,6 @@ export const reanalyzeResumeService = async (
     },
   });
 
-  return updated;
   return updated;
 };
 

@@ -17,6 +17,8 @@ const m = vi.hoisted(() => ({
     getFirstUnfinishedQuestion: vi.fn(),
     getEvaluationByInterviewId: vi.fn(),
     saveFinalEvaluation: vi.fn(),
+    saveInterviewTranscript: vi.fn(),
+    insertAdaptiveFollowUpQuestion: vi.fn(),
   },
   saveEvaluationWithSkillEvidence: vi.fn(),
   analyzeResume: vi.fn(),

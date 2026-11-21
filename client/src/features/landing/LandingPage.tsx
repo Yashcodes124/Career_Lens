@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { motion } from "framer-motion";
 import {
   ArrowRight,
   Award,
@@ -19,13 +20,19 @@ import {
   Badge,
   Button,
   Card,
+  EDITORIAL_EASE,
   FeedbackCard,
   ProgressBar,
   RequirementRow,
   ScoreRing,
+  ScrollProgressBar,
+  ScrollReveal,
   Skeleton,
   SkillBadge,
+  StaggerGroup,
+  StaggerItem,
   Tabs,
+  ThemeToggle,
 } from "../../components/ui";
 
 const WORKFLOW_STEPS = [
@@ -57,64 +64,70 @@ const WORKFLOW_STEPS = [
 
 const CLOSED_LOOP_NODES = [
   {
-    stage: "1. Resume",
+    index: "01",
+    stage: "Resume",
     summary: "Extract skills you can review and edit.",
   },
   {
-    stage: "2. Job Matching",
+    index: "02",
+    stage: "Job Matching",
     summary: "Compare your skills against role requirements.",
   },
   {
-    stage: "3. Skill Gaps",
+    index: "03",
+    stage: "Skill Gaps",
     summary: "Rank missing skills by role frequency.",
   },
   {
-    stage: "4. Interview",
+    index: "04",
+    stage: "Interview",
     summary: "Answer questions focused on weak or missing skills.",
   },
   {
-    stage: "5. Evaluation",
+    index: "05",
+    stage: "Evaluation",
     summary: "Score each answer against a clear rubric.",
   },
   {
-    stage: "6. Skill Profile",
+    index: "06",
+    stage: "Skill Profile",
     summary: "Carry verified evidence into your next job match.",
   },
 ];
 
 const CORE_FEATURES = [
   {
-    icon: <FileText className="h-4 w-4 text-primary" />,
+    icon: <FileText className="h-4 w-4 text-primary" aria-hidden="true" />,
     title: "Editable resume skill extraction",
     description:
       "Parse PDF and DOCX resumes into structured skills that you can confirm, add to, or remove at any time.",
   },
   {
-    icon: <Briefcase className="h-4 w-4 text-primary" />,
+    icon: <Briefcase className="h-4 w-4 text-primary" aria-hidden="true" />,
     title: "Verified ATS postings",
     description:
       "Browse engineering roles synced directly from official Greenhouse job boards with source links and sync timestamps.",
   },
   {
-    icon: <Target className="h-4 w-4 text-primary" />,
+    icon: <Target className="h-4 w-4 text-primary" aria-hidden="true" />,
     title: "Explainable requirement coverage",
     description:
       "Every match score shows the exact count of matched, weak, and missing requirements—never an unexplained percentage.",
   },
   {
-    icon: <MessageSquare className="h-4 w-4 text-primary" />,
+    icon: <MessageSquare className="h-4 w-4 text-primary" aria-hidden="true" />,
     title: "Targeted mock interviews",
     description:
       "Run technical and behavioral sessions scoped to a specific job and the exact skills you need to prove.",
   },
   {
-    icon: <Award className="h-4 w-4 text-primary" />,
+    icon: <Award className="h-4 w-4 text-primary" aria-hidden="true" />,
     title: "Evidence-backed skill profile",
     description:
       "Track which skills are only claimed on your resume versus practiced or verified through interview evaluations.",
   },
   {
-    icon: <Layers className="h-4 w-4 text-primary" />,
+    icon: <Layers className="h-4 w-4 text-primary" aria-hidden="true" />,
     title: "Application pipeline tracker",
     description:
       "Organize roles across Saved, Applied, Interviewing, Offer, and Rejected with match scores and gap notes attached.",
@@ -130,20 +143,22 @@ export const LandingPage: React.FC = () => {
     isAuthenticated || user ? "/dashboard" : "/register";
 
   return (
-    <div className="min-h-screen bg-canvas text-content-body">
-      {/* Top Navigation */}
-      <header className="sticky top-0 z-30 h-16 border-b border-border bg-surface">
+    <div className="min-h-screen bg-canvas text-content-body theme-surface-transition">
+      <ScrollProgressBar />
+
+      {/* Sticky 3-Zone Top Navigation */}
+      <header className="sticky top-0 z-30 h-16 border-b border-border bg-surface/90 backdrop-blur-md theme-surface-transition">
         <ContentContainer
           size="xl"
           padded={false}
-          className="flex h-full items-center justify-between px-4 sm:px-6 lg:px-8"
+          className="flex h-full items-center justify-between gap-3 px-4 sm:px-6 lg:px-8"
         >
-          <div className="flex items-center gap-8">
+          <div className="flex items-center gap-8 min-w-0">
             <Link
               to="/"
-              className="flex items-center gap-2.5 rounded-sm text-base font-semibold tracking-tight text-content-heading focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              className="flex shrink-0 items-center gap-2.5 rounded-sm font-display text-base font-bold tracking-tight text-content-heading focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
             >
-              <span className="flex h-7 w-7 items-center justify-center rounded-sm bg-primary text-xs font-bold text-white">
+              <span className="flex h-7 w-7 items-center justify-center rounded-sm bg-primary font-mono text-xs font-bold text-primary-foreground shadow-xs">
                 TH
               </span>
               <span>TrueHire</span>
@@ -154,29 +169,32 @@ export const LandingPage: React.FC = () => {
               className="hidden items-center gap-6 text-sm font-medium text-content-secondary md:flex"
             >
               <a
+                href="#closed-loop"
+                className="whitespace-nowrap transition-colors duration-150 hover:text-content-heading"
+              >
+                Closed-loop
+              </a>
+              <a
                 href="#how-it-works"
-                className="transition-colors hover:text-content-heading"
+                className="whitespace-nowrap transition-colors duration-150 hover:text-content-heading"
               >
                 How it works
               </a>
               <a
-                href="#closed-loop"
-                className="transition-colors hover:text-content-heading"
-              >
-                Closed-loop workflow
-              </a>
-              <a
                 href="#features"
-                className="transition-colors hover:text-content-heading"
+                className="whitespace-nowrap transition-colors duration-150 hover:text-content-heading"
               >
-                Features
+                Capabilities
               </a>
             </nav>
           </div>
 
-          <div className="flex items-center gap-2.5">
+          <div className="flex shrink-0 items-center gap-2 sm:gap-2.5">
+            <ThemeToggle variant="segmented" className="hidden lg:inline-flex" />
+            <ThemeToggle variant="compact" className="lg:hidden" />
+
             {isLoading ? (
-              <Skeleton className="h-9 w-28" />
+              <Skeleton className="h-8 w-24" />
             ) : isAuthenticated || user ? (
               <>
                 <Button
@@ -193,7 +211,7 @@ export const LandingPage: React.FC = () => {
                   onClick={() => navigate("/dashboard")}
                   rightIcon={<ArrowRight className="h-3.5 w-3.5" />}
                 >
-                  Open Dashboard
+                  Dashboard
                 </Button>
               </>
             ) : (
@@ -211,7 +229,7 @@ export const LandingPage: React.FC = () => {
                   onClick={() => navigate("/register")}
                   rightIcon={<ArrowRight className="h-3.5 w-3.5" />}
                 >
-                  Create account
+                  Get started
                 </Button>
               </>
             )}
@@ -220,27 +238,37 @@ export const LandingPage: React.FC = () => {
       </header>
 
       <main>
-        {/* Hero Section */}
-        <section className="border-b border-border bg-surface py-12 sm:py-16 lg:py-20">
+        {/* Hero Section — Immediate First-Paint Visibility + Subtle Editorial Motion */}
+        <section className="relative overflow-hidden border-b border-border bg-canvas py-12 sm:py-16 lg:py-20 theme-surface-transition">
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0 bg-architectural-grid opacity-45 [mask-image:radial-gradient(ellipse_75%_65%_at_50%_15%,#000_25%,transparent_100%)]"
+          />
+
           <ContentContainer
             size="xl"
             padded={false}
-            className="px-4 sm:px-6 lg:px-8"
+            className="relative z-10 px-4 sm:px-6 lg:px-8"
           >
-            <div className="grid items-start gap-10 lg:grid-cols-12 lg:items-center">
+            <div className="grid items-start gap-10 lg:grid-cols-12 lg:items-center lg:gap-12">
               {/* Left Column: Headline & Actions */}
-              <div className="space-y-6 lg:col-span-5">
-                <Badge tone="primary">
-                  Verified Job Discovery & Interview Readiness
-                </Badge>
+              <motion.div
+                initial={{ opacity: 0.96, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.32, ease: EDITORIAL_EASE }}
+                className="space-y-6 lg:col-span-5"
+              >
+                <p className="font-mono text-xs font-semibold uppercase tracking-[0.14em] text-primary">
+                  Verified Job Discovery · Interview Readiness
+                </p>
 
-                <h1 className="text-3xl font-semibold tracking-tight text-content-heading sm:text-4xl lg:text-5xl lg:leading-[1.12]">
+                <h1 className="font-display text-3xl font-bold tracking-tight text-content-heading sm:text-4xl lg:text-[3.05rem] lg:leading-[1.08]">
                   Know which requirements you meet before you apply.
                 </h1>
 
-                <p className="text-base leading-relaxed text-content-body">
-                  Upload your resume to see which skills match your target
-                  engineering roles, find your highest-priority gaps, and
+                <p className="max-w-[56ch] text-base leading-relaxed text-content-body">
+                  Upload your resume to inspect exact skill coverage on real
+                  engineering roles, prioritize your highest-frequency gaps, and
                   practice targeted mock interviews that update your readiness
                   profile.
                 </p>
@@ -265,48 +293,56 @@ export const LandingPage: React.FC = () => {
                   </Button>
                 </div>
 
-                <div className="grid grid-cols-3 gap-3 border-t border-border pt-6">
+                <div className="grid grid-cols-3 gap-4 border-t border-border pt-6">
                   <div>
-                    <p className="text-base font-semibold text-content-heading tabular-nums">
-                      8 of 12
+                    <p className="font-mono text-base font-semibold text-content-heading tabular-nums">
+                      8 / 12
                     </p>
-                    <p className="mt-0.5 text-xs text-content-secondary">
-                      Clear requirement denominator
+                    <p className="mt-1 text-xs leading-snug text-content-secondary">
+                      Transparent requirement coverage
                     </p>
                   </div>
                   <div>
-                    <p className="text-base font-semibold text-content-heading tabular-nums">
-                      15–60 min
+                    <p className="font-mono text-base font-semibold text-content-heading tabular-nums">
+                      15–60m
                     </p>
-                    <p className="mt-0.5 text-xs text-content-secondary">
+                    <p className="mt-1 text-xs leading-snug text-content-secondary">
                       Skill-scoped mock interviews
                     </p>
                   </div>
                   <div>
-                    <p className="text-base font-semibold text-content-heading tabular-nums">
+                    <p className="font-mono text-base font-semibold text-content-heading tabular-nums">
                       Direct ATS
                     </p>
-                    <p className="mt-0.5 text-xs text-content-secondary">
+                    <p className="mt-1 text-xs leading-snug text-content-secondary">
                       Synced from company boards
                     </p>
                   </div>
                 </div>
-              </div>
+              </motion.div>
 
-              {/* Right Column: Meaningful Product Preview Using Shared Components */}
-              <div className="lg:col-span-7">
-                <Card padding="none" className="overflow-hidden">
-                  <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border bg-muted/60 px-4 py-3 sm:px-6">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-semibold text-content-heading">
-                        Product Preview
+              {/* Right Column: Interactive Product Preview */}
+              <motion.div
+                initial={{ opacity: 0.96, y: 14 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4, delay: 0.06, ease: EDITORIAL_EASE }}
+                className="lg:col-span-7"
+              >
+                <Card
+                  padding="none"
+                  className="overflow-hidden border-border-strong/70 shadow-elevated"
+                >
+                  <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border bg-muted/70 px-4 py-3 sm:px-6">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="font-display text-xs font-semibold text-content-heading">
+                        Live Workspace Preview
                       </span>
-                      <Badge tone="neutral" size="sm">
+                      <span className="font-mono text-[11px] text-content-secondary">
                         Backend Engineer · Sample Role
-                      </Badge>
+                      </span>
                     </div>
-                    <span className="text-xs text-content-secondary">
-                      Select a stage to inspect
+                    <span className="font-mono text-[11px] text-primary">
+                      Interactive stages
                     </span>
                   </div>
 
@@ -326,7 +362,7 @@ export const LandingPage: React.FC = () => {
                                 className="flex flex-wrap items-center justify-between gap-4"
                               >
                                 <div className="space-y-1">
-                                  <p className="text-xs font-medium text-content-secondary">
+                                  <p className="font-mono text-[11px] font-medium uppercase tracking-wider text-content-secondary">
                                     Requirement Coverage
                                   </p>
                                   <p className="text-base font-semibold text-content-heading">
@@ -479,7 +515,7 @@ export const LandingPage: React.FC = () => {
                     />
                   </div>
                 </Card>
-              </div>
+              </motion.div>
             </div>
           </ContentContainer>
         </section>
@@ -487,224 +523,273 @@ export const LandingPage: React.FC = () => {
         {/* Closed-Loop Workflow Strip */}
         <section
           id="closed-loop"
-          className="border-b border-border bg-canvas py-12 sm:py-16"
+          className="border-b border-border bg-surface py-14 sm:py-20 theme-surface-transition"
         >
           <ContentContainer
             size="xl"
             padded={false}
             className="px-4 sm:px-6 lg:px-8"
           >
-            <div className="max-w-2xl space-y-2">
-              <p className="text-xs font-semibold uppercase tracking-wider text-primary">
+            <ScrollReveal className="max-w-2xl space-y-2.5">
+              <p className="font-mono text-xs font-semibold uppercase tracking-[0.14em] text-primary">
                 Closed-Loop System
               </p>
-              <h2 className="text-2xl font-semibold tracking-tight text-content-heading sm:text-3xl">
+              <h2 className="font-display text-2xl font-bold tracking-tight text-content-heading sm:text-3xl">
                 Every interview updates your skill profile.
               </h2>
-              <p className="text-sm leading-relaxed text-content-secondary">
+              <p className="text-sm leading-relaxed text-content-secondary sm:text-base">
                 Most job tools stop at a static resume keyword score. TrueHire
                 connects your resume, role requirements, and interview feedback
-                into one continuous loop.
+                into one continuous evidence loop.
               </p>
-            </div>
+            </ScrollReveal>
 
-            <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-6">
+            <StaggerGroup className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-6">
               {CLOSED_LOOP_NODES.map((node) => (
-                <Card
-                  key={node.stage}
-                  padding="sm"
-                  className="flex flex-col justify-between"
-                >
-                  <div>
-                    <p className="text-xs font-semibold text-primary">
-                      {node.stage}
-                    </p>
-                    <p className="mt-1.5 text-xs leading-relaxed text-content-body">
-                      {node.summary}
-                    </p>
-                  </div>
-                </Card>
+                <StaggerItem key={node.stage} className="h-full">
+                  <Card
+                    padding="sm"
+                    interactive
+                    className="flex h-full flex-col justify-between"
+                  >
+                    <div>
+                      <span className="font-mono text-[11px] font-semibold text-primary tabular-nums">
+                        {node.index}
+                      </span>
+                      <p className="mt-1 font-display text-sm font-semibold text-content-heading">
+                        {node.stage}
+                      </p>
+                      <p className="mt-1.5 text-xs leading-relaxed text-content-secondary">
+                        {node.summary}
+                      </p>
+                    </div>
+                  </Card>
+                </StaggerItem>
               ))}
-            </div>
+            </StaggerGroup>
           </ContentContainer>
         </section>
 
         {/* How It Works (4 Concrete Steps) */}
         <section
           id="how-it-works"
-          className="border-b border-border bg-surface py-12 sm:py-16"
+          className="border-b border-border bg-canvas py-14 sm:py-20 theme-surface-transition"
         >
           <ContentContainer
             size="xl"
             padded={false}
             className="px-4 sm:px-6 lg:px-8"
           >
-            <div className="max-w-2xl space-y-2">
-              <p className="text-xs font-semibold uppercase tracking-wider text-primary">
+            <ScrollReveal className="max-w-2xl space-y-2.5">
+              <p className="font-mono text-xs font-semibold uppercase tracking-[0.14em] text-primary">
                 How It Works
               </p>
-              <h2 className="text-2xl font-semibold tracking-tight text-content-heading sm:text-3xl">
+              <h2 className="font-display text-2xl font-bold tracking-tight text-content-heading sm:text-3xl">
                 Four steps from resume upload to verified readiness.
               </h2>
-            </div>
+            </ScrollReveal>
 
-            <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+            <StaggerGroup className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
               {WORKFLOW_STEPS.map((item) => (
-                <Card key={item.step} padding="md">
-                  <Badge tone="primary" size="sm">
-                    Step {item.step}
-                  </Badge>
-                  <h3 className="mt-3 text-base font-semibold text-content-heading">
-                    {item.title}
-                  </h3>
-                  <p className="mt-2 text-sm leading-relaxed text-content-secondary">
-                    {item.description}
-                  </p>
-                </Card>
+                <StaggerItem key={item.step} className="h-full">
+                  <Card padding="md" interactive className="h-full">
+                    <span className="inline-flex items-center font-mono text-xs font-semibold text-primary tabular-nums">
+                      STEP {item.step}
+                    </span>
+                    <h3 className="mt-3 font-display text-base font-semibold text-content-heading">
+                      {item.title}
+                    </h3>
+                    <p className="mt-2 text-sm leading-relaxed text-content-secondary">
+                      {item.description}
+                    </p>
+                  </Card>
+                </StaggerItem>
               ))}
-            </div>
+            </StaggerGroup>
           </ContentContainer>
         </section>
 
         {/* Core Product Capabilities */}
         <section
           id="features"
-          className="border-b border-border bg-canvas py-12 sm:py-16"
+          className="border-b border-border bg-surface py-14 sm:py-20 theme-surface-transition"
         >
           <ContentContainer
             size="xl"
             padded={false}
             className="px-4 sm:px-6 lg:px-8"
           >
-            <div className="max-w-2xl space-y-2">
-              <p className="text-xs font-semibold uppercase tracking-wider text-primary">
+            <ScrollReveal className="max-w-2xl space-y-2.5">
+              <p className="font-mono text-xs font-semibold uppercase tracking-[0.14em] text-primary">
                 Core Capabilities
               </p>
-              <h2 className="text-2xl font-semibold tracking-tight text-content-heading sm:text-3xl">
+              <h2 className="font-display text-2xl font-bold tracking-tight text-content-heading sm:text-3xl">
                 Built for practical engineering preparation.
               </h2>
-              <p className="text-sm leading-relaxed text-content-secondary">
+              <p className="text-sm leading-relaxed text-content-secondary sm:text-base">
                 Transparent matching, source-verified job postings, and
                 non-fabricated resume tailoring.
               </p>
-            </div>
+            </ScrollReveal>
 
-            <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            <StaggerGroup className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
               {CORE_FEATURES.map((feat) => (
-                <Card key={feat.title} padding="md">
-                  <div className="inline-flex h-9 w-9 items-center justify-center rounded-input border border-border bg-muted">
-                    {feat.icon}
-                  </div>
-                  <h3 className="mt-3.5 text-base font-semibold text-content-heading">
-                    {feat.title}
-                  </h3>
-                  <p className="mt-1.5 text-sm leading-relaxed text-content-secondary">
-                    {feat.description}
-                  </p>
-                </Card>
+                <StaggerItem key={feat.title} className="h-full">
+                  <Card padding="md" interactive className="group h-full">
+                    <div className="inline-flex h-10 w-10 items-center justify-center rounded-input border border-border bg-muted transition-colors duration-150 group-hover:border-primary/40 group-hover:bg-primary-soft">
+                      {feat.icon}
+                    </div>
+                    <h3 className="mt-4 font-display text-base font-semibold text-content-heading">
+                      {feat.title}
+                    </h3>
+                    <p className="mt-1.5 text-sm leading-relaxed text-content-secondary">
+                      {feat.description}
+                    </p>
+                  </Card>
+                </StaggerItem>
               ))}
-            </div>
+            </StaggerGroup>
 
             {/* Technical Credibility & Provenance Row */}
-            <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              <Card muted padding="sm" className="flex items-start gap-3">
-                <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-                <div>
-                  <p className="text-xs font-semibold text-content-heading">
-                    Non-Fabricated Tailoring
-                  </p>
-                  <p className="mt-0.5 text-xs text-content-secondary">
-                    Rewrites are strictly bounded by your existing resume facts.
-                  </p>
-                </div>
-              </Card>
+            <StaggerGroup className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <StaggerItem>
+                <Card muted padding="sm" className="flex h-full items-start gap-3">
+                  <ShieldCheck
+                    className="mt-0.5 h-4 w-4 shrink-0 text-primary"
+                    aria-hidden="true"
+                  />
+                  <div>
+                    <p className="text-xs font-semibold text-content-heading">
+                      Non-Fabricated Tailoring
+                    </p>
+                    <p className="mt-0.5 text-xs text-content-secondary">
+                      Rewrites are strictly bounded by your existing resume facts.
+                    </p>
+                  </div>
+                </Card>
+              </StaggerItem>
 
-              <Card muted padding="sm" className="flex items-start gap-3">
-                <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-status-success" />
-                <div>
-                  <p className="text-xs font-semibold text-content-heading">
-                    Traceable Scores
-                  </p>
-                  <p className="mt-0.5 text-xs text-content-secondary">
-                    Every score lists the exact skills matched and missing.
-                  </p>
-                </div>
-              </Card>
+              <StaggerItem>
+                <Card muted padding="sm" className="flex h-full items-start gap-3">
+                  <CheckCircle2
+                    className="mt-0.5 h-4 w-4 shrink-0 text-status-success"
+                    aria-hidden="true"
+                  />
+                  <div>
+                    <p className="text-xs font-semibold text-content-heading">
+                      Traceable Scores
+                    </p>
+                    <p className="mt-0.5 text-xs text-content-secondary">
+                      Every score lists the exact skills matched and missing.
+                    </p>
+                  </div>
+                </Card>
+              </StaggerItem>
 
-              <Card muted padding="sm" className="flex items-start gap-3">
-                <Database className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-                <div>
-                  <p className="text-xs font-semibold text-content-heading">
-                    Resumable Sessions
-                  </p>
-                  <p className="mt-0.5 text-xs text-content-secondary">
-                    Pause and resume mock interviews without losing answers.
-                  </p>
-                </div>
-              </Card>
+              <StaggerItem>
+                <Card muted padding="sm" className="flex h-full items-start gap-3">
+                  <Database
+                    className="mt-0.5 h-4 w-4 shrink-0 text-primary"
+                    aria-hidden="true"
+                  />
+                  <div>
+                    <p className="text-xs font-semibold text-content-heading">
+                      Resumable Sessions
+                    </p>
+                    <p className="mt-0.5 text-xs text-content-secondary">
+                      Pause and resume mock interviews without losing answers.
+                    </p>
+                  </div>
+                </Card>
+              </StaggerItem>
 
-              <Card muted padding="sm" className="flex items-start gap-3">
-                <Code2 className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-                <div>
-                  <p className="text-xs font-semibold text-content-heading">
-                    Official ATS Sources
-                  </p>
-                  <p className="mt-0.5 text-xs text-content-secondary">
-                    Direct company board links and sync timestamps on every job.
-                  </p>
-                </div>
-              </Card>
-            </div>
+              <StaggerItem>
+                <Card muted padding="sm" className="flex h-full items-start gap-3">
+                  <Code2
+                    className="mt-0.5 h-4 w-4 shrink-0 text-primary"
+                    aria-hidden="true"
+                  />
+                  <div>
+                    <p className="text-xs font-semibold text-content-heading">
+                      Official ATS Sources
+                    </p>
+                    <p className="mt-0.5 text-xs text-content-secondary">
+                      Direct company board links and sync timestamps on every job.
+                    </p>
+                  </div>
+                </Card>
+              </StaggerItem>
+            </StaggerGroup>
           </ContentContainer>
         </section>
 
         {/* Single Final CTA */}
-        <section className="bg-surface py-12 sm:py-16">
+        <section className="bg-canvas py-14 sm:py-20 theme-surface-transition">
           <ContentContainer
             size="md"
             padded={false}
             className="px-4 sm:px-6 lg:px-8"
           >
-            <Card padding="lg" className="text-center">
-              <h2 className="text-2xl font-semibold tracking-tight text-content-heading sm:text-3xl">
-                See where you stand on your target roles.
-              </h2>
-              <p className="mx-auto mt-2 max-w-xl text-sm leading-relaxed text-content-secondary">
-                Upload your resume to inspect your requirement coverage on real
-                engineering jobs and practice targeted interviews.
-              </p>
-              <div className="mt-6 flex justify-center">
-                <Button
-                  variant="primary"
-                  size="lg"
-                  onClick={() => navigate(primaryDestination)}
-                  rightIcon={<ArrowRight className="h-4 w-4" />}
-                >
-                  {isAuthenticated || user
-                    ? "Open Dashboard"
-                    : "Create your account"}
-                </Button>
-              </div>
-            </Card>
+            <ScrollReveal>
+              <Card
+                padding="lg"
+                className="border-border-strong/80 text-center shadow-elevated"
+              >
+                <p className="font-mono text-xs font-semibold uppercase tracking-[0.14em] text-primary">
+                  Ready When You Are
+                </p>
+                <h2 className="mt-2 font-display text-2xl font-bold tracking-tight text-content-heading sm:text-3xl">
+                  See where you stand on your target roles.
+                </h2>
+                <p className="mx-auto mt-2.5 max-w-xl text-sm leading-relaxed text-content-secondary">
+                  Upload your resume to inspect your requirement coverage on real
+                  engineering jobs and practice targeted interviews.
+                </p>
+                <div className="mt-6 flex flex-wrap justify-center gap-3">
+                  <Button
+                    variant="primary"
+                    size="lg"
+                    onClick={() => navigate(primaryDestination)}
+                    rightIcon={<ArrowRight className="h-4 w-4" />}
+                  >
+                    {isAuthenticated || user
+                      ? "Open Dashboard"
+                      : "Create your account"}
+                  </Button>
+                </div>
+              </Card>
+            </ScrollReveal>
           </ContentContainer>
         </section>
       </main>
 
-      <footer className="border-t border-border bg-canvas py-8">
+      <footer className="border-t border-border bg-canvas py-8 theme-surface-transition">
         <ContentContainer
           size="xl"
           padded={false}
           className="flex flex-wrap items-center justify-between gap-4 px-4 text-xs text-content-secondary sm:px-6 lg:px-8"
         >
-          <span>TrueHire · Job Discovery & Interview Readiness</span>
-          <div className="flex items-center gap-5">
-            <Link to="/jobs" className="hover:text-content-heading">
+          <span className="font-medium text-content-body">
+            TrueHire · Job Discovery & Interview Readiness
+          </span>
+          <div className="flex flex-wrap items-center gap-5">
+            <ThemeToggle variant="segmented" />
+            <Link
+              to="/jobs"
+              className="transition-colors hover:text-content-heading"
+            >
               Explore Jobs
             </Link>
-            <Link to="/login" className="hover:text-content-heading">
+            <Link
+              to="/login"
+              className="transition-colors hover:text-content-heading"
+            >
               Sign in
             </Link>
-            <Link to="/register" className="hover:text-content-heading">
+            <Link
+              to="/register"
+              className="transition-colors hover:text-content-heading"
+            >
               Create account
             </Link>
           </div>

@@ -1,6 +1,6 @@
 //server/src/controllers/applicationController.ts
 
-import type { Request, Response } from "express";
+import type { NextFunction, Request, Response } from "express";
 import { ApplicationStatus } from "@prisma/client";
 import {
   createApplicationService,
@@ -13,6 +13,7 @@ import {
 export const createApplicationController = async (
   req: Request,
   res: Response,
+  next: NextFunction,
 ) => {
   try {
     const userId = req.user!.userId;
@@ -33,18 +34,14 @@ export const createApplicationController = async (
       return;
     }
 
-    console.error("Create application error:", error);
-
-    res.status(500).json({
-      success: false,
-      message: "Failed to create application",
-    });
+    next(error);
   }
 };
 
 export const getApplicationsController = async (
   req: Request,
   res: Response,
+  next: NextFunction,
 ) => {
   try {
     const userId = req.user!.userId;
@@ -56,18 +53,14 @@ export const getApplicationsController = async (
       applications,
     });
   } catch (error) {
-    console.error("Get applications error:", error);
-
-    res.status(500).json({
-      success: false,
-      message: "Failed to fetch applications",
-    });
+    next(error);
   }
 };
 
 export const getApplicationByIdController = async (
   req: Request,
   res: Response,
+  next: NextFunction,
 ) => {
   try {
     const userId = req.user!.userId;
@@ -88,23 +81,19 @@ export const getApplicationByIdController = async (
       return;
     }
 
-    console.error("Get application error:", error);
-
-    res.status(500).json({
-      success: false,
-      message: "Failed to fetch application",
-    });
+    next(error);
   }
 };
 
 export const updateApplicationStatusController = async (
   req: Request,
   res: Response,
+  next: NextFunction,
 ) => {
   try {
     const userId = req.user!.userId;
     const { id } = req.params;
-    const { status } = req.body;
+    const { status } = req.body ?? {};
 
     if (!Object.values(ApplicationStatus).includes(status)) {
       res.status(400).json({
@@ -133,18 +122,14 @@ export const updateApplicationStatusController = async (
       return;
     }
 
-    console.error("Update application status error:", error);
-
-    res.status(500).json({
-      success: false,
-      message: "Failed to update application status",
-    });
+    next(error);
   }
 };
 
 export const deleteApplicationController = async (
   req: Request,
   res: Response,
+  next: NextFunction,
 ) => {
   try {
     const userId = req.user!.userId;
@@ -165,11 +150,6 @@ export const deleteApplicationController = async (
       return;
     }
 
-    console.error("Delete application error:", error);
-
-    res.status(500).json({
-      success: false,
-      message: "Failed to delete application",
-    });
+    next(error);
   }
 };
